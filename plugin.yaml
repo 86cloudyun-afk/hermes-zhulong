@@ -1,7 +1,7 @@
 name: zhulong
-label: 烛龙 Zhulong — Hermes 自我观测/校准层
+label: 烛龙 Zhulong — Hermes 自我观测/校准/反思层
 kind: standalone
-version: 0.2.0
+version: 0.3.0
 author: YG + LCS
-description: "开眼即观测。烛龙 S2+S3：观察层把 agent 行为流落成日记；校准账把预测与结果对账（Brier/ECE）。仅观测、零 LLM 调用、失败开放；预测只能被机械核验或人工结算。"
+description: "开眼即观测。烛龙 S2+S3+S4：行为日记、校准账（Brier/ECE）、每日反思 digest（含未核验的模型复盘）、每周自省探针；预算封顶、失败开放、预测不可自评。"
 provides_hooks: [post_tool_call, post_llm_call, on_session_start, on_session_end, on_session_finalize, on_session_reset, on_skill_lifecycle, subagent_stop, api_request_error, agent_loop_stopped, pre_command]

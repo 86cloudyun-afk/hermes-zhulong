@@ -48,7 +48,7 @@
 | S1 | 规格冻结（本文） | YG 决策到位 | ✅ |
 | S2 | MVP：观测脊柱 | 事件覆盖、零阻塞、测试通过、真实会话验证 | ✅（v0.1.0） |
 | S3 | 校准账：预测-结果对账、Brier/ECE、弃答统计 | 对账可跑、指标存历史 | ✅（v0.2.0） |
-| S4 | 反思引擎 + 探针（自动） | 预算内运行 2 周、提案可读 | ⏳ |
+| S4 | 反思引擎 + 探针（自动） | 预算内运行 2 周、提案可读 | ✅（v0.3.0） |
 | S5 | 自我模型 + `/zhulong model` + 周报 | 对账通过率 ≥90% | ⏳ |
 
 ## 6. 开源计划
@@ -64,3 +64,12 @@
 - 结算规则：**真 → 立即结算；假 → 等 `deadline_seconds`（默认 3600s）后结算**；agent 永远不能结算自己的预测（只有机械核验器与人工 `/zhulong calibrate resolve`）。
 - 指标：Brier、ECE（5 档）、命中率、弃答计数；每日快照写入 `calib_metrics`。
 - 测试：`tests/` 共 8 项（存储 3 + 校准 5），`python3 -m unittest discover -s tests`。
+
+## 8. v0.3.0 实现注记（S4）
+
+- 反思：确定性 digest（事件/工具/错误/校准统计）→ `reflections/`；可选单次 `ctx.llm` 复盘（标注未经核验）→ PROPOSALS.md（只读提案，永不自动执行）。
+- 探针：10 项电池（6 知识 + 2 未知 + 1 假前提 + 1 定性），机械判分；每周一（`probe_weekday`/`probe_hour` 可配）自动 + `/zhulong probes run` 手动。
+- 预算：`llm_daily_cap`（默认 40/日）共享计数（`llm_daily` 表），超限跳过。
+- 调度：插件后台线程（30min 间隔）；跨进程任务认领（`tasks` 表，失败最多重试 5 次）；随 `scheduler: false` 或 `ZHULONG_NO_AUTOSWEEP=1` 关闭。
+- 工具：`zhulong_calibration` 动作扩展：reflect / probes / run_probes。
+- 测试：`tests/` 共 13 项。

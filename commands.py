@@ -1,14 +1,14 @@
 """Chat commands for the Zhulong layer.
 
-/zhulong status | tail N | calibrate [run|list|report|resolve id true|false|cancel id] | help
+/zhulong status | tail N | calibrate ... | reflect [run] | probes [run] | help
 """
 from __future__ import annotations
 
-_USAGE = "用法：/zhulong [status | tail N | calibrate ... | help]"
+_USAGE = "用法：/zhulong [status | tail N | calibrate ... | reflect [run] | probes [run] | help]"
 
 
 class Commands:
-    def __init__(self, journal, calibration=None) -> None:
+    def __init__(self, journal, calibration=None, reflector=None, probes=None) -> None:
         self.j = journal
         if calibration is None:
             try:
@@ -20,6 +20,8 @@ class Commands:
                 from calibrate import Calibration
             calibration = Calibration(journal)
         self.c = calibration
+        self.r = reflector
+        self.p = probes
 
     def handle(self, raw: str) -> str:
         try:
@@ -32,6 +34,10 @@ class Commands:
                 return self._tail(n)
             if sub in ("calibrate", "cal"):
                 return self._calibrate(args[1:])
+            if sub == "reflect":
+                return self._reflect(args[1:])
+            if sub == "probes":
+                return self._probes(args[1:])
             if sub in ("help", "-h", "--help"):
                 return self._help()
             return _USAGE
@@ -43,13 +49,20 @@ class Commands:
         s = self.j.stats()
         m = self.c.metrics()
         brier = f"{m['brier']:.3f}" if m["brier"] is not None else "—"
-        return (
-            "🐉 烛龙 · 观测层 v0.2\n"
-            f"今日事件：{s['today']} ｜ 累计：{s['total']}\n"
-            f"校准账：已结 {m['n_resolved']} ｜ 未结 {m['pending']} ｜ 弃答 {m['abstain']} ｜ Brier {brier}\n"
-            f"最近事件：{s['last_ts'] or '—'}\n"
-            f"数据目录：{s['dir']}"
-        )
+        lines = [
+            "🐉 烛龙 · 观测层 v0.3",
+            f"今日事件：{s['today']} ｜ 累计：{s['total']}",
+            f"校准账：已结 {m['n_resolved']} ｜ 未结 {m['pending']} ｜ 弃答 {m['abstain']} ｜ Brier {brier}",
+        ]
+        if self.r is not None:
+            last = self.r.last_digest()
+            lines.append(f"反思：最近 digest {last.get('day', '—')}")
+        if self.p is not None:
+            runs = self.p.last_runs(1)
+            lines.append(f"探针：最近运行 {runs[0]['ts'][:10] if runs else '—'}")
+        lines.append(f"最近事件：{s['last_ts'] or '—'}")
+        lines.append(f"数据目录：{s['dir']}")
+        return "\n".join(lines)
 
     def _tail(self, n: int) -> str:
         rows = self.j.tail(min(n, 50))
@@ -102,7 +115,7 @@ class Commands:
         m = self.c.metrics()
         if m["n_resolved"] == 0 and m["pending"] == 0:
             return ("🐉 校准账为空。\n"
-                    "记录方式：让 agent 调用工具 zhulong_predict；或等它自己提预测。\n"
+                    "记录方式：让 agent 调用工具 zhulong_predict。\n"
                     f"{self._help()}")
         def fmt(v, pct=True):
             if v is None:
@@ -118,10 +131,7 @@ class Commands:
             lines.append("最近条目：")
             for r in rows:
                 conf = f"{r['confidence']}%" if r["confidence"] is not None else "弃答"
-                if r["status"] == "resolved":
-                    mk = "✓真" if r["outcome"] else "✗假"
-                else:
-                    mk = "…待结"
+                mk = ("✓真" if r["outcome"] else "✗假") if r["status"] == "resolved" else "…待结"
                 lines.append(f"  #{r['id']} {mk} {conf:>4} 「{r['claim'][:30]}」")
         hist = self.c.history(7)
         if hist:
@@ -131,18 +141,49 @@ class Commands:
                 lines.append(f"  {day}  Brier {b} ｜ 未结 {pending}")
         return "\n".join(lines)
 
+    # ----------------------------------------------------------------- reflect
+    def _reflect(self, args: list[str]) -> str:
+        if self.r is None:
+            return "🐉 反思引擎未接线。"
+        if args and args[0].lower() == "run":
+            out = self.r.run()
+            mode = "含模型复盘（未经核验）" if out["narrative"] else "纯统计"
+            return f"🐉 反思已生成（{mode}）：{out['path']}"
+        last = self.r.last_digest()
+        if not last:
+            return "🐉 还没有 digest。运行 /zhulong reflect run 立即生成。"
+        return f"🐉 最近 digest：{last['day']}\n{last['path']}\n（/zhulong reflect run 可立即再生成）"
+
+    # ------------------------------------------------------------------ probes
+    def _probes(self, args: list[str]) -> str:
+        if self.p is None:
+            return "🐉 探针未接线。"
+        if args and args[0].lower() == "run":
+            res = self.p.run()
+            brier = f"{res['brier']:.3f}" if res["brier"] is not None else "—"
+            return (f"🐉 探针完成：知识 {res['k_correct']}/{res['n_k']} ｜ "
+                    f"Brier {brier} ｜ 未知题合理弃答 {res['u_ok']}/2 ｜ 假前提识破 {res['f_ok']}/1")
+        runs = self.p.last_runs(5)
+        if not runs:
+            return "🐉 探针还没有运行记录。运行 /zhulong probes run 立即执行。"
+        lines = ["🐉 探针历史："]
+        for r in runs:
+            brier = f"{r['brier']:.3f}" if r["brier"] is not None else "—"
+            lines.append(f"  {r['ts'][:16]}  知识 {r['k_correct']}/{r['n_k']} ｜ Brier {brier} ｜ 弃答 {r['u_ok']} ｜ 假前提 {r['f_ok']}")
+        return "\n".join(lines)
+
     def _help(self) -> str:
         return (
-            "🐉 烛龙（Zhulong）· 自我观测/校准层 v0.2\n"
+            "🐉 烛龙（Zhulong）· 观测/校准/反思层 v0.3\n"
             "  /zhulong status               — 概况\n"
             "  /zhulong tail N               — 最近 N 条事件\n"
             "  /zhulong calibrate            — 校准账报告\n"
-            "  /zhulong calibrate list       — 最近条目\n"
-            "  /zhulong calibrate run        — 立即对账（机械核验）\n"
-            "  /zhulong calibrate resolve <id> true|false — 人工裁决\n"
-            "  /zhulong calibrate cancel <id>"
+            "  /zhulong calibrate run        — 立即对账\n"
+            "  /zhulong calibrate resolve <id> true|false\n"
+            "  /zhulong reflect [run]        — 反思 digest 信息/生成\n"
+            "  /zhulong probes [run]         — 探针历史/立即运行"
         )
 
 
-def build_commands(journal, calibration=None) -> Commands:
-    return Commands(journal, calibration)
+def build_commands(journal, calibration=None, reflector=None, probes=None) -> Commands:
+    return Commands(journal, calibration, reflector, probes)

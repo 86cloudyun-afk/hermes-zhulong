@@ -33,11 +33,11 @@ hermes plugins enable zhulong    # 加入 allow-list
 ## 使用
 
 ```
-/zhulong status                       # 概况（事件 + 校准概要）
+/zhulong status                       # 概况（事件 + 校准 + 反思/探针）
 /zhulong tail 30                      # 最近 30 条事件
-/zhulong calibrate                    # 校准账报告
-/zhulong calibrate run                # 立即机械对账
-/zhulong calibrate resolve <id> true|false   # 人工裁决
+/zhulong calibrate [run|list|resolve] # 校准账
+/zhulong reflect [run]                # 反思 digest（查看/立即生成）
+/zhulong probes [run]                 # 探针（历史/立即运行）
 ```
 
 Agent 侧工具：
@@ -68,16 +68,36 @@ zhulong_calibration(action=report|run|list)     # 读账/对账
 ```
 ~/.hermes/zhulong/
 ├── journal/events-YYYY-MM-DD.jsonl   # 事件真源（append-only）
-├── zhulong.db                        # SQLite：events / predictions / calib_metrics
-└── config.json                      # 可选：{"allow_shell_verifiers": false}
+├── zhulong.db                        # SQLite：events / predictions / calib_metrics / probe_runs / tasks / llm_daily
+├── reflections/                      # digest-YYYY-MM-DD.md、PROPOSALS.md
+└── config.json                       # 可选，见下
+```
+
+## 反思与探针（S4）
+
+- **每日 digest（确定性）**：后台调度在每天第一次运行时为「昨天」生成 `reflections/digest-<day>.md`（事件构成、工具统计、错误明细、校准账）。也可 `/zhulong reflect run` 立即生成今日版。
+- **模型复盘（可选，默认开）**：`ctx.llm` 单次调用，产出「观察/提案/不确定」三段，写入 digest 且标注**未经核验**；提案追加到 `reflections/PROPOSALS.md` 供人工审阅（永不自动执行）。
+- **自省探针（每周一自动，可配）**：10 项电池（6 知识题 + 2 未知题 + 1 假前提 + 1 定性自述），机械判分，产出 Brier/命中/弃答，存 `probe_runs`。
+- **预算**：全部插件发起的 LLM 调用共享 `llm_daily_cap`（默认 40/日），超限自动跳过；跨进程任务认领（`tasks` 表）防止重复运行。
+
+```json
+// ~/.hermes/zhulong/config.json（可选）
+{
+  "allow_shell_verifiers": false,
+  "llm_daily_cap": 40,
+  "probe_weekday": 0,
+  "probe_hour": 9,
+  "narrative": true,
+  "scheduler": true
+}
 ```
 
 ## 路线图
 
 - ✅ v0.1.0（S2）：观测脊柱
-- ✅ v0.2.0（S3）：校准账（本次）
-- ⏳ S4：反思引擎 + 自省探针（自动，预算受控）
-- ⏳ S5：自我模型 + `/zhulong model` + 周报
+- ✅ v0.2.0（S3）：校准账
+- ✅ v0.3.0（S4）：反思引擎 + 自省探针（本次）
+- ⏳ S5：自我模型 + `/zhulong model` + 周报投递
 
 ## License
 
