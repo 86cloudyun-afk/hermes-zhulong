@@ -210,8 +210,8 @@ assert ledger.get_goal(goal_id)['state'] != 'succeeded'  # 只有助手文字，
 
 **Files:** 修改仅限审查发现涉及的代码 / 测试；新增 PR 说明临时文件，不提交凭据或运行数据。
 
-- [ ] **Step 1: 收集新鲜验证结果。** `source /workspace/.cloud-onboarding/env.sh` 后执行完整 unittest 与 `zhulong-python scripts/host_smoke.py --hermes-root /workspace/.cloud-onboarding/dependencies/hermes-agent`，检查 `git diff --check`、提交范围与秘密 / 运行数据边界。
-- [ ] **Step 2: 用独立代码审查者检查整分支。** 对照批准规格、五项 Review Focus、实际故障测试及研究限制；处理有证据的问题，重跑涉及测试。固定被审查的完整 HEAD SHA。
+- [x] **Step 1: 收集新鲜验证结果。** `source /workspace/.cloud-onboarding/env.sh` 后执行完整 unittest 与 `zhulong-python scripts/host_smoke.py --hermes-root /workspace/.cloud-onboarding/dependencies/hermes-agent`，检查 `git diff --check`、提交范围与秘密 / 运行数据边界。
+- [x] **Step 2: 用独立代码审查者检查整分支。** 对照批准规格、五项 Review Focus、实际故障测试及研究限制；处理有证据的问题，重跑涉及测试。固定被审查的完整 HEAD SHA。
 - [ ] **Step 3: 推送分支，创建 PR。** 使用写入临时文件的真实描述与 `gh pr create --body-file`；描述最终行为、研究依据、验证结果及实际限制。创建后立即通过 Codex attach_artifact 关联 URL。
 - [ ] **Step 4: 检查 PR diff、CI、合并状态和独立审查结果。** 分支保护详情 API 当前返回 403，不能据此声称无保护；以 GitHub 实际规则与合并结果为准，不使用 admin 绕过。审查后有新提交则复核受影响范围与最新 HEAD。
 - [ ] **Step 5: CI / 审查通过后按用户已有授权合并。** 使用 `gh pr merge --squash --match-head-commit <reviewed-sha>`，保留分支，不丢弃工作。确认 PR merged 与远端 main 包含结果，再同步本地；如平台操作被拒绝，报告具体操作和原因，不声称已合并。

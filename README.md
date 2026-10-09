@@ -129,13 +129,13 @@ MIT © 2026 YG
 
 机械验收支持 `file_contains`、`json_equals`、显式可信的 `argv`。文件和输出最多 64 KiB，argv 默认 15 秒且不用 shell。已有产物记为 `already_satisfied`，不派发或计能力成功；要求变化的契约比较初始 hash。研究字段 / 格式验收只覆盖约定范围，不能据此声称论文结论普遍正确；个人场景是本地草案，未接真实日历 / 邮箱。
 
-`pause` 只暂停新工作。相同 submission 的恢复不消耗新尝试或预算；响应丢失在保留窗口内重放原请求。`interrupted`、stop accepted 和缺少产物都不能证明没有迟到副作用；未知在途执行保留名额。过期重放或身份连续性不明时记录 `unknown_result`，避免盲目重复动作。正常宿主结果与独立验收都完成后才结算可信结果。
+`pause` 只暂停新工作。相同 submission 的恢复不消耗新尝试或预算；响应丢失在保留窗口内重放原请求。`interrupted`、stop accepted 和缺少产物都不能证明没有迟到副作用；未知在途执行保留名额。审批终止后的旧目标保持受阻，不自动重发；新来源 / 契约版本可以形成新目标。过期重放或身份连续性不明时记录 `unknown_result`，避免盲目重复动作。正常宿主结果与独立验收都完成后才结算可信结果。
 
 自我模型展示领域 / 执行身份范围、可信样本、未知、受阻、首次 / 累计成功、Brier/ECE 及错误置信度。零样本明确未知，单一标签时错误区分指标不可用。历史影响目标选择；反思仍是有来源和适用范围的假设。`SelfModel.restore(version)` 只恢复导出快照，保留原始结果；下一次刷新从最新证据重建。
 
 ## 规则的强制边界
 
-技能文档和提示词负责描述意图。插件的 SQLite 事务、不可变字段触发器、租约代次、原子预算和验收接口负责约束自身状态与派发。模型不能通过公开插件工具直接把任务标成成功、降低验收或绕过预算。
+技能文档和提示词负责描述意图。插件的 SQLite 事务、不可变字段触发器、租约代次、原子预算和验收接口负责约束自身状态与派发。模型不能通过公开插件工具直接把任务标成成功、降低验收或绕过预算。所有提交状态写入还比较当前 submission ID，防止旧快照结算新执行；命令验收可能读取 cwd 外的路径，因此同一账本中的 argv 验收执行保守串行，避免跨任务认领成果。
 
 插件所在的 Python 进程与执行器仍需可信部署。Hermes 普通 Runs 没有请求级 workspace 沙箱；公开 `pre_tool_call` 的 block 可阻止正常工具派发，但插件缺席、派发基础设施异常及可信插件直接调用 registry 都有边界，不能把它称为 OS 安全隔离。profile、cwd、路径检查、审批提示或 YOLO 设置也不能替代文件 / 进程 / 网络权限。对执行器的隔离与控制文件保护应由宿主 / OS 实施，本版不自动部署这类沙箱。
 
@@ -150,4 +150,4 @@ HERMES_AGENT_ROOT=/path/to/hermes-agent python -m unittest discover -s tests -p 
 python scripts/live_autonomy_smoke.py --hermes-root /path/to/hermes-agent --report /tmp/zhulong-live.json
 ```
 
-GitHub Actions 覆盖 Python 3.11 / 3.12 / 3.14。模拟多领域与故障测试、离线真实宿主 smoke、付费真实模型及工具验证分别报告；长期稳定性只在实际运行后宣称。研究与规格在 [研究正文](docs/research/2026-10-09-cross-disciplinary-autonomy.md)和 [设计规格](docs/superpowers/specs/2026-10-09-autonomous-core-design.md)。
+GitHub Actions 覆盖 Python 3.11 / 3.12 / 3.14。模拟多领域与故障测试、离线真实宿主 smoke、付费真实模型及工具验证分别报告；长期稳定性只在实际运行后宣称。研究与规格在 [研究正文](docs/research/2026-10-09-cross-disciplinary-autonomy.md)和 [设计规格](docs/superpowers/specs/2026-10-09-autonomous-core-design.md)，实际证据见[验证记录](docs/research/2026-10-09-v0.4-validation.md)及[审查闭环](docs/research/2026-10-09-v0.4-review.md)。

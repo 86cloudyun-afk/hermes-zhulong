@@ -77,7 +77,25 @@ class Controller:
         return {'verdict':verdict,'contract_hash':goal['contract_hash'],'artifact_hash':None,'reason':reason,'check_version':1}
 
     def _finish(self,lease,goal,outcome,reason,settled,evidence=None):
-        return self.ledger.finish(lease,evidence or self._evidence(goal,reason),outcome,settled,self.clock())
+        return self.ledger.finish(lease,evidence or self._evidence(goal,reason),outcome,settled,self.clock(),
+            expected_submission_id=goal['submission']['id'] if goal['submission'] else None)
+
+    def _transition(self,lease,goal,state,reason,settled=None):
+        return self.ledger.transition(lease,state,reason,self.clock(),settled,
+            expected_submission_id=goal['submission']['id'] if goal['submission'] else None)
+
+    @contextmanager
+    def _source_heartbeat(self,observations,owner):
+        stop=threading.Event();lost=threading.Event()
+        def renew():
+            while not stop.wait(max(0.1,self.policy['lease_seconds']/3)):
+                for observation in observations:
+                    try:
+                        if not self.ledger.renew_source(observation['id'],observation['revision'],owner,self.clock(),self.policy['lease_seconds']):lost.set();return
+                    except Exception:lost.set();return
+        thread=threading.Thread(target=renew,daemon=True,name='zhulong-source-lease');thread.start()
+        try:yield lost
+        finally:stop.set();thread.join(timeout=5)
 
     def _synthesize(self,observations):
         owner=uuid.uuid4().hex;selected=[]
@@ -86,22 +104,27 @@ class Controller:
             if len(selected)>=self.policy['max_candidates']:break
             if self.ledger.claim_source(observation['id'],observation['revision'],owner,self.clock(),self.policy['lease_seconds'],self.policy['max_attempts']):selected.append(observation)
         if not selected:return 0
-        success=False;accepted=0
+        success=False;accepted=0;deferred=None
         try:
-            raw=self.planner.plan(selected,self.model.snapshot(),self.policy)
-            candidates=validate_candidates(raw,selected,self.policy)
-            current={o['id']:o.get('revision') for o in observe_sources(self.policy) if o['available']}
-            sources={s['id']:s for s in self.policy['sources']}
-            for candidate in candidates:
-                if current.get(candidate['source_id'])!=candidate['source_revision']:raise PlannerError('source_changed')
-                contract=sources[candidate['source_id']]['contracts'][candidate['contract_id']]
-                baseline=self.verifier.capture(contract)
-                goal=self.ledger.create_goal(candidate,candidate['source_revision'],contract,baseline,self.clock(),self.policy['run_deadline_seconds'],source_owner=owner)
-                if goal is not None:accepted+=1
-            success=True
+            with self._source_heartbeat(selected,owner) as lost:
+                raw=self.planner.plan(selected,self.model.snapshot(),self.policy)
+                candidates=validate_candidates(raw,selected,self.policy)
+                current={o['id']:o.get('revision') for o in observe_sources(self.policy) if o['available']}
+                sources={s['id']:s for s in self.policy['sources']}
+                for candidate in candidates:
+                    if lost.is_set():raise PlannerError('source_lease_lost')
+                    if current.get(candidate['source_id'])!=candidate['source_revision']:raise PlannerError('source_changed')
+                    contract=sources[candidate['source_id']]['contracts'][candidate['contract_id']]
+                    baseline=self.verifier.capture(contract)
+                    goal=self.ledger.create_goal(candidate,candidate['source_revision'],contract,baseline,self.clock(),self.policy['run_deadline_seconds'],source_owner=owner)
+                    if goal is None:raise PlannerError('source_lease_lost')
+                    accepted+=1
+                success=True
+        except PlannerError as exc:
+            if str(exc) in ('planner_unavailable','auxiliary_budget_exhausted'):deferred=str(exc)
         except Exception:pass
         finally:
-            for observation in selected:self.ledger.complete_source(observation['id'],observation['revision'],owner,success,self.clock())
+            for observation in selected:self.ledger.complete_source(observation['id'],observation['revision'],owner,success,self.clock(),deferred_reason=deferred)
         return accepted
 
     def _request(self,goal):
@@ -135,17 +158,17 @@ class Controller:
             state=result['status'];cancel=bool(goal.get('cancel_requested'))
             quiet=state in {'completed','failed','cancelled'}
             if goal['state']=='succeeded':
-                self.ledger.transition(lease,'succeeded','verified; execution tracking continues',self.clock(),quiet)
+                self._transition(lease,goal,'succeeded','verified; execution tracking continues',quiet)
                 return
             if cancel:
                 if not quiet:self.runs.stop(submission)
                 self._finish(lease,goal,'cancelled','cancel_requested',quiet);return
             if state=='waiting_for_approval':
                 self.runs.stop(submission)
-                self.ledger.transition(lease,'blocked','waiting_for_approval; stop requested',self.clock(),False);return
+                self._transition(lease,goal,'blocked','waiting_for_approval; stop requested',False);return
             if not quiet and state!='interrupted':
                 if now>=goal['deadline']:self.runs.stop(submission)
-                self.ledger.transition(lease,'running','stop requested at deadline' if now>=goal['deadline'] else 'execution_active',self.clock(),False);return
+                self._transition(lease,goal,'running','stop requested at deadline' if now>=goal['deadline'] else 'execution_active',False);return
             checked=self.verifier.check(goal['contract'],goal['baseline'])
             if state=='interrupted':
                 if checked['verdict'] is True and now<=goal['deadline']:
@@ -161,7 +184,7 @@ class Controller:
             elif checked['verdict'] is False:
                 self.ledger.record_attempt_result(lease,submission['id'],checked,self.clock())
                 if goal['contract'].get('safe_retry',False) and goal['attempts']<self.policy['max_attempts'] and now<goal['deadline']:
-                    self.ledger.transition(lease,'ready','safe_retry_after_verified_failure',self.clock(),True)
+                    self._transition(lease,goal,'ready','safe_retry_after_verified_failure',True)
                 else:self._finish(lease,goal,'failed','contract_not_satisfied',True,checked)
             else:self._finish(lease,goal,'unknown_result','late_or_unavailable_verification',True)
         except RunsError as exc:
@@ -172,6 +195,7 @@ class Controller:
         now=self.clock()
         if goal.get('cancel_requested'):
             self._finish(lease,goal,'cancelled','cancel_requested',True);return False
+        if goal['state']=='blocked' and goal['recovery_reason']=='runtime_requires_approval':return False
         if current.get(goal['source_id'])!=goal['source_revision']:
             self._finish(lease,goal,'blocked','source_revision_changed',True);return False
         before=self.verifier.capture(goal['contract'])
@@ -180,11 +204,12 @@ class Controller:
         if before['verdict']!='unknown' and goal['baseline'].get('verdict')!='unknown' and now<goal['deadline']:
             try:
                 capabilities=self.runs.capabilities()
-                self.ledger.transition(lease,'ready','prerequisites_available',now)
+                self._transition(lease,goal,'ready','prerequisites_available')
                 prepared=self.ledger.prepare_submission(lease,self._request(goal),'zhulong-'+goal['id'],self.execution_identity,
-                    self.clock(),self.policy['daily_runs'],self.policy['max_active'],self.policy['max_attempts'],capabilities['retention_seconds'])
+                    self.clock(),self.policy['daily_runs'],self.policy['max_active'],self.policy['max_attempts'],capabilities['retention_seconds'],
+                    expected_submission_id=goal['submission']['id'] if goal['submission'] else None)
                 if not prepared['admitted']:
-                    self.ledger.transition(lease,'blocked',prepared['reason'],self.clock());return False
+                    self._transition(lease,goal,'blocked',prepared['reason']);return False
                 result=self.runs.submit(prepared['submission'])
                 self.ledger.record_admission(lease,prepared['submission']['id'],result['run_id'],result['status'],self.clock())
                 self.ledger.record_runtime(lease,prepared['submission']['id'],result,self.clock())
@@ -192,7 +217,7 @@ class Controller:
             except RunsError as exc:
                 fresh=self.ledger.get_goal(goal['id'])
                 if fresh['submission']:
-                    self.ledger.transition(lease,'unknown_result',exc.code,self.clock(),False)
+                    self._transition(lease,fresh,'unknown_result',exc.code,False)
                 else:self._finish(lease,goal,'blocked',exc.code,True)
                 return False
         self._finish(lease,goal,'blocked','baseline_unavailable_or_deadline_expired',True);return False
@@ -216,7 +241,9 @@ class Controller:
                 if lease is None:continue
                 recovered.add(goal['id'])
                 try:
-                    with self._heartbeat(lease):self._reconcile(lease,goal)
+                    with self._heartbeat(lease):
+                        goal=self.ledger.owned_goal(lease,self.clock())
+                        if goal and goal['submission']:self._reconcile(lease,goal)
                 finally:self.ledger.release(lease,self.clock())
             if not self.ledger.paused():
                 summary['accepted']=self._synthesize(observations)
@@ -230,10 +257,14 @@ class Controller:
                     lease=self.ledger.claim(self.owner,self.clock(),self.policy['lease_seconds'],(goal['id'],))
                     if lease is None:continue
                     try:
-                        with self._heartbeat(lease):dispatched=self._dispatch(lease,goal,current)
+                        with self._heartbeat(lease):
+                            goal=self.ledger.owned_goal(lease,self.clock());dispatched=False
+                            if goal and goal['state'] in ('ready','blocked') and (not goal['submission'] or goal['submission']['settled']):
+                                dispatched=self._dispatch(lease,goal,current)
                     finally:self.ledger.release(lease,self.clock())
                     if dispatched:summary['new_dispatches']=1;self._ready_cursor=0;break
                     # A prepared but lost admission also consumes this tick's one new submission.
+                    if goal is None:continue
                     fresh=self.ledger.get_goal(goal['id'])
                     if fresh['attempts']>goal['attempts']:break
             self.model.refresh()

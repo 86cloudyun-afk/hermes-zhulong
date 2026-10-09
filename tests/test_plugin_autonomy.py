@@ -65,5 +65,22 @@ class PluginTests(unittest.TestCase):
             self.assertTrue((destination/(name+'.py')).is_file(),name)
         self.assertIn('version: 0.4.0',(destination/'plugin.yaml').read_text())
 
+    def test_optional_storage_failure_keeps_legacy_interfaces_and_cleanup(self):
+        for obstruction in ('autonomy.db','self_model.json'):
+            with self.subTest(obstruction=obstruction):
+                blocked=self.home/'zhulong'/obstruction;blocked.mkdir(parents=True)
+                ctx=Context()
+                try:
+                    with patch.object(self.plugin.logger,'warning'):self.plugin.register(ctx)
+                    self.assertEqual(len(ctx.hooks),11);self.assertEqual(len(ctx.tools),4)
+                    self.assertEqual(len(ctx.commands),1);self.assertTrue(ctx.cleanup)
+                    result=json.loads(ctx.tools['zhulong_calibration']['handler']({'action':'report'}))
+                    self.assertTrue(result['ok'])
+                    status=json.loads(ctx.tools['zhulong_autonomy']['handler']({'action':'status'}))
+                    self.assertFalse(status['ok']);self.assertEqual(status['blocked_reason'],'autonomy_storage_unavailable')
+                finally:
+                    for callback in reversed(ctx.cleanup):callback()
+                    blocked.rmdir()
+
 
 if __name__=='__main__':unittest.main()

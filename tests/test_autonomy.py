@@ -124,8 +124,8 @@ class AutonomyTests(unittest.TestCase):
     def test_model_feedback_changes_actual_selection(self):
         for i in range(3):
             g=make_goal(self.ledger,source_revision='history'+str(i));lease=self.ledger.claim('history',1000,20,ranked_goal_ids=(g['id'],))
-            self.ledger.prepare_submission(lease,{'input':'prior'},'prior',self.controller.execution_identity,1000,8,1,3,86400)
-            self.ledger.finish(lease,evidence(g,False),'failed',True,1001)
+            submission=self.ledger.prepare_submission(lease,{'input':'prior'},'prior',self.controller.execution_identity,1000,8,1,3,86400)['submission']
+            self.ledger.finish(lease,evidence(g,False),'failed',True,1001,expected_submission_id=submission['id'])
         self.model.refresh()
         a=make_goal(self.ledger,source_revision='new',domain='code');b=make_goal(self.ledger,source_revision='new',domain='research')
         ranked=self.controller.rank_ready([a,b]);self.assertEqual(ranked[0]['id'],b['id'])
@@ -213,6 +213,79 @@ class AutonomyTests(unittest.TestCase):
         worker=threading.Thread(target=self.controller.tick);worker.start()
         self.assertTrue(entered.wait(2));self.controller.stop();release.set();worker.join(5)
         self.assertFalse(worker.is_alive());self.assertEqual(self.runs.calls,0)
+
+    def test_stale_snapshot_cannot_settle_a_new_live_attempt(self):
+        self.raw['sources'][0]['contracts']['result']['safe_retry']=True
+        self.controller=self.build();other=self.build();self.runs.complete_artifact=False
+        self.controller.tick();first=self.ledger.goals()[0]['submission']['id']
+        self.runs.status=lambda s:{'run_id':s['run_id'],'status':'failed' if s['id']==first else 'running'}
+        original=self.ledger.work_goals;injected=[False]
+        def old_snapshot():
+            snapshot=original()
+            if not injected[0]:
+                injected[0]=True;other.tick();other.tick()
+            return snapshot
+        self.ledger.work_goals=old_snapshot
+        self.controller.tick();self.ledger.work_goals=original
+        self.controller.tick()
+        goal=self.ledger.goals()[0]
+        self.assertEqual(goal['attempts'],2)
+        self.assertFalse(goal['submission']['settled'])
+        self.assertEqual(self.runs.calls,2)
+
+    def test_mixed_argv_file_contracts_cannot_share_action_credit(self):
+        self.raw['max_active']=2
+        second=copy.deepcopy(self.raw['sources'][0]);second.update(id='research-facts',domain='research',path=str(self.root/'research.json'))
+        Path(second['path']).write_text('{"facts":"missing report"}')
+        second['contracts']['result']={'type':'argv','argv':[sys.executable,'-c',
+            "from pathlib import Path; import sys; sys.exit(0 if Path('result.txt').exists() else 1)"],
+            'cwd':str(self.root),'require_change':True}
+        self.raw['sources'].append(second);self.controller=self.build()
+        done=[False]
+        def status(s):
+            contract=json.loads(s['request']['input'])['acceptance_contract']
+            if done[0] and contract['type']=='file_contains':Path(contract['path']).write_text('done')
+            return {'run_id':s['run_id'],'status':'completed' if done[0] else 'running'}
+        self.runs.status=status
+        self.controller.tick();self.controller.tick()
+        self.assertEqual(self.runs.calls,1)
+        (self.root/'result.txt').write_text('done');done[0]=True
+        self.controller.tick();self.controller.tick()
+        self.assertEqual(sum(v['success'] for v in self.model.snapshot()['domains'].values()),1)
+        self.assertIn('already_satisfied',{g['state'] for g in self.ledger.goals()})
+
+    def test_budget_and_runtime_prerequisites_do_not_exhaust_source_attempts(self):
+        real=self.planner.plan
+        for reason in ('auxiliary_budget_exhausted','planner_unavailable'):
+            self.planner.plan=lambda *a:(_ for _ in ()).throw(self.m.PlannerError(reason))
+            for _ in range(4):self.controller.tick();self.now[0]+=61
+        self.planner.plan=real;self.now[0]+=86400;self.controller.tick()
+        self.assertEqual(len(self.ledger.goals()),1)
+        self.assertEqual(self.planner.calls,1)
+
+    def test_source_lease_renews_during_slow_planning(self):
+        self.raw['lease_seconds']=1;self.controller=self.build();self.controller.clock=time.time
+        real=self.planner.plan;competitor=[]
+        def slow(*args):
+            time.sleep(1.15)
+            observation=args[0][0]
+            competitor.append(self.ledger.claim_source(observation['id'],observation['revision'],'competitor',time.time(),1,3))
+            return real(*args)
+        self.planner.plan=slow;self.controller.tick()
+        self.assertEqual(competitor,[False])
+        self.assertEqual(len(self.ledger.goals()),1)
+        self.assertEqual(self.ledger.source_state('code-facts')['outcome']['status'],'processed')
+
+    def test_approval_block_remains_blocked_after_terminal_stop(self):
+        self.runs.complete_artifact=False;self.runs.run_state='waiting_for_approval'
+        self.controller.tick();self.controller.tick()
+        self.runs.run_state='cancelled';self.controller.tick()
+        for _ in range(3):self.controller.tick()
+        goal=self.ledger.goals()[0]
+        self.assertEqual(goal['state'],'blocked');self.assertTrue(goal['submission']['settled'])
+        self.assertEqual(goal['attempts'],1);self.assertEqual(self.runs.calls,1)
+        self.controller.cancel(goal['id']);self.controller.tick()
+        self.assertEqual(self.ledger.get_goal(goal['id'])['state'],'cancelled')
 
 
 if __name__=='__main__':unittest.main()

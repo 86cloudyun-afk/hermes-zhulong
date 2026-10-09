@@ -64,8 +64,8 @@ class LedgerTests(unittest.TestCase):
     def test_unknown_execution_keeps_capacity(self):
         goal = make_goal(self.ledger)
         lease = self.ledger.claim('a',1000,20)
-        self.prepare(lease)
-        self.ledger.finish(lease,evidence(goal,None),'unknown_result',False,1001)
+        submission=self.prepare(lease)['submission']
+        self.ledger.finish(lease,evidence(goal,None),'unknown_result',False,1001,expected_submission_id=submission['id'])
         other = make_goal(self.ledger,domain='research')
         other_lease = self.ledger.claim('b',1002,20,ranked_goal_ids=(other['id'],))
         blocked = self.prepare(other_lease,now=1002,daily_cap=8)
@@ -75,11 +75,11 @@ class LedgerTests(unittest.TestCase):
     def test_outcome_receipt_is_once_and_old_owner_is_fenced(self):
         goal = make_goal(self.ledger)
         old = self.ledger.claim('a',1000,2)
-        self.prepare(old)
+        submission=self.prepare(old)['submission']
         new = self.ledger.claim('b',1003,20)
-        self.assertFalse(self.ledger.finish(old,evidence(goal),'succeeded',True,1003))
-        self.assertTrue(self.ledger.finish(new,evidence(goal),'succeeded',True,1003))
-        self.ledger.finish(new,evidence(goal),'succeeded',True,1003)
+        self.assertFalse(self.ledger.finish(old,evidence(goal),'succeeded',True,1003,expected_submission_id=submission['id']))
+        self.assertTrue(self.ledger.finish(new,evidence(goal),'succeeded',True,1003,expected_submission_id=submission['id']))
+        self.ledger.finish(new,evidence(goal),'succeeded',True,1003,expected_submission_id=submission['id'])
         self.assertEqual(len(self.ledger.model_records()['evidence']),1)
 
     def test_atomic_admission_between_processes(self):
@@ -106,6 +106,18 @@ class LedgerTests(unittest.TestCase):
         self.assertIsNotNone(ledger.get_goal(goal['id'])['submission'])
         ledger.set_pause(True)
         self.assertIsNotNone(ledger.claim('recovery',1003,2))
+
+    def test_stale_submission_cannot_mutate_current_attempt(self):
+        goal=make_goal(self.ledger);lease=self.ledger.claim('owner',1000,20)
+        first=self.prepare(lease,daily_cap=8,max_attempts=3)['submission']
+        self.assertTrue(self.ledger.transition(lease,'ready','verified failed',1001,True,expected_submission_id=first['id']))
+        second=self.prepare(lease,now=1002,daily_cap=8,max_attempts=3,expected_submission_id=first['id'])['submission']
+        self.assertFalse(self.ledger.record_admission(lease,first['id'],'old','completed',1003))
+        self.assertFalse(self.ledger.record_attempt_result(lease,first['id'],evidence(goal,False),1003))
+        self.assertFalse(self.ledger.transition(lease,'ready','old snapshot',1003,True,expected_submission_id=first['id']))
+        self.assertFalse(self.ledger.finish(lease,evidence(goal,False),'failed',True,1003,expected_submission_id=first['id']))
+        self.assertEqual(self.ledger.get_goal(goal['id'])['submission']['id'],second['id'])
+        self.assertFalse(self.ledger.submission(second['id'])['settled'])
 
 
 if __name__=='__main__':unittest.main()

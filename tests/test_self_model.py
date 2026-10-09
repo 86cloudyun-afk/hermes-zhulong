@@ -18,9 +18,10 @@ class ModelTests(unittest.TestCase):
         self.root=Path(self.temp.name);self.ledger=Ledger(self.root/'data.db')
         self.model=self.m.SelfModel(self.ledger,self.root)
 
-    def prepare(self,lease,now=1000):
+    def prepare(self,lease,now=1000,expected_submission_id=None):
         return self.ledger.prepare_submission(lease,{'input':'intent'},'session',
-            {'api_url':'http://127.0.0.1:8642','credential_env':'API_SERVER_KEY','identity_version':'v1'},now,8,1,3,86400)['submission']
+            {'api_url':'http://127.0.0.1:8642','credential_env':'API_SERVER_KEY','identity_version':'v1'},now,8,1,3,86400,
+            expected_submission_id=expected_submission_id)['submission']
 
     def test_empty_model_is_unknown_and_refresh_is_stable(self):
         snapshot=self.model.refresh()
@@ -33,10 +34,10 @@ class ModelTests(unittest.TestCase):
         goal=make_goal(self.ledger);lease=self.ledger.claim('a',1000,20)
         first=self.prepare(lease)
         self.ledger.record_attempt_result(lease,first['id'],evidence(goal,False),1001)
-        self.ledger.transition(lease,'ready','safe retry',1001,True)
-        second=self.prepare(lease,1002)
+        self.ledger.transition(lease,'ready','safe retry',1001,True,expected_submission_id=first['id'])
+        second=self.prepare(lease,1002,expected_submission_id=first['id'])
         self.ledger.record_attempt_result(lease,second['id'],evidence(goal,True),1003)
-        self.ledger.finish(lease,evidence(goal,True),'succeeded',True,1003)
+        self.ledger.finish(lease,evidence(goal,True),'succeeded',True,1003,expected_submission_id=second['id'])
         snapshot=self.model.refresh();code=snapshot['domains']['code']
         self.assertEqual(code['verified_samples'],1)
         self.assertEqual(code['first_attempt_success'],0)
@@ -56,8 +57,8 @@ class ModelTests(unittest.TestCase):
 
     def test_restore_preserves_evidence_and_export_is_rebuildable(self):
         initial=self.model.refresh()
-        goal=make_goal(self.ledger);lease=self.ledger.claim('a',1000,20);self.prepare(lease)
-        self.ledger.finish(lease,evidence(goal),'succeeded',True,1001)
+        goal=make_goal(self.ledger);lease=self.ledger.claim('a',1000,20);submission=self.prepare(lease)
+        self.ledger.finish(lease,evidence(goal),'succeeded',True,1001,expected_submission_id=submission['id'])
         updated=self.model.refresh()
         self.assertGreater(updated['version'],initial['version'])
         self.model.restore(initial['version'])
@@ -69,8 +70,8 @@ class ModelTests(unittest.TestCase):
 
     def test_verified_history_changes_choice_estimate(self):
         before=self.model.expected_success('code')
-        goal=make_goal(self.ledger);lease=self.ledger.claim('a',1000,20);self.prepare(lease)
-        self.ledger.finish(lease,evidence(goal,False),'failed',True,1001)
+        goal=make_goal(self.ledger);lease=self.ledger.claim('a',1000,20);submission=self.prepare(lease)
+        self.ledger.finish(lease,evidence(goal,False),'failed',True,1001,expected_submission_id=submission['id'])
         self.model.refresh()
         self.assertLess(self.model.expected_success('code'),before)
         self.assertEqual(self.model.expected_success('personal'),0.5)

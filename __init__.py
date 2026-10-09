@@ -184,14 +184,19 @@ def register(ctx) -> None:
         llm=getattr(ctx,'llm',None)
         reflector=Reflector(journal,cal,db,cfg,llm=llm,budget=budget,tasks=tasks)
         probes=Probes(journal,db,cfg,llm=llm,budget=budget,tasks=tasks)
-        ledger=Ledger(journal.base/'autonomy.db');model=SelfModel(ledger,journal.base);model.refresh()
-        controller=None;autonomy_error=None
+        ledger=None;model=None;controller=None;autonomy_error=None
         try:
-            policy=validate_config(cfg.get('autonomy',{}),journal.base)
-            runs=RunsClient(policy['api_url'],policy['api_key_env'],policy['api_identity_version'],
-                policy['request_timeout_seconds'],profile=policy['api_profile']) if policy['enabled'] else None
-            controller=Controller(ledger,policy,LLMPlanner(llm,budget),runs,Verifier(policy),model)
-        except (ValueError,TypeError):autonomy_error='invalid_autonomy_config'
+            ledger=Ledger(journal.base/'autonomy.db');model=SelfModel(ledger,journal.base);model.refresh()
+        except Exception:
+            ledger=None;model=None;autonomy_error='autonomy_storage_unavailable'
+            logger.warning('zhulong: autonomy storage unavailable',exc_info=True)
+        if ledger is not None:
+            try:
+                policy=validate_config(cfg.get('autonomy',{}),journal.base)
+                runs=RunsClient(policy['api_url'],policy['api_key_env'],policy['api_identity_version'],
+                    policy['request_timeout_seconds'],profile=policy['api_profile']) if policy['enabled'] else None
+                controller=Controller(ledger,policy,LLMPlanner(llm,budget),runs,Verifier(policy),model)
+            except (ValueError,TypeError):autonomy_error='invalid_autonomy_config'
 
         try:
             ctx.register_command(name='zhulong',handler=build_commands(journal,cal,reflector,probes,
