@@ -1,38 +1,125 @@
-"""烛龙 Zhulong — Hermes self-observation spine (S2 MVP).
+"""烛龙 Zhulong — Hermes self-observation spine (S2) + calibration ledger (S3).
 
-观察层：把 observer hooks 规范化后写入本地日记（JSONL + SQLite）。
-- 仅观测：不修改任何对话、不调用 LLM。
-- 失败开放：任何回调异常都吞掉，绝不影响主循环。
-- 数据仅在 $HERMES_HOME/zhulong/ 下。
+- 观测：11 个 observer hooks -> 日记（JSONL + SQLite）。
+- 校准：zhulong_predict / zhulong_calibration 工具；预测只能被机械核验或人工结算。
+- 零 LLM 调用、失败开放、数据仅在 $HERMES_HOME/zhulong/。
 """
 from __future__ import annotations
 
+import json
 import logging
+import os
 import sys
+import threading
+import time
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 _HERE = Path(__file__).resolve().parent
-try:  # loaded as a package
+try:
     from .storage import Journal
     from .sensor import Sensor
+    from .calibrate import Calibration
     from .commands import build_commands
-except ImportError:  # loaded as a plain module — make siblings importable
+except ImportError:
     if str(_HERE) not in sys.path:
         sys.path.insert(0, str(_HERE))
     from storage import Journal
     from sensor import Sensor
+    from calibrate import Calibration
     from commands import build_commands
 
 _SENSOR = None
 
+PREDICT_SCHEMA = {
+    "name": "zhulong_predict",
+    "description": (
+        "向烛龙校准账登记一条可对账的预测/声明（自我校准统计用）。"
+        "verify 指定机械核验：{type:'file_exists',path} / {type:'file_contains',path,text} / "
+        "{type:'journal_event',match:{event,name,status},within_seconds} / {type:'manual'}。"
+        "可选 deadline_seconds（默认3600）决定'判假'最早生效时间。"
+        "不填 verify = 人工裁决。confidence 0-100；省略表示弃答（不计分）。"
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "claim": {"type": "string", "description": "要登记的预测/声明（≤500字）"},
+            "confidence": {"type": "integer", "minimum": 0, "maximum": 100,
+                           "description": "信心 0-100；省略=弃答"},
+            "verify": {"type": "object", "description": "核验规格对象（见工具描述）"},
+        },
+        "required": ["claim"],
+    },
+}
+
+CALIB_SCHEMA = {
+    "name": "zhulong_calibration",
+    "description": "读取/结算烛龙校准账：action=report（指标 Brier/ECE/命中率）、run（立即机械对账）、list（条目）。",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["report", "run", "list"]},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 50},
+        },
+    },
+}
+
+
+def _predict_handler(cal):
+    def handler(params, **kwargs):
+        try:
+            claim = str(params.get("claim", "")).strip()
+            conf = params.get("confidence")
+            if conf is not None and str(conf).strip() == "":
+                conf = None
+            conf = int(conf) if conf is not None else None
+            verify = params.get("verify")
+            if isinstance(verify, str):
+                verify = json.loads(verify) if verify.strip() else None
+            if verify is not None and not isinstance(verify, dict):
+                return json.dumps({"ok": False, "error": "verify 必须是对象"})
+            rec = cal.add(claim, confidence=conf, verify=verify,
+                          session_id=kwargs.get("session_id"), source="agent")
+            return json.dumps({"ok": True, **rec}, ensure_ascii=False)
+        except Exception as exc:
+            return json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False)
+    return handler
+
+
+def _calib_handler(cal):
+    def handler(params, **kwargs):
+        action = str(params.get("action", "report"))
+        try:
+            if action == "run":
+                s = cal.run_sweep()
+                cal.snapshot()
+                return json.dumps({"ok": True, "sweep": s}, ensure_ascii=False)
+            if action == "list":
+                return json.dumps({"ok": True, "items": cal.recent(int(params.get("limit", 10)))},
+                                  ensure_ascii=False)
+            return json.dumps({"ok": True, "metrics": cal.metrics()}, ensure_ascii=False)
+        except Exception as exc:
+            return json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False)
+    return handler
+
+
+def _autosweep(cal) -> None:
+    try:
+        time.sleep(3)
+        s = cal.run_sweep()
+        cal.snapshot()
+        if s.get("resolved"):
+            logger.info("zhulong: autosweep resolved %s prediction(s)", s["resolved"])
+    except Exception:
+        pass
+
 
 def register(ctx) -> None:
-    """Wire the observation spine: 11 observer hooks + /zhulong command."""
     global _SENSOR
     try:
         journal = Journal()
+        cal = Calibration(journal)
         _SENSOR = Sensor(journal)
 
         for event, cb in _SENSOR.hook_table().items():
@@ -41,12 +128,22 @@ def register(ctx) -> None:
         try:
             ctx.register_command(
                 name="zhulong",
-                handler=build_commands(journal).handle,
-                description="烛龙观测层：查看自己的行为日记与统计",
-                args_hint="[status|tail N|help]",
+                handler=build_commands(journal, cal).handle,
+                description="烛龙自我观测/校准层",
+                args_hint="[status|tail N|calibrate|help]",
             )
         except Exception:
-            logger.warning("zhulong: /zhulong command registration failed", exc_info=True)
+            logger.warning("zhulong: command registration failed", exc_info=True)
+
+        try:
+            ctx.register_tool(name="zhulong_predict", toolset="zhulong",
+                              schema=PREDICT_SCHEMA, handler=_predict_handler(cal))
+            ctx.register_tool(name="zhulong_calibration", toolset="zhulong",
+                              schema=CALIB_SCHEMA, handler=_calib_handler(cal))
+        except Exception:
+            logger.warning("zhulong: tool registration failed", exc_info=True)
+
+        if not os.environ.get("ZHULONG_NO_AUTOSWEEP"):
+            threading.Thread(target=_autosweep, args=(cal,), daemon=True).start()
     except Exception:
-        # never break startup
         logger.warning("zhulong: registration failed", exc_info=True)

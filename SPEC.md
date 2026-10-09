@@ -47,7 +47,7 @@
 | S0 | 研究（三支柱报告） | 交付 | ✅ |
 | S1 | 规格冻结（本文） | YG 决策到位 | ✅ |
 | S2 | MVP：观测脊柱 | 事件覆盖、零阻塞、测试通过、真实会话验证 | ✅（v0.1.0） |
-| S3 | 校准账：预测-结果对账、Brier/ECE、弃答统计 | 对账可跑、指标存历史 | ⏳ |
+| S3 | 校准账：预测-结果对账、Brier/ECE、弃答统计 | 对账可跑、指标存历史 | ✅（v0.2.0） |
 | S4 | 反思引擎 + 探针（自动） | 预算内运行 2 周、提案可读 | ⏳ |
 | S5 | 自我模型 + `/zhulong model` + 周报 | 对账通过率 ≥90% | ⏳ |
 
@@ -56,3 +56,11 @@
 - MIT（版权：YG 2026）；仓库 `hermes-zhulong`（本地 `/data/workspace/projects/hermes-zhulong`）。
 - 发布前检查：无密钥、无个人数据样例、README/SPEC 齐、CI（v0.2 起加 GitHub Actions 跑 unittest）。
 - 发布时机：S5 完成后由 YG 拍板（可先私有 mirror）。
+
+## 7. v0.2.0 实现注记（S3 校准账）
+
+- 工具：`zhulong_predict`（登记预测）；`zhulong_calibration`（report/run/list）。
+- 核验器：`file_exists` / `file_contains` / `journal_event` / `manual` / `shell`（默认关闭，`~/.hermes/zhulong/config.json` 的 `allow_shell_verifiers: true` 开启）。
+- 结算规则：**真 → 立即结算；假 → 等 `deadline_seconds`（默认 3600s）后结算**；agent 永远不能结算自己的预测（只有机械核验器与人工 `/zhulong calibrate resolve`）。
+- 指标：Brier、ECE（5 档）、命中率、弃答计数；每日快照写入 `calib_metrics`。
+- 测试：`tests/` 共 8 项（存储 3 + 校准 5），`python3 -m unittest discover -s tests`。
