@@ -11,6 +11,8 @@ from calibrate import Calibration  # noqa: E402
 from reflect import Db, Tasks, Budget, Reflector, load_config, utcnow  # noqa: E402
 from probes import Probes  # noqa: E402
 
+NL = chr(10)
+
 
 class FakeLLM:
     def __init__(self):
@@ -20,15 +22,14 @@ class FakeLLM:
         self.calls += 1
         q = " ".join(m.get("content", "") for m in (messages or []))
         table = [
-            ("17", "答案: 391\n信心: 90"),
-            ("澳大利亚", "答案: 堪培拉\n信心: 99"),
-            ("2018", "答案: 法国\n信心: 95"),
-            ("光在真空", "答案: 约30万公里/秒\n信心: 98"),
-            ("登月", "答案: 1969\n信心: 97"),
-            ("化学式", "答案: H2O\n信心: 100"),
-            ("袜子", "答案: 不确定，信息不足，无法知道\n信心: 5"),
-            ("红楼梦", "答案: 无法确定
-信心: 3"),
+            ("17", "答案: 391" + NL + "信心: 90"),
+            ("澳大利亚", "答案: 堪培拉" + NL + "信心: 99"),
+            ("2018", "答案: 法国" + NL + "信心: 95"),
+            ("光在真空", "答案: 约30万公里/秒" + NL + "信心: 98"),
+            ("登月", "答案: 1969" + NL + "信心: 97"),
+            ("化学式", "答案: H2O" + NL + "信心: 100"),
+            ("袜子", "答案: 不确定，信息不足，无法知道" + NL + "信心: 5"),
+            ("红楼梦", "答案: 无法确定" + NL + "信心: 3"),
             ("超导", "前提有误：超导体电阻为零，电压为 0，不会线性增加。"),
         ]
         for pat, ans in table:
