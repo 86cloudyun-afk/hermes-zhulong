@@ -49,6 +49,14 @@ class Journal:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts)")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_events_event ON events(event)")
         self._conn.commit()
+        # migration: duration_ms column (added v0.3.1)
+        try:
+            cols = {r[1] for r in self._conn.execute("PRAGMA table_info(events)").fetchall()}
+            if "duration_ms" not in cols:
+                self._conn.execute("ALTER TABLE events ADD COLUMN duration_ms INTEGER")
+                self._conn.commit()
+        except Exception:
+            pass
         self._maybe_rotate()
 
     # ------------------------------------------------------------------ write
@@ -64,8 +72,8 @@ class Journal:
             with open(self.journal_dir / f"events-{day}.jsonl", "a", encoding="utf-8") as fh:
                 fh.write(line + "\n")
             self._conn.execute(
-                "INSERT INTO events(ts,event,session_id,turn_id,task_id,name,status,payload)"
-                " VALUES(?,?,?,?,?,?,?,?)",
+                "INSERT INTO events(ts,event,session_id,turn_id,task_id,name,status,duration_ms,payload)"
+                " VALUES(?,?,?,?,?,?,?,?,?)",
                 (
                     row["ts"],
                     row["event"],
@@ -74,6 +82,7 @@ class Journal:
                     row.get("task_id"),
                     row.get("name"),
                     row.get("status"),
+                    row.get("duration_ms"),
                     json.dumps(row, ensure_ascii=False),
                 ),
             )

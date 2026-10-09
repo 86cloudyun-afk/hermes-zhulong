@@ -61,27 +61,40 @@ class Db:
 
 
 class Tasks:
-    def __init__(self, db: Db) -> None:
+    """Cross-process task claims. Unclaim keeps the row so retry attempts persist;
+    after max_attempts failed runs the task is abandoned for good."""
+
+    def __init__(self, db: Db, max_attempts: int = 5) -> None:
         self.db = db
+        self.max_attempts = max_attempts
 
     def claim(self, task: str) -> bool:
         with self.db.lock:
-            cur = self.db.conn.execute(
-                "INSERT OR IGNORE INTO tasks(task, claimed_at) VALUES(?,?)", (task, iso(utcnow()))
-            )
-            self.db.conn.commit()
-            return cur.rowcount == 1
+            row = self.db.conn.execute(
+                "SELECT claimed_at, attempts FROM tasks WHERE task=?", (task,)
+            ).fetchone()
+            if row is None:
+                self.db.conn.execute(
+                    "INSERT INTO tasks(task, claimed_at, attempts) VALUES(?,?,0)",
+                    (task, iso(utcnow())),
+                )
+                self.db.conn.commit()
+                return True
+            claimed_at, attempts = row
+            if claimed_at is None and (attempts or 0) < self.max_attempts:
+                self.db.conn.execute(
+                    "UPDATE tasks SET claimed_at=? WHERE task=?", (iso(utcnow()), task)
+                )
+                self.db.conn.commit()
+                return True
+            return False
 
-    def unclaim(self, task: str, max_attempts: int = 5) -> None:
+    def unclaim(self, task: str) -> None:
         with self.db.lock:
-            row = self.db.conn.execute("SELECT attempts FROM tasks WHERE task=?", (task,)).fetchone()
-            if not row:
-                return
-            attempts = (row[0] or 0) + 1
-            if attempts >= max_attempts:
-                self.db.conn.execute("UPDATE tasks SET attempts=? WHERE task=?", (attempts, task))
-            else:
-                self.db.conn.execute("DELETE FROM tasks WHERE task=?", (task,))
+            self.db.conn.execute(
+                "UPDATE tasks SET claimed_at=NULL, attempts=COALESCE(attempts,0)+1 WHERE task=?",
+                (task,),
+            )
             self.db.conn.commit()
 
     def last_with_prefix(self, prefix: str) -> str | None:
