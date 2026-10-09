@@ -79,6 +79,17 @@ class CheckTests(unittest.TestCase):
         contract={'type':'json_equals','path':str(self.root/'result.txt'),'field':'ok','value':True}
         self.assertEqual(self.m.Verifier(self.policy).capture(contract)['verdict'],'unknown')
 
+    def test_json_boolean_is_not_numeric_one(self):
+        (self.root/'result.txt').write_text('{"ok":1}')
+        contract={'type':'json_equals','path':str(self.root/'result.txt'),'field':'ok','value':True}
+        self.assertIs(self.m.Verifier(self.policy).capture(contract)['verdict'],False)
+
+    def test_changed_contract_changes_source_revision(self):
+        before=self.m.observe_sources(self.policy)[0]['revision']
+        self.raw['sources'][0]['contracts']['result']['text']='new acceptance'
+        changed=self.m.validate_config(self.raw,self.root)
+        self.assertNotEqual(self.m.observe_sources(changed)[0]['revision'],before)
+
     def test_argv_timeout_and_output_cleanup(self):
         verifier=self.m.Verifier(self.policy)
         for mode,script in [('hang','import os,time;open("pid","w").write(str(os.getpid()));time.sleep(60)'),

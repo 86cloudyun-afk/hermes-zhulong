@@ -150,7 +150,7 @@ def observe_sources(policy):
             if source.get('input_fields'):
                 parsed=json.loads(content)
                 content=canonical({f:_field(parsed,f) for f in source['input_fields']})
-            item.update(available=True,revision=hashlib.sha256(content.encode()).hexdigest(),facts=content,reason='observed')
+            item.update(available=True,revision=digest({'facts':content,'direction':source['direction'],'contracts':source['contracts'],'mission':policy['mission']}),facts=content,reason='observed')
         except (OSError,ValueError,KeyError,UnicodeError):pass
         observations.append(item)
     return observations
@@ -194,7 +194,7 @@ class Verifier:
                 result['artifact_hash']=hashlib.sha256(content).hexdigest()
                 if kind=='file_contains':valid=normalized['text'] in content.decode('utf-8')
                 else:
-                    try:valid=_field(json.loads(content),normalized['field'])==normalized['value']
+                    try:valid=canonical(_field(json.loads(content),normalized['field']))==canonical(normalized['value'])
                     except KeyError:valid=False
                 result.update(verdict=valid,reason='contract_satisfied' if valid else 'contract_not_satisfied')
         except (OSError,ValueError,UnicodeError,subprocess.SubprocessError):pass

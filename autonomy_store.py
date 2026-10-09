@@ -66,6 +66,11 @@ class Ledger:
                     BEGIN SELECT RAISE(ABORT,'frozen_submission'); END''',
             ]
             for statement in statements: c.execute(statement)
+            columns={r[1] for r in c.execute('PRAGMA table_info(goals)')}
+            if 'cancel_requested' not in columns:c.execute('ALTER TABLE goals ADD COLUMN cancel_requested INTEGER NOT NULL DEFAULT 0')
+            columns={r[1] for r in c.execute('PRAGMA table_info(submissions)')}
+            for name in ('usage','runtime'):
+                if name not in columns:c.execute(f'ALTER TABLE submissions ADD COLUMN {name} TEXT')
 
     @contextmanager
     def _connection(self, write=False):
@@ -86,7 +91,7 @@ class Ledger:
     def _submission(row):
         if row is None: return None
         result=dict(row)
-        for key in ('request','execution_identity','evidence'):
+        for key in ('request','execution_identity','evidence','usage','runtime'):
             if result.get(key) is not None: result[key]=json.loads(result[key])
         result['settled']=bool(result['settled'])
         return result
@@ -101,9 +106,13 @@ class Ledger:
         result['submission']=self._submission(c.execute('SELECT * FROM submissions WHERE id=?',(row['submission_id'],)).fetchone()) if row['submission_id'] else None
         return result
 
-    def create_goal(self,candidate,source_revision,contract,baseline,now,deadline_seconds):
+    def create_goal(self,candidate,source_revision,contract,baseline,now,deadline_seconds,*,source_owner=None):
         key=digest([candidate['source_id'],source_revision,candidate['contract_id'],contract])
         with self._connection(True) as c:
+            if source_owner is not None:
+                source=c.execute('SELECT outcome FROM sources WHERE id=? AND fingerprint=?',(candidate['source_id'],source_revision)).fetchone()
+                state=json.loads(source[0]) if source else {}
+                if state.get('owner')!=source_owner or state.get('until',0)<=now:return None
             c.execute('INSERT OR IGNORE INTO goals(id,dedupe,candidate,source_revision,contract,contract_hash,baseline,created,deadline) VALUES(?,?,?,?,?,?,?,?,?)',
                 (uuid.uuid4().hex,key,canonical(candidate),source_revision,canonical(contract),digest(contract),canonical(baseline),now,now+deadline_seconds))
             return self._goal(c,c.execute('SELECT * FROM goals WHERE dedupe=?',(key,)).fetchone())
@@ -151,10 +160,16 @@ class Ledger:
                 return {'admitted':False,'reason':'reconcile_existing','submission':self._submission(existing)}
             paused=c.execute("SELECT value FROM settings WHERE key='paused'").fetchone()
             if paused and json.loads(paused[0]):return {'admitted':False,'reason':'paused'}
+            if goal['cancel_requested']:return {'admitted':False,'reason':'cancelled'}
             if goal['state']!='ready':return {'admitted':False,'reason':'not_ready'}
             if goal['attempts']>=max_attempts:return {'admitted':False,'reason':'max_attempts'}
             if c.execute('SELECT COUNT(*) FROM submissions WHERE settled=0').fetchone()[0]>=max_active:
                 return {'admitted':False,'reason':'max_active'}
+            resource=json.loads(goal['contract']).get('path') or json.loads(goal['contract']).get('cwd')
+            if resource:
+                for active in c.execute('SELECT g.contract FROM submissions s JOIN goals g ON g.id=s.goal_id WHERE s.settled=0'):
+                    other=json.loads(active[0])
+                    if resource==(other.get('path') or other.get('cwd')):return {'admitted':False,'reason':'verification_resource_active'}
             day=datetime.fromtimestamp(now,timezone.utc).date().isoformat()
             used=c.execute('SELECT runs FROM run_budget WHERE day=?',(day,)).fetchone()
             if daily_cap<=0 or (used and used[0]>=daily_cap):return {'admitted':False,'reason':'daily_cap'}
@@ -203,6 +218,44 @@ class Ledger:
             c.execute('INSERT OR IGNORE INTO evidence(goal_id,receipt,outcome,data,created) VALUES(?,?,?,?,?)',(lease.goal_id,receipt,outcome,canonical(evidence),now))
             c.execute('UPDATE goals SET state=?,reason=?,owner=NULL,lease_until=NULL WHERE id=?',(outcome,str(evidence.get('reason',''))[:240],lease.goal_id))
             c.execute('UPDATE submissions SET settled=? WHERE id=?',(int(execution_settled),goal['submission_id']))
+            return True
+
+    def request_cancel(self,goal_id):
+        with self._connection(True) as c:
+            return bool(c.execute('UPDATE goals SET cancel_requested=1 WHERE id=?',(goal_id,)).rowcount)
+
+    def work_goals(self):
+        with self._connection() as c:
+            rows=c.execute("SELECT g.* FROM goals g LEFT JOIN submissions s ON s.id=g.submission_id WHERE g.state IN ('ready','blocked','submitting','running','verifying','unknown_result') OR s.settled=0 ORDER BY g.deadline,g.id").fetchall()
+            return [self._goal(c,r) for r in rows]
+
+    def record_runtime(self,lease,submission_id,result,now):
+        with self._connection(True) as c:
+            if not self._owned(c,lease,now):return False
+            c.execute('UPDATE submissions SET usage=?,runtime=? WHERE id=? AND goal_id=?',
+                (canonical(result.get('usage')),canonical(result.get('runtime',{})),submission_id,lease.goal_id))
+            return True
+
+    def claim_source(self,id,fingerprint,owner,now,lease_seconds,max_attempts):
+        with self._connection(True) as c:
+            row=c.execute('SELECT * FROM sources WHERE id=?',(id,)).fetchone()
+            prior=json.loads(row['outcome']) if row and row['fingerprint']==fingerprint else {}
+            if not isinstance(prior,dict):prior={}
+            if prior.get('status')=='processed' or prior.get('attempts',0)>=max_attempts:return False
+            if prior.get('status')=='planning' and prior.get('until',0)>now:return False
+            if prior.get('next_retry',0)>now:return False
+            outcome={'status':'planning','owner':owner,'until':now+lease_seconds,'attempts':prior.get('attempts',0)+1}
+            c.execute('INSERT INTO sources VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint,outcome=excluded.outcome,updated=excluded.updated',(id,fingerprint,canonical(outcome),now))
+            return True
+
+    def complete_source(self,id,fingerprint,owner,success,now):
+        with self._connection(True) as c:
+            row=c.execute('SELECT * FROM sources WHERE id=? AND fingerprint=?',(id,fingerprint)).fetchone()
+            if not row:return False
+            old=json.loads(row['outcome'])
+            if old.get('owner')!=owner or old.get('until',0)<=now:return False
+            outcome={'status':'processed' if success else 'failed','attempts':old['attempts'],'next_retry':now+60}
+            c.execute('UPDATE sources SET outcome=?,updated=? WHERE id=?',(canonical(outcome),now,id))
             return True
 
     def get_goal(self,id):
