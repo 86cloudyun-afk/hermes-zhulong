@@ -23,7 +23,7 @@ bash scripts/install.sh          # 复制到 ~/.hermes/plugins/zhulong
 hermes plugins enable zhulong    # 加入 allow-list
 ```
 
-重启 Hermes（网关/CLI 任一面）后生效。
+启用即生效：新版 Hermes 会把插件热加载进运行中的网关（本机已实证）；旧版本重启后生效。
 
 ## 使用
 
