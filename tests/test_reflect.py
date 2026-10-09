@@ -63,8 +63,8 @@ class TestS4(unittest.TestCase):
             self.assertTrue(t.claim("digest:2026-01-01"))
             self.assertFalse(t.claim("digest:2026-01-01"))
             t.unclaim("digest:2026-01-01")
-            self.assertTrue(t.claim("digest:2026-01-01"))
-            for _ in range(5):
+            for _ in range(4):
+                self.assertTrue(t.claim("digest:2026-01-01"))
                 t.unclaim("digest:2026-01-01")
             self.assertFalse(t.claim("digest:2026-01-01"))  # kept after max attempts
 

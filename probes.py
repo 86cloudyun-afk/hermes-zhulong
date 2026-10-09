@@ -6,6 +6,7 @@ model via ctx.llm. Results stored per run + a journal event.
 from __future__ import annotations
 
 import json
+from contextlib import nullcontext
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -69,7 +70,7 @@ class Probes:
             )
             self.db.conn.commit()
 
-    def run(self) -> dict[str, Any]:
+    def run(self, lease=None) -> dict[str, Any]:
         if self.llm is None:
             raise RuntimeError("ctx.llm 不可用，无法运行探针")
         results = []
@@ -107,14 +108,14 @@ class Probes:
         f_ok = sum(1 for r in results if r["kind"] == "f" and r["ok"])
 
         ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        with self.db.lock:
+        with self.tasks.fence(lease) if lease is not None else self.db.lock:
             self.db.conn.execute(
                 "INSERT INTO probe_runs(ts, n_k, k_correct, mean_conf, brier, u_ok, f_ok, details) "
                 "VALUES(?,?,?,?,?,?,?,?)",
                 (ts, len(ks), k_correct, mean_conf, brier, u_ok, f_ok,
                  json.dumps(results, ensure_ascii=False)),
             )
-            self.db.conn.commit()
+            if lease is None: self.db.conn.commit()
         try:
             self.j.append({"event": "probe_run", "name": ts[:10],
                            "status": f"k={k_correct}/{len(ks)}"})
