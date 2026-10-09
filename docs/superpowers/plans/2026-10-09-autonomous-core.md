@@ -147,7 +147,7 @@ assert service.replacement_admissions == 0
 
 **Interfaces:**
 - `SelfModel(ledger:Ledger, base:Path).refresh()->dict`、`.snapshot()->dict`、`.restore(version:int)->dict`。
-- snapshot 包括 schema / version / evidence revision，按领域和执行 context 分组的 verified samples、success、failure、unknown、blocked、first_attempt_success、eventual_success、置信度均值 / Brier / ECE、active commitments 与来源明确的策略假设；目标级与尝试级统计分开，ECE 沿用现有十桶定义。
+- snapshot 包括 schema / version / evidence revision，按领域和执行 context 分组的 verified samples、success、failure、unknown、blocked、first_attempt_success、eventual_success、置信度均值 / Brier / ECE、active commitments 与来源明确的策略假设；目标级与尝试级统计分开，ECE 沿用现有五桶定义（每桶宽 0.2，最后一桶包含 1）。
 - `expected_success(domain:str, context:dict|None=None)->float` 使用有分母的 `(success+1)/(verified+2)` 作为选择辅助，标注估计与有限样本；无证据时 0.5，不能宣称实际能力已被证明。
 - 原子导出 `$HERMES_HOME/zhulong/self_model.json`，版本真源为 Ledger；restore 不改动历史 evidence 或 goal outcome。
 
