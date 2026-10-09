@@ -279,7 +279,7 @@ class Reflector:
                         "观察：≤2 条值得注意的模式；提案：≤1 条具体可执行的改进；不确定：≤1 条。总长≤220字。")},
                     {"role": "user", "content": digest[:6000]},
                 ],
-                max_tokens=450, temperature=0.3, purpose="zhulong.digest",
+                max_tokens=450, timeout=45, temperature=0.3, purpose="zhulong.digest",
             )
             text = (getattr(result, "text", "") or "").strip()
             return text or None
@@ -315,7 +315,7 @@ class Reflector:
 
 # --------------------------------------------------------------------- sched
 def scheduler_loop(reflector: Reflector, calibration, probes, cfg: dict, *,
-                   interval: int = 1800, initial: int = 90) -> None:
+                   interval: int = 1800, initial: int = 90, stop_event=None) -> None:
     """Background loop: autosweep + daily digest + weekly probes (best-effort)."""
     def tick() -> None:
         try:
@@ -323,6 +323,7 @@ def scheduler_loop(reflector: Reflector, calibration, probes, cfg: dict, *,
             calibration.snapshot()
         except Exception:
             pass
+        if stop_event.is_set(): return
         day = (utcnow() - timedelta(days=1)).date().isoformat()
         task = f"digest:{day}"
         lease = reflector.tasks.acquire(task)
@@ -333,6 +334,7 @@ def scheduler_loop(reflector: Reflector, calibration, probes, cfg: dict, *,
                 reflector.tasks.complete(lease)
             except Exception:
                 reflector.tasks.fail(lease)
+        if stop_event.is_set(): return
         try:
             weekday = int(cfg.get("probe_weekday", 0))
             hour = int(cfg.get("probe_hour", 9))
@@ -343,17 +345,18 @@ def scheduler_loop(reflector: Reflector, calibration, probes, cfg: dict, *,
                 if please is not None:
                     try:
                         with reflector.tasks.heartbeat(please):
-                            probes.run(lease=please)
+                            probes.run(lease=please, stop_event=stop_event)
                         reflector.tasks.complete(please)
                     except Exception:
                         reflector.tasks.fail(please)
         except Exception:
             pass
 
-    time.sleep(initial)
-    while True:
+    stop_event = stop_event or threading.Event()
+    if stop_event.wait(initial): return
+    while not stop_event.is_set():
         try:
             tick()
         except Exception:
             pass
-        time.sleep(interval)
+        if stop_event.wait(interval): break

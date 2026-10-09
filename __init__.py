@@ -25,6 +25,11 @@ try:
     from .commands import build_commands
     from .reflect import Db, Tasks, Budget, Reflector, load_config, scheduler_loop
     from .probes import Probes
+    from .autonomy_store import Ledger
+    from .autonomy_checks import validate_config, Verifier
+    from .hermes_runs import RunsClient
+    from .self_model import SelfModel
+    from .autonomy import Controller, LLMPlanner
 except ImportError:
     if str(_HERE) not in sys.path:
         sys.path.insert(0, str(_HERE))
@@ -34,6 +39,11 @@ except ImportError:
     from commands import build_commands
     from reflect import Db, Tasks, Budget, Reflector, load_config, scheduler_loop
     from probes import Probes
+    from autonomy_store import Ledger
+    from autonomy_checks import validate_config, Verifier
+    from hermes_runs import RunsClient
+    from self_model import SelfModel
+    from autonomy import Controller, LLMPlanner
 
 _SENSOR = None
 
@@ -122,47 +132,97 @@ def _calib_handler(cal, reflector=None, probes=None):
     return handler
 
 
+MODEL_SCHEMA = {
+    "name": "zhulong_model", "description": "读取烛龙的证据型自我模型；只报告有限验收范围和样本。",
+    "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+}
+AUTONOMY_SCHEMA = {
+    "name": "zhulong_autonomy", "description": "查看自主目标/状态，或推进一个有界自主循环；不能直接评分或改验收。",
+    "parameters": {"type": "object", "properties": {
+        "action": {"type": "string", "enum": ["status", "goals", "tick"]}}, "additionalProperties": False},
+}
+
+
+def _public_goals(ledger):
+    return [{k:g[k] for k in ('id','domain','objective','state','attempts','deadline','recovery_reason')}
+            for g in ledger.goals(20)]
+
+
+def _model_handler(model):
+    def handler(params, **kwargs):
+        if not isinstance(params, dict) or params:
+            return json.dumps({"ok": False, "reason": "invalid_model_action"})
+        try:return json.dumps({"ok": True, "model": model.snapshot()}, ensure_ascii=False)
+        except Exception:return json.dumps({"ok": False, "reason": "model_unavailable"})
+    return handler
+
+
+def _autonomy_handler(controller, ledger, error=None):
+    def handler(params, **kwargs):
+        if not isinstance(params, dict) or set(params)-{'action'}:
+            return json.dumps({"ok": False, "reason": "invalid_autonomy_action"})
+        action=params.get('action','status')
+        if action not in ('status','goals','tick'):
+            return json.dumps({"ok": False, "reason": "invalid_autonomy_action"})
+        try:
+            if action=='goals':return json.dumps({"ok": True, "goals": _public_goals(ledger)},ensure_ascii=False)
+            if controller is None:return json.dumps({"ok": False,"enabled": False,"blocked_reason":error or 'runtime_unavailable'})
+            result=controller.tick() if action=='tick' else controller.status()
+            return json.dumps({"ok": True, **result},ensure_ascii=False)
+        except Exception:return json.dumps({"ok": False,"reason": "autonomy_unavailable"})
+    return handler
+
+
 def register(ctx) -> None:
     global _SENSOR
     try:
-        journal = Journal()
-        cal = Calibration(journal)
-        _SENSOR = Sensor(journal)
-        cfg = load_config(journal.base)
-        db = Db(journal.db_path)
-        tasks = Tasks(db)
-        budget = Budget(db, cfg.get("llm_daily_cap", 40))
-        llm = getattr(ctx, "llm", None)
-        reflector = Reflector(journal, cal, db, cfg, llm=llm, budget=budget, tasks=tasks)
-        probes = Probes(journal, db, cfg, llm=llm, budget=budget, tasks=tasks)
-
-        for event, cb in _SENSOR.hook_table().items():
-            ctx.register_hook(event, cb)
+        journal=Journal();cal=Calibration(journal);_SENSOR=Sensor(journal)
+        for event,cb in _SENSOR.hook_table().items():ctx.register_hook(event,cb)
+        cfg=load_config(journal.base);db=Db(journal.db_path);tasks=Tasks(db)
+        try:budget=Budget(db,cfg.get('llm_daily_cap',40))
+        except ValueError:budget=Budget(db,0)
+        llm=getattr(ctx,'llm',None)
+        reflector=Reflector(journal,cal,db,cfg,llm=llm,budget=budget,tasks=tasks)
+        probes=Probes(journal,db,cfg,llm=llm,budget=budget,tasks=tasks)
+        ledger=Ledger(journal.base/'autonomy.db');model=SelfModel(ledger,journal.base);model.refresh()
+        controller=None;autonomy_error=None
+        try:
+            policy=validate_config(cfg.get('autonomy',{}),journal.base)
+            runs=RunsClient(policy['api_url'],policy['api_key_env'],policy['api_identity_version'],
+                policy['request_timeout_seconds'],profile=policy['api_profile']) if policy['enabled'] else None
+            controller=Controller(ledger,policy,LLMPlanner(llm,budget),runs,Verifier(policy),model)
+        except (ValueError,TypeError):autonomy_error='invalid_autonomy_config'
 
         try:
-            ctx.register_command(
-                name="zhulong",
-                handler=build_commands(journal, cal, reflector, probes).handle,
-                description="烛龙自我观测/校准/反思层",
-                args_hint="[status|tail N|calibrate|reflect|probes|help]",
-            )
-        except Exception:
-            logger.warning("zhulong: command registration failed", exc_info=True)
+            ctx.register_command(name='zhulong',handler=build_commands(journal,cal,reflector,probes,
+                autonomy=controller,self_model=model).handle,
+                description='烛龙观测、校准与自主核心',args_hint='[status|tail N|calibrate|reflect|probes|model|autonomy|help]')
+        except Exception:logger.warning('zhulong: command registration failed',exc_info=True)
+        for name,schema,handler in (
+            ('zhulong_predict',PREDICT_SCHEMA,_predict_handler(cal)),
+            ('zhulong_calibration',CALIB_SCHEMA,_calib_handler(cal,reflector,probes)),
+            ('zhulong_model',MODEL_SCHEMA,_model_handler(model)),
+            ('zhulong_autonomy',AUTONOMY_SCHEMA,_autonomy_handler(controller,ledger,autonomy_error))):
+            try:ctx.register_tool(name=name,toolset='zhulong',schema=schema,handler=handler)
+            except Exception:logger.warning('zhulong: tool registration failed',exc_info=True)
 
-        try:
-            ctx.register_tool(name="zhulong_predict", toolset="zhulong",
-                              schema=PREDICT_SCHEMA, handler=_predict_handler(cal))
-            ctx.register_tool(name="zhulong_calibration", toolset="zhulong",
-                              schema=CALIB_SCHEMA, handler=_calib_handler(cal, reflector, probes))
-        except Exception:
-            logger.warning("zhulong: tool registration failed", exc_info=True)
-
-        if cfg.get("scheduler", True) and not os.environ.get("ZHULONG_NO_AUTOSWEEP"):
-            threading.Thread(
-                target=scheduler_loop,
-                args=(reflector, cal, probes, cfg),
-                kwargs={"interval": 1800, "initial": 90},
-                daemon=True,
-            ).start()
-    except Exception:
-        logger.warning("zhulong: registration failed", exc_info=True)
+        stop_event=threading.Event();scheduler=None
+        def cleanup():
+            stop_event.set()
+            if controller is not None:controller.stop()
+            if scheduler is not None:scheduler.join(timeout=5)
+            # Stop subsequent ticks and probe calls. A bounded in-flight call retains its resources
+            # until it returns rather than racing a closed connection.
+            if scheduler is None or not scheduler.is_alive():
+                db.close()
+                with cal._lock:cal._conn.close()
+                with journal._lock:journal._conn.close()
+        lifecycle=getattr(ctx,'on_unload',None)
+        if callable(lifecycle):lifecycle(cleanup)
+        if callable(lifecycle) and cfg.get('scheduler',True) and not os.environ.get('ZHULONG_NO_AUTOSWEEP'):
+            scheduler=threading.Thread(target=scheduler_loop,args=(reflector,cal,probes,cfg),
+                kwargs={'interval':1800,'initial':90,'stop_event':stop_event},daemon=True,name='zhulong-reflection')
+            scheduler.start()
+            if controller is not None and controller.policy.get('enabled'):
+                controller.start(controller.policy['tick_interval_seconds'])
+    except Exception:logger.warning('zhulong: registration failed',exc_info=True)

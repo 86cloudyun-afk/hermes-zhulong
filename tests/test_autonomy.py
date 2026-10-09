@@ -206,5 +206,13 @@ class AutonomyTests(unittest.TestCase):
         self.ledger.claim=counted;self.controller.tick()
         self.assertLessEqual(count[0],20)
 
+    def test_unload_during_planning_prevents_new_external_run(self):
+        entered=threading.Event();release=threading.Event();plan=self.planner.plan
+        def slow(*args):entered.set();release.wait(5);return plan(*args)
+        self.planner.plan=slow
+        worker=threading.Thread(target=self.controller.tick);worker.start()
+        self.assertTrue(entered.wait(2));self.controller.stop();release.set();worker.join(5)
+        self.assertFalse(worker.is_alive());self.assertEqual(self.runs.calls,0)
+
 
 if __name__=='__main__':unittest.main()

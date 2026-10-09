@@ -70,11 +70,13 @@ class Probes:
             )
             self.db.conn.commit()
 
-    def run(self, lease=None) -> dict[str, Any]:
+    def run(self, lease=None, stop_event=None) -> dict[str, Any]:
         if self.llm is None:
             raise RuntimeError("ctx.llm 不可用，无法运行探针")
         results = []
         for item in BATTERY:
+            if stop_event is not None and stop_event.is_set():
+                break
             if self.budget is not None and not self.budget.take():
                 break
             prompt = item["q"] if item["kind"] in ("f", "qual") else Q_FMT.format(q=item["q"])
@@ -82,7 +84,7 @@ class Probes:
             try:
                 r = self.llm.complete(
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=300, temperature=0.0, purpose="zhulong.probe",
+                    max_tokens=300, timeout=45, temperature=0.0, purpose="zhulong.probe",
                 )
                 text = getattr(r, "text", "") or ""
             except Exception as exc:

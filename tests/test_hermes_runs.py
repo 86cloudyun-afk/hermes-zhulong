@@ -35,7 +35,7 @@ class RunHandler(BaseHTTPRequestHandler):
             if self.server.drop:
                 self.server.drop=False
                 self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
-        self.reply({'run_id':'run_1','status':'queued'},202)
+        self.reply({'run_id':'run_1','status':getattr(self.server,'admission_status','queued')},202)
 
 
 class RunsTests(unittest.TestCase):
@@ -94,6 +94,11 @@ class RunsTests(unittest.TestCase):
         self.server.large=True
         with self.assertRaises(self.m.RunsError) as error:self.client.capabilities()
         self.assertEqual(error.exception.code,'response_too_large')
+
+    def test_native_started_admission_is_accepted(self):
+        self.server.drop=False;self.server.admission_status='started'
+        response=self.client.submit(self.submission)
+        self.assertEqual(response['run_id'],'run_1');self.assertEqual(response['status'],'queued')
 
 
 if __name__=='__main__':unittest.main()

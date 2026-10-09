@@ -168,6 +168,7 @@ class Controller:
             self._finish(lease,goal,'unknown_result',exc.code,False)
 
     def _dispatch(self,lease,goal,current):
+        if self._stop.is_set():return False
         now=self.clock()
         if goal.get('cancel_requested'):
             self._finish(lease,goal,'cancelled','cancel_requested',True);return False

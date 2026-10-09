@@ -78,6 +78,7 @@ class RunsClient:
     @staticmethod
     def _result(raw,admission=False):
         run_id=raw.get('run_id');status=raw.get('status','queued' if admission else None)
+        if admission and status=='started':status='queued'
         states={'queued','running','waiting_for_approval','stopping','completed','failed','cancelled','interrupted'}
         if not isinstance(run_id,str) or not re.fullmatch('[A-Za-z0-9_-]{1,100}',run_id) or status not in states:
             raise RunsError('invalid_run_response',admission_unknown=admission)

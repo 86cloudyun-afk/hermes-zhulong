@@ -1,6 +1,6 @@
 # 烛龙 v0.4：持续自主与证据型自我模型升级设计
 
-日期：2026-10-09。状态：用户已批准书面规格，正在制定实施计划。依据：[跨学科正文研究](../../research/2026-10-09-cross-disciplinary-autonomy.md)及此前已讨论的[框架提案](../../research/2026-10-09-hermes-autonomous-personal-agent.md)。
+日期：2026-10-09。状态：用户已批准书面规格和执行；实施与验证见[计划](../plans/2026-10-09-autonomous-core.md)及[验证记录](../../research/2026-10-09-v0.4-validation.md)。依据：[跨学科正文研究](../../research/2026-10-09-cross-disciplinary-autonomy.md)及此前已讨论的[框架提案](../../research/2026-10-09-hermes-autonomous-personal-agent.md)。
 
 ## 1. 目标与本版边界
 

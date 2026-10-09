@@ -1,0 +1,29 @@
+{
+  "goal_state": "succeeded",
+  "attempts": 1,
+  "runtime": {
+    "model": "deepseek-flash",
+    "provider": "deepseek"
+  },
+  "usage": {
+    "input_tokens": 20356,
+    "output_tokens": 417,
+    "total_tokens": 20773
+  },
+  "same_submission_replayed": true,
+  "self_model_samples": 1,
+  "tool_artifact_verified": true,
+  "planning": "native ctx.llm.complete_structured",
+  "provider": "deepseek",
+  "configured_model": "deepseek-flash",
+  "host_commit": "73162b00eefde3794bed0afb53d84a19c0eed230",
+  "limits": {
+    "auxiliary_calls": 2,
+    "daily_runs": 1,
+    "agent_max_turns": 6,
+    "provider_timeout_seconds": 60,
+    "test_supervisor_seconds": 240
+  },
+  "scope": "One real local code-domain contract; three-domain recovery scenarios covered separately by deterministic tests",
+  "gateway_exit_code": 0
+}

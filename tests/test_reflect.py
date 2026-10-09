@@ -1,4 +1,5 @@
 import sys
+import threading
 import tempfile
 import unittest
 from pathlib import Path
@@ -103,6 +104,20 @@ class TestS4(unittest.TestCase):
             self.assertAlmostEqual(res["mean_conf"], 96.5, places=1)
             runs = probe.last_runs(5)
             self.assertEqual(len(runs), 1)
+
+    def test_unload_stops_remaining_probe_calls(self):
+        with tempfile.TemporaryDirectory() as td:
+            j, _c, db, cfg = self._mk(td)
+            stopped = threading.Event()
+            class UnloadingLLM(FakeLLM):
+                def complete(self, **kwargs):
+                    stopped.set()
+                    return super().complete(**kwargs)
+            fake = UnloadingLLM()
+            probe = Probes(j, db, cfg, llm=fake, budget=Budget(db, cap=40), tasks=Tasks(db))
+            result = probe.run(stop_event=stopped)
+            self.assertEqual(fake.calls, 1)
+            self.assertEqual(len(result['details']), 1)
 
 
 if __name__ == "__main__":

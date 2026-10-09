@@ -1,23 +1,25 @@
 # 烛龙 Zhulong 🐉
 
-**开眼即观测。** Hermes Agent 的自我观测 + 自校准层 —— 把 agent 的行为流落成一本可对账的日记，把它的预测与结果对成一本校准账。
+**开眼即观测。** Hermes Agent 的观测、校准与自主核心：从授权事实中形成自己的目标，通过 Hermes 执行，再由机械验收和持久账本决定结果、学习及恢复。
 
 > 「钟山之神，名曰烛阴……其瞑乃晦，其视乃明。」——《山海经·大荒北经》
 
 ## 这是什么
 
-Zhulong 是 [Hermes Agent](https://github.com/NousResearch/hermes-agent) 的插件，做两件事：
+Zhulong 是 [Hermes Agent](https://github.com/NousResearch/hermes-agent) 的插件，包含三个组成部分：
 
 1. **观测（S2）**：订阅 11 个 observer hooks，把每个生命周期事件规范化、脱敏、写入本地日记（JSONL + SQLite）。
 2. **校准（S3）**：登记 agent 的预测/声明（工具 `zhulong_predict`），由**机械核验器或人工**结算，产出 Brier / ECE / 命中率 / 弃答统计与历史快照。
 
-这是「自我觉醒」工程阶梯的 A1（自感知）→ A3（自校准）。关键纪律：**agent 永远不能给自己的预测打分**。
+3. **自主核心（v0.4）**：观察配置来源、合成可验证目标、持久提交、独立核验及维护有样本分母的自我模型。配置启用后，日常闭环无需逐项人工评分。
+
+这是可测试的功能自我模型，测试不证明主观意识。关键纪律：**agent 永远不能给自己的预测打分**。
 
 ## 原则（写死，不妥协）
 
-- **仅观测**：不修改对话、不改 system prompt、零 LLM 调用。
+- **观测 hooks 仅记事实**：原有 11 个 hooks 不修改对话、不发起模型调用；独立自主控制层按配置发起规划和执行。
 - **失败开放**：任何回调异常都吞掉，绝不阻塞或影响主循环。
-- **隐私优先**：只存元数据（名称/状态/耗时/大小/字段名），不存正文。
+- **数据范围明确**：观测只存元数据；自主账本另存自己形成的最小目标意图、冻结验收和证据，不采集工具正文、原始聊天或私有推理。
 - **不可自证**：预测结算只来自机械核验器或人工命令（逻辑学约束：反自证）。
 - **数据本地**：全部落在 `$HERMES_HOME/zhulong/`。
 
@@ -38,6 +40,13 @@ hermes plugins enable zhulong    # 加入 allow-list
 /zhulong calibrate [run|list|resolve] # 校准账
 /zhulong reflect [run]                # 反思 digest（查看/立即生成）
 /zhulong probes [run]                 # 探针（历史/立即运行）
+/zhulong model                        # 证据型自我模型
+/zhulong autonomy status              # 自主状态
+/zhulong autonomy goals               # 最近目标
+/zhulong autonomy tick                # 推进一次有界循环
+/zhulong autonomy pause               # 暂停新合成/派发，继续对账
+/zhulong autonomy resume              # 恢复配置允许的工作
+/zhulong autonomy cancel <id>         # 持久取消意图并跟踪在途状态
 ```
 
 Agent 侧工具：
@@ -45,6 +54,8 @@ Agent 侧工具：
 ```
 zhulong_predict(claim, confidence?, verify?)    # 登记预测
 zhulong_calibration(action=report|run|list)     # 读账/对账
+zhulong_model()                               # 只读自我模型
+zhulong_autonomy(action=status|goals|tick)     # 不提供直接评分/改验收入口
 ```
 
 ## 校准账（S3）
@@ -70,7 +81,9 @@ zhulong_calibration(action=report|run|list)     # 读账/对账
 ├── journal/events-YYYY-MM-DD.jsonl   # 事件真源（append-only）
 ├── zhulong.db                        # SQLite：events / predictions / calib_metrics / probe_runs / tasks / llm_daily
 ├── reflections/                      # digest-YYYY-MM-DD.md、PROPOSALS.md
-└── config.json                       # 可选，见下
+├── autonomy.db                      # goals/submissions/evidence/预算/模型版本真源
+├── self_model.json                   # 原子导出；可由账本重建
+└── config.json                       # 配置，见下
 ```
 
 ## 反思与探针（S4）
@@ -97,8 +110,44 @@ zhulong_calibration(action=report|run|list)     # 读账/对账
 - ✅ v0.1.0（S2）：观测脊柱
 - ✅ v0.2.0（S3）：校准账
 - ✅ v0.3.0（S4）：反思引擎 + 自省探针（本次）
-- ⏳ S5：自我模型 + `/zhulong model` + 周报投递
+- ✅ v0.4.0：自主目标闭环、可靠恢复、自我模型和 `/zhulong model`
+- ⏳ 后续：周报投递、真实外部事务、部署沙箱、控制内核自动晋升与长期测试
 
 ## License
 
 MIT © 2026 YG
+
+## 启用自主核心
+
+默认 `autonomy.enabled=false`。将 [示例配置](examples/autonomy-config.json) 改为实际授权路径、事实来源、验收及本地 API 地址，再放到当前 profile 的 `zhulong/config.json`。示例没有秘密或个人资料，路径是占位符。输入来源提供事实，例如失败测试统计、阅读进度、可用时段；模型自行生成候选，不能创建自己的权限或验收规则。
+
+执行端需运行支持持久幂等的 Hermes API server。当前验证宿主固定为 `73162b00eefde3794bed0afb53d84a19c0eed230`；启动方式为该 profile 的 `hermes gateway run`。使用 `API_SERVER_KEY` 环境变量配置 API 认证，它不同于模型凭据 `DEEPSEEK_API_KEY`。模型配置沿用 `deepseek / deepseek-flash`；不要把密钥写进示例或 Git。API 必须宣告 run 提交、状态、stop 及 durable idempotency；缺少支持则受阻。
+
+`api_identity_version` 是部署维护的非秘密版本；认证命名空间、profile 或凭据变化时必须更新。它不自动证明凭据连续性；不能维护该版本的部署无法承诺未决提交的安全重放。`api_profile` 是冻结的执行身份标签，不是自行切换宿主 profile 的 API 参数。
+
+默认每日新 run 8 次、同时 1 个、候选最多 3 个、租约 120 秒、目标期限 600 秒、独立尝试最多 3 次。共享辅助模型调用默认 40 次/日，零表示停用。一次 tick 至多 20 个目标操作和一次新 submission；积压受阻工作轮转，模型、HTTP 和检查在数据库写锁之外。源事实和验收 / 方向的相关变化形成新版本；相同输入不反复规划。`input_fields` 可从 JSON 选取相关字段，避免无关噪声触发工作。
+
+机械验收支持 `file_contains`、`json_equals`、显式可信的 `argv`。文件和输出最多 64 KiB，argv 默认 15 秒且不用 shell。已有产物记为 `already_satisfied`，不派发或计能力成功；要求变化的契约比较初始 hash。研究字段 / 格式验收只覆盖约定范围，不能据此声称论文结论普遍正确；个人场景是本地草案，未接真实日历 / 邮箱。
+
+`pause` 只暂停新工作。相同 submission 的恢复不消耗新尝试或预算；响应丢失在保留窗口内重放原请求。`interrupted`、stop accepted 和缺少产物都不能证明没有迟到副作用；未知在途执行保留名额。过期重放或身份连续性不明时记录 `unknown_result`，避免盲目重复动作。正常宿主结果与独立验收都完成后才结算可信结果。
+
+自我模型展示领域 / 执行身份范围、可信样本、未知、受阻、首次 / 累计成功、Brier/ECE 及错误置信度。零样本明确未知，单一标签时错误区分指标不可用。历史影响目标选择；反思仍是有来源和适用范围的假设。`SelfModel.restore(version)` 只恢复导出快照，保留原始结果；下一次刷新从最新证据重建。
+
+## 规则的强制边界
+
+技能文档和提示词负责描述意图。插件的 SQLite 事务、不可变字段触发器、租约代次、原子预算和验收接口负责约束自身状态与派发。模型不能通过公开插件工具直接把任务标成成功、降低验收或绕过预算。
+
+插件所在的 Python 进程与执行器仍需可信部署。Hermes 普通 Runs 没有请求级 workspace 沙箱；公开 `pre_tool_call` 的 block 可阻止正常工具派发，但插件缺席、派发基础设施异常及可信插件直接调用 registry 都有边界，不能把它称为 OS 安全隔离。profile、cwd、路径检查、审批提示或 YOLO 设置也不能替代文件 / 进程 / 网络权限。对执行器的隔离与控制文件保护应由宿主 / OS 实施，本版不自动部署这类沙箱。
+
+## 验证
+
+```bash
+python3 -m unittest discover -s tests -v
+# 使用固定宿主官方 PM Python；通用 CI 不安装宿主，相关集成测试显式 skip。
+python scripts/host_smoke.py --hermes-root /path/to/hermes-agent
+HERMES_AGENT_ROOT=/path/to/hermes-agent python -m unittest discover -s tests -p test_host_smoke.py -v
+# 下面会产生实际 DeepSeek 消耗，并在临时 profile 中启动/关闭自己的网关。
+python scripts/live_autonomy_smoke.py --hermes-root /path/to/hermes-agent --report /tmp/zhulong-live.json
+```
+
+GitHub Actions 覆盖 Python 3.11 / 3.12 / 3.14。模拟多领域与故障测试、离线真实宿主 smoke、付费真实模型及工具验证分别报告；长期稳定性只在实际运行后宣称。研究与规格在 [研究正文](docs/research/2026-10-09-cross-disciplinary-autonomy.md)和 [设计规格](docs/superpowers/specs/2026-10-09-autonomous-core-design.md)。
