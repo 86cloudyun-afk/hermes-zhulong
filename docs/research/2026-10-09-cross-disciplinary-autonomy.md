@@ -78,7 +78,7 @@ Voyager 附录的若干验证示例从最终物品或饥饿状态判断完成。
 
 Runs 请求没有任意的单次 token / 步数硬限接口；宿主步数取其实际配置。控制层可限制派发次数、辅助调用和时间，记录真实用量；不把这些指标声称为所有工具循环的严格费用封顶。请求停止不代表在途执行瞬间消失。
 
-实验脚本与 JSON 结果位于工作区 `engineering/source-experiments.py` 和 `engineering/source-experiments.json`。实验验证了这些窄行为，未验证完整无人智能体。
+实验脚本与 JSON 结果位于工作区 `engineering/source-experiments.py` 和 `engineering/source-experiments.json`；[版本、脚本校验值与观察结果](evidence/2026-10-09-source-experiments.json)已随研究稿保存。实验验证了这些窄行为，未验证完整无人智能体。
 
 ## 4. 本版应落地的核心与测试
 

@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-09",
+  "plugin_source_commit": "d869d24625e9f19fed130e77ee7609ff863fbe29",
+  "hermes_source_commit": "73162b00eefde3794bed0afb53d84a19c0eed230",
+  "scope": "temporary source probes; no model calls, HTTP server or product edits",
+  "probe_script_sha256": "e4d4027f983b707b7354dea8d37e60c9df34ead1de690431b61cecf304eea9e9",
+  "results": {
+    "sqlite_version": "3.53.1",
+    "claims": {
+      "retry_row_both_read_before_update": [
+        true,
+        true
+      ],
+      "old_claim_recovery": false
+    },
+    "budget": {
+      "cap_one_both_read_before_update": [
+        true,
+        true
+      ],
+      "usage_after_cap_one_race": [
+        2,
+        1
+      ],
+      "cap_zero_allows_call": true
+    },
+    "runs": {
+      "concurrent_reserve": [
+        {
+          "outcome": "reused",
+          "run_id": "run_1"
+        },
+        {
+          "outcome": "created",
+          "run_id": "run_1"
+        }
+      ],
+      "reopen_replay": "reused",
+      "changed_payload_conflict": "conflict",
+      "expired_terminal_pruned_on_lookup": "missing",
+      "expired_nonterminal_retained": "reused",
+      "crash_after_reserve_replay": "reused",
+      "dead_owner_hydrated_status": "interrupted",
+      "dead_owner_hydrated_error": "The gateway restarted before this run settled.",
+      "dead_owner_replay_stays_terminal": "interrupted"
+    }
+  }
+}
