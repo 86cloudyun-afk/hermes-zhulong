@@ -1,14 +1,14 @@
 """Chat commands for the Zhulong layer.
 
-/zhulong status | tail N | calibrate ... | reflect [run] | probes [run] | help
+/zhulong status | tail N | calibrate ... | reflect [run] | probes [run] | model | autonomy ... | help
 """
 from __future__ import annotations
 
-_USAGE = "用法：/zhulong [status | tail N | calibrate ... | reflect [run] | probes [run] | help]"
+_USAGE = "用法：/zhulong [status | tail N | calibrate ... | reflect [run] | probes [run] | model | autonomy ... | help]"
 
 
 class Commands:
-    def __init__(self, journal, calibration=None, reflector=None, probes=None) -> None:
+    def __init__(self, journal, calibration=None, reflector=None, probes=None, autonomy=None, self_model=None) -> None:
         self.j = journal
         if calibration is None:
             try:
@@ -22,6 +22,8 @@ class Commands:
         self.c = calibration
         self.r = reflector
         self.p = probes
+        self.a = autonomy
+        self.model = self_model
 
     def handle(self, raw: str) -> str:
         try:
@@ -38,6 +40,11 @@ class Commands:
                 return self._reflect(args[1:])
             if sub == "probes":
                 return self._probes(args[1:])
+            if sub == "model":
+                import json
+                return json.dumps(self.model.snapshot(),ensure_ascii=False,indent=2) if self.model else "自我模型不可用。"
+            if sub == "autonomy":
+                return self._autonomy(args[1:])
             if sub in ("help", "-h", "--help"):
                 return self._help()
             return _USAGE
@@ -50,7 +57,7 @@ class Commands:
         m = self.c.metrics()
         brier = f"{m['brier']:.3f}" if m["brier"] is not None else "—"
         lines = [
-            "🐉 烛龙 · 观测层 v0.3",
+            "🐉 烛龙 · 自主核心 v0.4",
             f"今日事件：{s['today']} ｜ 累计：{s['total']}",
             f"校准账：已结 {m['n_resolved']} ｜ 未结 {m['pending']} ｜ 弃答 {m['abstain']} ｜ Brier {brier}",
         ]
@@ -172,18 +179,30 @@ class Commands:
             lines.append(f"  {r['ts'][:16]}  知识 {r['k_correct']}/{r['n_k']} ｜ Brier {brier} ｜ 弃答 {r['u_ok']} ｜ 假前提 {r['f_ok']}")
         return "\n".join(lines)
 
+    def _autonomy(self, args):
+        import json
+        if self.a is None:return '自主核心配置不可用；请检查 profile 的 zhulong/config.json。'
+        action=args[0] if args else 'status'
+        if action=='goals':result={'goals':self.a.ledger.goals(20)}
+        elif action in ('status','tick','pause','resume'):result=getattr(self.a,action)()
+        elif action=='cancel' and len(args)==2:result=self.a.cancel(args[1])
+        else:return '用法：/zhulong autonomy [status|goals|tick|pause|resume|cancel <id>]'
+        return json.dumps(result,ensure_ascii=False,indent=2)
+
     def _help(self) -> str:
         return (
-            "🐉 烛龙（Zhulong）· 观测/校准/反思层 v0.3\n"
+            "🐉 烛龙（Zhulong）· 观测/校准/自主核心 v0.4\n"
             "  /zhulong status               — 概况\n"
             "  /zhulong tail N               — 最近 N 条事件\n"
             "  /zhulong calibrate            — 校准账报告\n"
             "  /zhulong calibrate run        — 立即对账\n"
             "  /zhulong calibrate resolve <id> true|false\n"
             "  /zhulong reflect [run]        — 反思 digest 信息/生成\n"
-            "  /zhulong probes [run]         — 探针历史/立即运行"
+            "  /zhulong probes [run]         — 探针历史/立即运行\n"
+            "  /zhulong model                — 证据型自我模型（只读）\n"
+            "  /zhulong autonomy [status|goals|tick|pause|resume|cancel <id>]"
         )
 
 
-def build_commands(journal, calibration=None, reflector=None, probes=None) -> Commands:
-    return Commands(journal, calibration, reflector, probes)
+def build_commands(journal, calibration=None, reflector=None, probes=None, autonomy=None, self_model=None) -> Commands:
+    return Commands(journal, calibration, reflector, probes, autonomy, self_model)

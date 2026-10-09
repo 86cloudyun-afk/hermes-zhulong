@@ -1,0 +1,65 @@
+{
+  "scheduler": true,
+  "narrative": false,
+  "llm_daily_cap": 40,
+  "autonomy": {
+    "enabled": true,
+    "mission": "从授权工作区的新事实中发现可验证的改进，生成代码修复、研究摘要和个人事务草案，执行并机械验收。",
+    "workspace_roots": ["/absolute/path/to/authorized-work"],
+    "api_url": "http://127.0.0.1:8642",
+    "api_key_env": "API_SERVER_KEY",
+    "api_identity_version": "deployment-profile-credential-v1",
+    "daily_runs": 8,
+    "max_active": 1,
+    "max_candidates": 3,
+    "lease_seconds": 120,
+    "run_deadline_seconds": 600,
+    "max_attempts": 3,
+    "request_timeout_seconds": 15,
+    "tick_interval_seconds": 15,
+    "sources": [
+      {
+        "id": "code-observations",
+        "domain": "code",
+        "path": "/absolute/path/to/authorized-work/code-facts.json",
+        "contracts": {
+          "tests": {
+            "type": "argv",
+            "argv": ["python3", "-m", "unittest", "discover", "-s", "tests"],
+            "cwd": "/absolute/path/to/authorized-work",
+            "timeout_seconds": 15,
+            "safe_retry": false
+          }
+        }
+      },
+      {
+        "id": "research-observations",
+        "domain": "research",
+        "path": "/absolute/path/to/authorized-work/research-facts.json",
+        "contracts": {
+          "research-draft": {
+            "type": "json_equals",
+            "path": "/absolute/path/to/authorized-work/research-draft.json",
+            "field": "scope",
+            "value": "local-evidence-summary",
+            "require_change": true
+          }
+        }
+      },
+      {
+        "id": "personal-observations",
+        "domain": "personal",
+        "path": "/absolute/path/to/authorized-work/personal-facts.json",
+        "input_fields": ["availability", "priorities"],
+        "contracts": {
+          "schedule-draft": {
+            "type": "file_contains",
+            "path": "/absolute/path/to/authorized-work/schedule-draft.md",
+            "text": "本地日程草案",
+            "require_change": true
+          }
+        }
+      }
+    ]
+  }
+}

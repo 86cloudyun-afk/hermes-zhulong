@@ -9,6 +9,9 @@
 from __future__ import annotations
 
 import json
+import uuid
+from contextlib import contextmanager, nullcontext
+from dataclasses import dataclass
 import sqlite3
 import threading
 import time
@@ -45,89 +48,151 @@ def load_config(base: Path) -> dict[str, Any]:
     return cfg
 
 
-class Db:
-    """Shared sqlite handle + lock for S4 tables."""
+@dataclass(frozen=True)
+class TaskLease:
+    task: str
+    owner: str
+    generation: int
+    expires_at: float
 
+
+class Db:
+    """S4 handle; every cross-process decision uses a SQLite write transaction."""
     def __init__(self, path: Path) -> None:
-        self.conn = sqlite3.connect(str(path), check_same_thread=False)
+        self.conn = sqlite3.connect(str(path), check_same_thread=False, timeout=5)
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA busy_timeout=5000")
-        self.lock = threading.Lock()
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS tasks(task TEXT PRIMARY KEY, claimed_at TEXT, attempts INTEGER DEFAULT 0)"
-        )
-        self.conn.execute("CREATE TABLE IF NOT EXISTS llm_daily(day TEXT PRIMARY KEY, calls INTEGER)")
-        self.conn.commit()
+        self.lock = threading.RLock()
+        with self.lock:
+            self.conn.execute("BEGIN IMMEDIATE")
+            try:
+                self.conn.execute("CREATE TABLE IF NOT EXISTS tasks(task TEXT PRIMARY KEY, claimed_at TEXT, attempts INTEGER DEFAULT 0)")
+                columns = {r[1] for r in self.conn.execute("PRAGMA table_info(tasks)")}
+                additions = {"state": "TEXT DEFAULT 'ready'", "owner": "TEXT", "generation": "INTEGER DEFAULT 0", "lease_until": "REAL"}
+                for name, definition in additions.items():
+                    if name not in columns:
+                        self.conn.execute(f"ALTER TABLE tasks ADD COLUMN {name} {definition}")
+                if "state" not in columns:
+                    self.conn.execute("UPDATE tasks SET state='completed' WHERE claimed_at IS NOT NULL")
+                self.conn.execute("CREATE TABLE IF NOT EXISTS llm_daily(day TEXT PRIMARY KEY, calls INTEGER)")
+                self.conn.commit()
+            except BaseException:
+                self.conn.rollback()
+                raise
+
+    def close(self) -> None:
+        with self.lock: self.conn.close()
 
 
 class Tasks:
-    """Cross-process task claims. Unclaim keeps the row so retry attempts persist;
-    after max_attempts failed runs the task is abandoned for good."""
+    def __init__(self, db: Db, max_attempts: int = 5, *, clock=time.time,
+                 lease_seconds: float = 900, heartbeat_seconds: float = 30) -> None:
+        self.db, self.max_attempts, self.clock = db, max_attempts, clock
+        self.owner = uuid.uuid4().hex
+        self.lease_seconds, self.heartbeat_seconds = lease_seconds, heartbeat_seconds
+        self._claims: dict[str, TaskLease] = {}
 
-    def __init__(self, db: Db, max_attempts: int = 5) -> None:
-        self.db = db
-        self.max_attempts = max_attempts
+    def acquire(self, task: str) -> TaskLease | None:
+        now = self.clock()
+        with self.db.lock:
+            self.db.conn.execute("BEGIN IMMEDIATE")
+            try:
+                self.db.conn.execute("INSERT OR IGNORE INTO tasks(task) VALUES(?)", (task,))
+                cursor = self.db.conn.execute(
+                    "UPDATE tasks SET state='running', owner=?, generation=generation+1, lease_until=?, claimed_at=? "
+                    "WHERE task=? AND attempts<? AND (state='ready' OR (state='running' AND lease_until<=?))",
+                    (self.owner, now + self.lease_seconds, iso(utcnow()), task, self.max_attempts, now))
+                row = self.db.conn.execute("SELECT generation FROM tasks WHERE task=?", (task,)).fetchone()
+                self.db.conn.commit()
+                return TaskLease(task, self.owner, row[0], now+self.lease_seconds) if cursor.rowcount else None
+            except BaseException:
+                self.db.conn.rollback()
+                raise
+
+    def _valid(self, lease: TaskLease) -> bool:
+        return self.db.conn.execute(
+            "SELECT 1 FROM tasks WHERE task=? AND owner=? AND generation=? AND state='running' AND lease_until>?",
+            (lease.task, lease.owner, lease.generation, self.clock())).fetchone() is not None
+
+    @contextmanager
+    def fence(self, lease: TaskLease):
+        with self.db.lock:
+            self.db.conn.execute("BEGIN IMMEDIATE")
+            try:
+                if not self._valid(lease): raise RuntimeError("stale_task_lease")
+                yield
+                self.db.conn.commit()
+            except BaseException:
+                self.db.conn.rollback()
+                raise
+
+    def _update(self, lease: TaskLease, assignments: str, values=()) -> bool:
+        with self.db.lock:
+            cursor = self.db.conn.execute(
+                "UPDATE tasks SET " + assignments +
+                " WHERE task=? AND owner=? AND generation=? AND state='running' AND lease_until>?",
+                (*values, lease.task, lease.owner, lease.generation, self.clock()))
+            self.db.conn.commit()
+            return bool(cursor.rowcount)
+
+    def renew(self, lease: TaskLease) -> bool:
+        return self._update(lease, "lease_until=?", (self.clock()+self.lease_seconds,))
+
+    def complete(self, lease: TaskLease) -> bool:
+        return self._update(lease, "state='completed', owner=NULL, lease_until=NULL")
+
+    def fail(self, lease: TaskLease) -> bool:
+        return self._update(lease, "state='ready', owner=NULL, lease_until=NULL, claimed_at=NULL, attempts=attempts+1")
+
+    @contextmanager
+    def heartbeat(self, lease: TaskLease):
+        stop = threading.Event()
+        def pulse():
+            while not stop.wait(self.heartbeat_seconds):
+                try:
+                    if not self.renew(lease): break
+                except Exception: break
+        thread = threading.Thread(target=pulse, daemon=True)
+        thread.start()
+        try: yield lease
+        finally:
+            stop.set()
+            thread.join(timeout=5)
 
     def claim(self, task: str) -> bool:
-        with self.db.lock:
-            row = self.db.conn.execute(
-                "SELECT claimed_at, attempts FROM tasks WHERE task=?", (task,)
-            ).fetchone()
-            if row is None:
-                self.db.conn.execute(
-                    "INSERT INTO tasks(task, claimed_at, attempts) VALUES(?,?,0)",
-                    (task, iso(utcnow())),
-                )
-                self.db.conn.commit()
-                return True
-            claimed_at, attempts = row
-            if claimed_at is None and (attempts or 0) < self.max_attempts:
-                self.db.conn.execute(
-                    "UPDATE tasks SET claimed_at=? WHERE task=?", (iso(utcnow()), task)
-                )
-                self.db.conn.commit()
-                return True
-            return False
+        lease = self.acquire(task)
+        if lease is None: return False
+        self._claims[task] = lease
+        return True
 
     def unclaim(self, task: str) -> None:
-        with self.db.lock:
-            self.db.conn.execute(
-                "UPDATE tasks SET claimed_at=NULL, attempts=COALESCE(attempts,0)+1 WHERE task=?",
-                (task,),
-            )
-            self.db.conn.commit()
+        lease = self._claims.pop(task, None)
+        if lease is not None: self.fail(lease)
 
     def last_with_prefix(self, prefix: str) -> str | None:
         with self.db.lock:
-            row = self.db.conn.execute(
-                "SELECT task FROM tasks WHERE task LIKE ? ORDER BY task DESC LIMIT 1", (prefix + "%",)
-            ).fetchone()
+            row = self.db.conn.execute("SELECT task FROM tasks WHERE task LIKE ? ORDER BY task DESC LIMIT 1", (prefix+"%",)).fetchone()
         return row[0] if row else None
 
 
 class Budget:
     def __init__(self, db: Db, cap: int = 40) -> None:
-        self.db = db
-        self.cap = max(0, int(cap))
+        if type(cap) is not int or cap < 0: raise ValueError("invalid_llm_daily_cap")
+        self.db, self.cap = db, cap
 
     def take(self) -> bool:
         day = utcnow().date().isoformat()
         with self.db.lock:
-            row = self.db.conn.execute("SELECT calls FROM llm_daily WHERE day=?", (day,)).fetchone()
-            calls = row[0] if row else 0
-            if self.cap and calls >= self.cap:
-                return False
-            self.db.conn.execute(
-                "INSERT INTO llm_daily(day, calls) VALUES(?,1) "
-                "ON CONFLICT(day) DO UPDATE SET calls = calls + 1", (day,)
-            )
+            cursor = self.db.conn.execute(
+                "INSERT INTO llm_daily(day,calls) SELECT ?,1 WHERE ?>0 "
+                "ON CONFLICT(day) DO UPDATE SET calls=COALESCE(calls,0)+1 WHERE COALESCE(calls,0)<?",
+                (day, self.cap, self.cap))
             self.db.conn.commit()
-            return True
+            return bool(cursor.rowcount)
 
     def used_today(self) -> tuple[int, int]:
-        day = utcnow().date().isoformat()
         with self.db.lock:
-            row = self.db.conn.execute("SELECT calls FROM llm_daily WHERE day=?", (day,)).fetchone()
+            row = self.db.conn.execute("SELECT calls FROM llm_daily WHERE day=?", (utcnow().date().isoformat(),)).fetchone()
         return (row[0] if row else 0, self.cap)
 
 
@@ -214,7 +279,7 @@ class Reflector:
                         "观察：≤2 条值得注意的模式；提案：≤1 条具体可执行的改进；不确定：≤1 条。总长≤220字。")},
                     {"role": "user", "content": digest[:6000]},
                 ],
-                max_tokens=450, temperature=0.3, purpose="zhulong.digest",
+                max_tokens=450, timeout=45, temperature=0.3, purpose="zhulong.digest",
             )
             text = (getattr(result, "text", "") or "").strip()
             return text or None
@@ -222,16 +287,17 @@ class Reflector:
             return None
 
     # -------------------------------------------------------------------- run
-    def run(self, day: str | None = None, with_narrative: bool = True) -> dict[str, Any]:
+    def run(self, day: str | None = None, with_narrative: bool = True, lease: TaskLease | None = None) -> dict[str, Any]:
         day = day or utcnow().date().isoformat()
         digest = self.digest_text(day)
         narrative = self._narrative(digest) if with_narrative else None
         path = self.dir / f"digest-{day}.md"
         body = digest + (f"\n\n## 自我复盘（模型生成，未经核验）\n{narrative}\n" if narrative else "\n")
-        path.write_text(body, encoding="utf-8")
-        if narrative:
-            with open(self.dir / "PROPOSALS.md", "a", encoding="utf-8") as fh:
-                fh.write(f"\n## {day}\n{narrative}\n")
+        with self.tasks.fence(lease) if lease is not None else nullcontext():
+            path.write_text(body, encoding="utf-8")
+            if narrative:
+                with open(self.dir / "PROPOSALS.md", "a", encoding="utf-8") as fh:
+                    fh.write(f"\n## {day}\n{narrative}\n")
         try:
             self.j.append({"event": "digest", "name": day,
                            "status": "narrative" if narrative else "plain"})
@@ -249,7 +315,7 @@ class Reflector:
 
 # --------------------------------------------------------------------- sched
 def scheduler_loop(reflector: Reflector, calibration, probes, cfg: dict, *,
-                   interval: int = 1800, initial: int = 90) -> None:
+                   interval: int = 1800, initial: int = 90, stop_event=None) -> None:
     """Background loop: autosweep + daily digest + weekly probes (best-effort)."""
     def tick() -> None:
         try:
@@ -257,31 +323,40 @@ def scheduler_loop(reflector: Reflector, calibration, probes, cfg: dict, *,
             calibration.snapshot()
         except Exception:
             pass
+        if stop_event.is_set(): return
         day = (utcnow() - timedelta(days=1)).date().isoformat()
         task = f"digest:{day}"
-        if reflector.tasks.claim(task):
+        lease = reflector.tasks.acquire(task)
+        if lease is not None:
             try:
-                reflector.run(day=day, with_narrative=True)
+                with reflector.tasks.heartbeat(lease):
+                    reflector.run(day=day, with_narrative=True, lease=lease)
+                reflector.tasks.complete(lease)
             except Exception:
-                reflector.tasks.unclaim(task)
+                reflector.tasks.fail(lease)
+        if stop_event.is_set(): return
         try:
             weekday = int(cfg.get("probe_weekday", 0))
             hour = int(cfg.get("probe_hour", 9))
             if probes is not None and weekday >= 0 and utcnow().weekday() == weekday and utcnow().hour >= hour:
                 isoy, isow, _ = utcnow().isocalendar()
                 ptask = f"probe:{isoy}-W{isow:02d}"
-                if reflector.tasks.claim(ptask):
+                please = reflector.tasks.acquire(ptask)
+                if please is not None:
                     try:
-                        probes.run()
+                        with reflector.tasks.heartbeat(please):
+                            probes.run(lease=please, stop_event=stop_event)
+                        reflector.tasks.complete(please)
                     except Exception:
-                        reflector.tasks.unclaim(ptask)
+                        reflector.tasks.fail(please)
         except Exception:
             pass
 
-    time.sleep(initial)
-    while True:
+    stop_event = stop_event or threading.Event()
+    if stop_event.wait(initial): return
+    while not stop_event.is_set():
         try:
             tick()
         except Exception:
             pass
-        time.sleep(interval)
+        if stop_event.wait(interval): break
