@@ -1,0 +1,7 @@
+name: zhulong
+label: 烛龙 Zhulong — Hermes 自我观测层
+kind: standalone
+version: 0.1.0
+author: YG + LCS
+description: "开眼即观测。烛龙把 agent 的行为流（工具/回合/会话/技能/委派/错误/命令）落成可对账的日记。仅观测、零 LLM 调用、失败开放（fail-open）。"
+provides_hooks: [post_tool_call, post_llm_call, on_session_start, on_session_end, on_session_finalize, on_session_reset, on_skill_lifecycle, subagent_stop, api_request_error, agent_loop_stopped, pre_command]
