@@ -11,6 +11,9 @@ except ImportError:
     from autonomy_store import canonical, digest
     from skill_evaluator import strict_json
 
+# Business projection depth stays 32; intent.task_input.data adds two levels.
+INPUT_ENVELOPE_DEPTH = 34
+
 
 def rule_for(source):
     if 'persist_input_fields' not in source: return None
@@ -105,7 +108,7 @@ def bind_goal(c, goal_id, source_id, revision, value):
 def valid_binding(c, goal, request):
     value = goal.get('task_input')
     required = goal['source_id'] in _setting(c, 'input_rules', {})
-    try: intent = strict_json(request['input'])
+    try: intent = strict_json(request['input'],max_depth=INPUT_ENVELOPE_DEPTH)
     except (KeyError, TypeError, ValueError, UnicodeError):
         return value is None and not required
     if value is None:

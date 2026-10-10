@@ -8,11 +8,11 @@ from pathlib import Path
 try:
     from ..autonomy_store import canonical
     from ..skill_evaluator import strict_json
-    from ..task_inputs import _validated
+    from ..task_inputs import _validated, INPUT_ENVELOPE_DEPTH
 except ImportError:
     from autonomy_store import canonical
     from skill_evaluator import strict_json
-    from task_inputs import _validated
+    from task_inputs import _validated, INPUT_ENVELOPE_DEPTH
 
 
 def runner_command(code_hash, source, output, input_hash=None):
@@ -49,7 +49,7 @@ def audit_native_skill(profile, submission, binding, command, program, expected_
     if task_input is not None:
         try:
             _validated(task_input)
-            if canonical(strict_json(submission['request']['input'])['task_input']) != canonical(task_input): raise ValueError('request_binding_mismatch')
+            if canonical(strict_json(submission['request']['input'],max_depth=INPUT_ENVELOPE_DEPTH)['task_input']) != canonical(task_input): raise ValueError('request_binding_mismatch')
             expected['input_hash'] = task_input['input_hash']
         except (KeyError,TypeError,ValueError,UnicodeError): raise RuntimeError('native_input_binding_mismatch') from None
     with read_db(profile/'runs_idempotency.db') as c:
@@ -76,7 +76,8 @@ def audit_native_skill(profile, submission, binding, command, program, expected_
             if len(results) != 1: raise RuntimeError('native_tool_result_mapping_mismatch')
             result = strict_json(results[0]['content'])
             if type(result.get('exit_code')) is not int or result['exit_code'] != 0 or result.get('error') is not None or 'session_id' in result: continue
-            try: output = strict_json(result['output'])
+            # The terminal receipt adds one level around the depth-32 stdout value.
+            try: output = strict_json(result['output'],max_depth=33)
             except (ValueError, KeyError): continue
             if canonical(output) != canonical(expected): continue
             successful.append(call['id'])

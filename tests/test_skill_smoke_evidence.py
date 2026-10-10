@@ -90,6 +90,29 @@ class NativeSkillEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'native_skill_execution_unverified'):
             self.m.audit_native_skill(self.root,self.sub,self.binding,'runner',self.program,{'sum':6},task_input=snapshot)
 
+    def test_valid_depth32_input_survives_native_request_wrapper(self):
+        snapshot=self.frozen_input();value=0
+        for _ in range(31):value=[value]
+        snapshot.update(data={'observations':value},input_hash=digest({'observations':value}),size=len(canonical({'observations':value}).encode()))
+        self.sub['request']={'input':canonical({'task_input':snapshot})}
+        with closing(sqlite3.connect(self.root/'runs_idempotency.db')) as c,c:
+            c.execute('UPDATE run_idempotency SET fingerprint=?',(digest({'body':self.sub['request'],'gateway_session_key':self.sub['session_key']}),))
+        self.calls('runner',{'exit_code':0,'error':None,'output':canonical({'code_hash':self.binding['code_hash'],
+            'input_hash':snapshot['input_hash'],'value':{'sum':6}})})
+        self.assertTrue(self.m.audit_native_skill(self.root,self.sub,self.binding,'runner',self.program,{'sum':6},task_input=snapshot)['frozen_input_execution_verified'])
+
+    def test_valid_depth32_output_survives_receipt_wrapper_but_depth33_does_not(self):
+        for nesting in (32,33):
+            with self.subTest(nesting=nesting):
+                value=0
+                for _ in range(nesting):value=[value]
+                with closing(sqlite3.connect(self.root/'state.db')) as c,c:c.execute('DELETE FROM messages')
+                self.calls('runner',{'exit_code':0,'error':None,'output':canonical({'code_hash':self.binding['code_hash'],'value':value})})
+                if nesting==32:
+                    self.assertTrue(self.m.audit_native_skill(self.root,self.sub,self.binding,'runner',self.program,value)['execution_result_successful'])
+                else:
+                    with self.assertRaises(RuntimeError):self.m.audit_native_skill(self.root,self.sub,self.binding,'runner',self.program,value)
+
     def test_runner_executes_the_same_verified_bytes_and_reads_files_once(self):
         code=b'import json,sys\nprint(json.dumps({"sum":sum(json.load(sys.stdin)["observations"])}))\n'
         payload=canonical({'observations':[2,4]}).encode(); reads=[]; launches=[]

@@ -4,11 +4,11 @@ from __future__ import annotations
 try:
     from .autonomy_store import canonical, digest
     from .skill_evaluator import strict_json
-    from .task_inputs import _validated
+    from .task_inputs import _validated, INPUT_ENVELOPE_DEPTH
 except ImportError:
     from autonomy_store import canonical, digest
     from skill_evaluator import strict_json
-    from task_inputs import _validated
+    from task_inputs import _validated, INPUT_ENVELOPE_DEPTH
 
 
 def field(value, path):
@@ -22,7 +22,7 @@ def evaluation_task(task, goal, submission):
     if not task.get('replay_origin'): return task
     try:
         snapshot = goal['task_input']; _validated(snapshot)
-        intent = strict_json(submission['request']['input'])
+        intent = strict_json(submission['request']['input'],max_depth=INPUT_ENVELOPE_DEPTH)
         contract = goal['contract']
         if (canonical(intent['task_input']) != canonical(snapshot)
             or submission['goal_id'] != goal['id'] or snapshot['source_id'] != task['source_id']

@@ -58,6 +58,6 @@
 
 **Files:** research/deployment/review/evidence docs，checkout外云setup。
 
-- [ ] 更新研究/操作文档，fresh最有能力 reviewer 一次整分支审查，逐条裁定；Critical/Important一次RED→GREEN修复及全suite，不重新审查。
+- [x] 更新研究/操作文档，fresh最有能力 reviewer 一次整分支审查，逐条裁定；Critical/Important一次RED→GREEN修复及全suite，不重新审查。
 - [ ] PR附加到任务、精确HEAD CI与审查记录，通过后squash合并并同步main，确认tree相同。
 - [ ] managed installer/offline native烟测及19+2安装副本校验；完整workspace发现后保存精确main、install/start并读回。环境发布仍由产品界面执行，交付记录在PR与环境草稿，不再改写main。

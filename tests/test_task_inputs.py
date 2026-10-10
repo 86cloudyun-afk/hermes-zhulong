@@ -88,6 +88,20 @@ class TaskInputTests(unittest.TestCase):
                 self.fact.write_text(text)
                 self.assertFalse(observe_sources(self.policy)[0]['available'])
 
+    def test_maximum_valid_input_depth_dispatches_without_relaxing_source_limit(self):
+        from autonomy import Controller
+        for nesting in (30,31,32):
+            with self.subTest(nesting=nesting):
+                value=0
+                for _ in range(nesting):value=[value]
+                self.fact.write_text(canonical({'observations':value}))
+                ledger=Ledger(self.root/('depth-'+str(nesting)+'.db'));runs=Runs()
+                controller=Controller(ledger,self.policy,Planner(),runs,Verifier(self.policy),
+                    SelfModel(ledger,self.root/('model-'+str(nesting))),clock=lambda:1000)
+                self.assertEqual(observe_sources(self.policy)[0]['available'],nesting<32)
+                controller.tick();self.assertEqual(runs.calls,1 if nesting<32 else 0)
+                self.assertEqual(len(ledger.goals()),1 if nesting<32 else 0)
+
     def test_revision_tracks_input_and_persistence_rule(self):
         initial = self.obs['revision']
         self.fact.write_text('{"observations":[1,3]}')

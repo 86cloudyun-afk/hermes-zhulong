@@ -150,6 +150,20 @@ class ReplayTests(unittest.TestCase):
         changed=copy.deepcopy(self.policy['sources']);changed[0]['input_fields']=['other'];changed[0]['persist_input_fields']=['other']
         self.assertNotEqual(self.tasks[0]['task_digest'],validate_skills([self.raw_task],changed)[0]['task_digest'])
 
+    def test_replay_accepts_maximum_valid_snapshot_depth_in_transport(self):
+        from skill_replay import evaluation_task
+        value=0
+        for _ in range(31):value=[value]
+        self.fact.write_text(canonical({'observations':value}));obs=observe_sources(self.policy)[0]
+        goal=self.ledger.create_goal({'source_id':'code-facts','contract_id':'result','domain':'code',
+            'objective':'depth boundary','reason':'missing'},obs['revision'],self.policy['sources'][0]['contracts']['result'],
+            {'verdict':False},1000,600,task_input=obs['task_input'])
+        sub={'id':'origin','goal_id':goal['id'],'request':{'input':canonical({'task_input':goal['task_input']})}}
+        evaluated=evaluation_task(self.tasks[0],goal,sub)
+        self.assertEqual(evaluated['_evaluation_cases'][-1]['input'],{'observations':value})
+        report=self.evaluate({'task':evaluated},lambda data:{'result':{'sum':6 if data['observations']==value else sum(data['observations'])}})
+        self.assertIs(report['verdict'],True);self.assertEqual(report['passed'],4)
+
     def test_learning_prompt_excludes_original_data_and_recovers_without_regeneration(self):
         self.fact.write_text('{"observations":[-47,53]}'); self.attempt(); requests=[]; now=[1002]; active=[True]
         llm=SimpleNamespace(complete_structured=lambda **kw:requests.append(kw) or SimpleNamespace(parsed={'code':CODE}))

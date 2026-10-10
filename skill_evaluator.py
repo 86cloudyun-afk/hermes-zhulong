@@ -24,16 +24,16 @@ OUTPUT_LIMIT = 16384
 IMAGE_PATTERN = r'[a-zA-Z0-9./_:-]+@sha256:[0-9a-f]{64}'
 
 
-def _shape(value, depth=0):
-    if depth > 32: raise ValueError('json_depth_limit')
+def _shape(value, depth=0, max_depth=32):
+    if depth > max_depth: raise ValueError('json_depth_limit')
     if isinstance(value, dict):
         if any(not isinstance(key, str) for key in value): raise ValueError('invalid_json_key')
-        for item in value.values(): _shape(item, depth+1)
+        for item in value.values(): _shape(item, depth+1, max_depth)
     elif isinstance(value, list):
-        for item in value: _shape(item, depth+1)
+        for item in value: _shape(item, depth+1, max_depth)
 
 
-def strict_json(raw):
+def strict_json(raw, *, max_depth=32):
     def pairs(items):
         result = {}
         for key, value in items:
@@ -43,7 +43,7 @@ def strict_json(raw):
     def invalid(value): raise ValueError('nonfinite_json')
     try: value = json.loads(raw, object_pairs_hook=pairs, parse_constant=invalid)
     except RecursionError: raise ValueError('json_depth_limit') from None
-    _shape(value)
+    _shape(value, max_depth=max_depth)
     # Numeric exponent overflow (1e999) also produces non-finite floats.
     json.dumps(value, allow_nan=False)
     return value
