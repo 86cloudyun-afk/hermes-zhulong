@@ -25,6 +25,40 @@ def prepare_in_process(path, start, output, goal_id=None, crash=False):
 
 
 class LedgerTests(unittest.TestCase):
+    def test_crash_only_source_leases_do_not_exhaust_plans(self):
+        for n in range(7):
+            self.assertTrue(self.ledger.claim_source('s','r',str(n),1000+n*3,2,3))
+        self.assertEqual(self.ledger.source_state('s')['outcome']['attempts'],0)
+        self.assertTrue(self.ledger.complete_source('s','r','6',False,1019))
+        for n in (1,2):
+            now=1100+n*100
+            self.assertTrue(self.ledger.claim_source('s','r',str(n),now,20,3))
+            self.assertTrue(self.ledger.complete_source('s','r',str(n),False,now+1))
+        self.assertFalse(self.ledger.claim_source('s','r','last',1500,20,3))
+
+    def test_expired_legacy_source_claim_restores_only_inflight_attempt(self):
+        self.ledger.mark_source('s','r',{'status':'planning','owner':'dead','until':1002,'attempts':3},1000)
+        self.assertFalse(self.ledger.claim_source('s','r','new',1001,20,3))
+        self.assertTrue(self.ledger.claim_source('s','r','new',1003,20,3))
+        self.assertEqual(self.ledger.source_state('s')['outcome']['attempts'],2)
+        self.ledger.complete_source('s','r','new',False,1004)
+        self.assertFalse(self.ledger.claim_source('s','r','again',1100,20,3))
+
+    def test_verified_truth_survives_tracking_failure_and_settlement_is_monotonic(self):
+        goal=make_goal(self.ledger)
+        lease=self.ledger.claim('a',1000,20)
+        submission=self.prepare(lease)['submission']
+        self.ledger.finish(lease,evidence(goal),'succeeded',False,1001,expected_submission_id=submission['id'])
+        lease=self.ledger.claim('b',1002,20)
+        self.ledger.finish(lease,evidence(goal,None),'unknown_result',False,1003,expected_submission_id=submission['id'])
+        self.assertEqual(self.ledger.get_goal(goal['id'])['state'],'succeeded')
+        lease=self.ledger.claim('c',1004,20)
+        self.ledger.transition(lease,'succeeded','executor quiet',1005,True,expected_submission_id=submission['id'])
+        self.ledger.finish(lease,evidence(goal,None),'unknown_result',False,1006,expected_submission_id=submission['id'])
+        self.assertEqual(self.ledger.get_goal(goal['id'])['state'],'succeeded')
+        self.assertTrue(self.ledger.get_goal(goal['id'])['submission']['settled'])
+        self.assertEqual(sum(e['outcome']=='succeeded' for e in self.ledger.model_records()['evidence']),1)
+
     def setUp(self):
         self.assertIsNotNone(importlib.util.find_spec('autonomy_store'), 'durable ledger module is missing')
         self.module = importlib.import_module('autonomy_store')
