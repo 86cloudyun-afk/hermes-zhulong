@@ -7,6 +7,7 @@ import os
 import re
 import secrets
 import shutil
+import stat
 import subprocess
 from pathlib import Path
 
@@ -23,6 +24,9 @@ CACHE_PATHS=('cache/documents','cache/images','cache/audio','cache/videos','cach
 OTHER_PLATFORMS=('local','telegram','discord','whatsapp','whatsapp_cloud','slack','signal',
     'mattermost','matrix','email','sms','dingtalk','webhook','msgraph_webhook','feishu','wecom',
     'wecom_callback','weixin','bluebubbles','qqbot','yuanbao','relay')
+TMPFS_POLICY={'/tmp':'rw,nosuid,size=512m','/var/tmp':'rw,noexec,nosuid,size=256m',
+    '/run':'rw,noexec,nosuid,size=64m','/home':'rw,exec,size=1g',
+    '/root':'rw,exec,size=1g','/workspace':'rw,exec,size=10g'}
 
 
 def overlaps(a,b):
@@ -48,8 +52,27 @@ def validate_manifest(m):
     return m
 
 
+def source_topology(m,sources,base=None):
+    work=Path(m['work'])
+    if work.is_symlink() or str(work.resolve())!=str(work) or not work.is_dir():raise ValueError('work_topology_changed')
+    metadata=work.stat();topology={'work':[metadata.st_dev,metadata.st_ino],'sources':{}}
+    for source in sources:
+        value=source.get('path') if isinstance(source,dict) else None
+        if not isinstance(value,str) or not value or '..' in Path(value).parts:raise ValueError('invalid_source_path')
+        path=Path(value)
+        if not path.is_absolute():path=Path(base or '.')/path
+        if path.parent!=work:raise ValueError('source_must_be_direct_child')
+        try:metadata=path.lstat()
+        except OSError:raise ValueError('source_file_required') from None
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink!=1 or path.resolve()!=path:raise ValueError('source_topology_forbidden')
+        topology['sources'][str(path)]=[metadata.st_dev,metadata.st_ino]
+    return topology
+
+
 def validate_worker_policy(m,policy):
     if policy['workspace_roots']!=[m['work']]:raise ValueError('one_authorized_work_root_required')
+    topology=source_topology(m,policy['sources'])
+    if m.get('source_topology') is not None and topology!=m['source_topology']:raise ValueError('source_topology_changed')
     sources={s['path'] for s in policy['sources']}
     for source in policy['sources']:
         path=Path(source['path'])
@@ -106,13 +129,17 @@ def child_environment(m,boot_id,inherited=None,*,api_key):
 def inspect_worker(m,policy,worker):
     config,host=worker['Config'],worker['HostConfig']
     required={'ReadonlyRootfs':True,'NetworkMode':'none','Privileged':False,'PidMode':'',
-        'IpcMode':'private','Memory':536870912,'NanoCpus':1000000000,'PidsLimit':128}
+        'IpcMode':'private','Memory':536870912,'MemorySwap':536870912,'ShmSize':67108864,
+        'NanoCpus':1000000000,'PidsLimit':128}
     if any(host.get(k)!=v for k,v in required.items()):raise ValueError('worker_isolation_drift')
     if config.get('User')!=f'{os.getuid()}:{os.getgid()}' or os.getuid()==0:raise ValueError('nonroot_worker_required')
     if config.get('Labels',{}).get('zhulong.runtime')!=m['deployment_id']:raise ValueError('worker_ownership_missing')
     if 'no-new-privileges' not in host.get('SecurityOpt',[]) or 'ALL' not in host.get('CapDrop',[]):raise ValueError('worker_privilege_drift')
     if {s.removeprefix('CAP_') for s in host.get('CapAdd') or []}-{'DAC_OVERRIDE','CHOWN','FOWNER'}:raise ValueError('worker_capability_drift')
-    if not host.get('Tmpfs'):raise ValueError('worker_tmpfs_missing')
+    tmpfs=host.get('Tmpfs')
+    if (not isinstance(tmpfs,dict) or set(tmpfs)!=set(TMPFS_POLICY)
+        or any(not isinstance(tmpfs[p],str) or set(tmpfs[p].split(','))!=set(options.split(','))
+            for p,options in TMPFS_POLICY.items())):raise ValueError('worker_tmpfs_drift')
     for item in config.get('Env',[]):
         name=item.split('=',1)[0]
         if name!='GPG_KEY' and re.search(r'KEY|TOKEN|SECRET|PASSWORD|PROXY|DOCKER_HOST',name):raise ValueError('worker_secret_environment')
@@ -126,10 +153,20 @@ def inspect_worker(m,policy,worker):
     if skills.is_dir() and not any(skills.iterdir()):allowed.add((str(skills),'/root/.hermes/skills',False))
     if not expected.issubset(actual) or extras-allowed or any(v['Type'] not in {'bind','tmpfs'} for v in worker.get('Mounts',[])):raise ValueError('worker_mount_drift')
     return {'network':'none','uid':os.getuid(),'readonly_root':True,'cpu':1,'memory_bytes':536870912,
-        'pids':128,'bind_mounts':len(actual),'bind_disk_quota':'not_enforced'}
+        'pids':128,'memory_plus_swap_bytes':536870912,'shm_bytes':67108864,'tmpfs_checked':True,
+        'bind_mounts':len(actual),'bind_disk_quota':'not_enforced'}
 
 
 def file_hash(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def load_control_manifest(path):
+    """Observation and stop must work when execution inputs are unavailable."""
+    path=Path(path);m=json.loads(path.read_text());root=m.get('root')
+    if (m.get('version')!=1 or not isinstance(root,str) or not Path(root).is_absolute()
+        or Path(root).resolve()!=Path(root) or Path(root)!=path.resolve().parent
+        or not re.fullmatch(r'[a-zA-Z0-9_-]{1,64}',m.get('deployment_id',''))):raise ValueError('invalid_control_manifest')
+    return m
 
 
 def load_manifest(path,verify=True):
@@ -159,6 +196,7 @@ def create_deployment(root,work,host,image,command,autonomy,*,port=8642,max_laun
     raw=dict(autonomy)
     raw.update(api_url=f'http://127.0.0.1:{port}',api_key_env='API_SERVER_KEY',api_profile='default',
         api_identity_version=m['deployment_id']+'-v1',workspace_roots=[str(work)],enabled=True)
+    m['source_topology']=source_topology(m,raw.get('sources',[]),root/'profile/zhulong')
     policy=validate_worker_policy(m,validate_config(raw,root/'profile/zhulong'))
     if any(not Path(s['path']).is_file() for s in policy['sources']):raise ValueError('source_file_required')
     root.mkdir(mode=0o700,parents=True,exist_ok=False)

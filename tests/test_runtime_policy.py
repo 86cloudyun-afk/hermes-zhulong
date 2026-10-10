@@ -13,6 +13,7 @@ class PolicyTests(unittest.TestCase):
         self.m=importlib.import_module('runtime_policy')
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.base=Path(self.temp.name);self.work=self.base/'work';self.work.mkdir()
+        (self.work/'facts.json').write_text('{}')
         self.manifest={'version':1,'deployment_id':'test-runtime','root':str(self.base/'service'),
             'work':str(self.work),'host':str(self.base/'host'),'host_revision':'a'*40,
             'plugin_root':str(self.base/'plugin'),'image':'python@sha256:'+'b'*64,
@@ -55,14 +56,36 @@ class PolicyTests(unittest.TestCase):
         self.assertFalse(config['platforms'].get('telegram',{}).get('enabled',True))
         self.assertNotIn('private-key',json.dumps(config))
 
+    def test_sources_require_direct_regular_single_link_topology(self):
+        nested=self.work/'inputs';nested.mkdir();(nested/'facts.json').write_text('{}')
+        alias=self.work/'alias.json';alias.symlink_to(self.work/'facts.json')
+        pipe=self.work/'pipe';os.mkfifo(pipe)
+        for path in (nested/'facts.json',alias,pipe,self.work):
+            wrong=copy.deepcopy(self.policy);wrong['sources'][0]['path']=str(path)
+            with self.subTest(path=path),self.assertRaises(ValueError):
+                self.m.validate_worker_policy(self.manifest,wrong)
+        alias.unlink();os.link(self.work/'facts.json',alias)
+        with self.assertRaises(ValueError):self.m.validate_worker_policy(self.manifest,self.policy)
+
+    def test_deployment_rejects_symlink_before_core_normalization(self):
+        alias=self.work/'alias.json';alias.symlink_to(self.work/'facts.json')
+        raw={'mission':'Report facts','sources':[{'id':'facts','domain':'code','path':str(alias),
+            'contracts':self.policy['sources'][0]['contracts']}]}
+        with self.assertRaises(ValueError):
+            self.m.create_deployment(self.manifest['root'],self.work,self.manifest['host'],
+                self.manifest['image'],self.manifest['command'],raw)
+
     def test_actual_worker_inspection_denies_mount_network_user_and_limits_drift(self):
         expected={'Config':{'User':f'{os.getuid()}:{os.getgid()}','Env':['HOME=/home'],
             'Labels':{'zhulong.runtime':'test-runtime'}},
             'HostConfig':{'ReadonlyRootfs':True,'NetworkMode':'none','Privileged':False,
                 'PidMode':'','IpcMode':'private','Memory':536870912,'NanoCpus':1000000000,'PidsLimit':128,
+                'MemorySwap':536870912,'ShmSize':67108864,
                 'SecurityOpt':['no-new-privileges'],'CapDrop':['ALL'],
                 'CapAdd':['CAP_CHOWN','CAP_DAC_OVERRIDE','CAP_FOWNER'],
-                'Tmpfs':{'/tmp':'rw,nosuid,size=512m'}},
+                'Tmpfs':{'/tmp':'rw,nosuid,size=512m','/var/tmp':'rw,noexec,nosuid,size=256m',
+                    '/run':'rw,noexec,nosuid,size=64m','/home':'rw,exec,size=1g',
+                    '/root':'rw,exec,size=1g','/workspace':'rw,exec,size=10g'}},
             'Mounts':[{'Type':'bind','Source':str(self.work),'Destination':str(self.work),'RW':True},
                 {'Type':'bind','Source':str(self.work/'facts.json'),'Destination':str(self.work/'facts.json'),'RW':False}]}
         self.m.inspect_worker(self.manifest,self.policy,expected)
@@ -70,7 +93,12 @@ class PolicyTests(unittest.TestCase):
             ('user',lambda x:x['Config'].update(User='0')),
             ('mount',lambda x:x['Mounts'].append({'Type':'bind','Source':'/var/run/docker.sock','Destination':'/sock','RW':False})),
             ('memory',lambda x:x['HostConfig'].update(Memory=0)),
-            ('secret',lambda x:x['Config']['Env'].append('DEEPSEEK_API_KEY=private'))]
+            ('secret',lambda x:x['Config']['Env'].append('DEEPSEEK_API_KEY=private')),
+            ('swap',lambda x:x['HostConfig'].update(MemorySwap=-1)),
+            ('shm',lambda x:x['HostConfig'].update(ShmSize=0)),
+            ('unbounded_tmpfs',lambda x:x['HostConfig']['Tmpfs'].update({'/home':'rw,exec'})),
+            ('extra_tmpfs',lambda x:x['HostConfig']['Tmpfs'].update({'/extra':'rw,size=1g'})),
+            ('missing_tmpfs',lambda x:x['HostConfig']['Tmpfs'].pop('/run'))]
         for name,change in cases:
             wrong=copy.deepcopy(expected);change(wrong)
             with self.subTest(name=name),self.assertRaises(ValueError):self.m.inspect_worker(self.manifest,self.policy,wrong)

@@ -38,7 +38,10 @@ def main():
     parser.add_argument('--report',required=True,type=Path)
     args=parser.parse_args()
     if args.paid and not os.environ.get('DEEPSEEK_API_KEY'):raise RuntimeError('provider_binding_missing')
-    report={'scenario':'finite-native-supervised-runtime','paid':args.paid,'provider_validation':'not_called'}
+    revision=subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
+    dirty=subprocess.run(['git','-C',str(ROOT),'diff','--quiet'],check=False).returncode!=0
+    report={'scenario':'finite-native-supervised-runtime','paid':args.paid,'provider_validation':'not_called',
+        'code_revision':revision,'code_dirty':dirty}
     with tempfile.TemporaryDirectory(prefix='zhulong-runtime-smoke-') as tmp:
         base=Path(tmp);work=base/'work';work.mkdir()
         (work/'facts.json').write_text(json.dumps({'component':'isolated-runtime-demo','report_status':'missing','observations':[1,2,3]}))
@@ -51,6 +54,11 @@ def main():
         manifest=create_deployment(base/'service',work,args.hermes_root,args.image,
             command+['gateway','run','--no-supervise'],policy,port=port)
         deployment=manifest.parent;ledger=Ledger(deployment/'profile/zhulong/autonomy.db');ledger.set_pause(True)
+        checked=subprocess.run([sys.executable,str(ROOT/'scripts/runtime.py'),'check','--deployment',str(manifest)],
+            capture_output=True,text=True,timeout=150)
+        if checked.returncode or json.loads(checked.stdout).get('ok') is not True:raise RuntimeError('standalone_native_check_failed')
+        if read_json(deployment/'service/launches.json').get('used',0)!=0:raise RuntimeError('check_reserved_gateway_launch')
+        report['standalone_check_passed']=True
         process=subprocess.Popen([sys.executable,str(ROOT/'scripts/runtime.py'),'run','--deployment',str(manifest)],
             stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True)
         success=False
@@ -93,7 +101,7 @@ def main():
                 process.kill();process.communicate(timeout=5);raise RuntimeError('supervisor_stop_timeout')
             report['shutdown']=read_json(deployment/'service/status.json')
             # No PIDs/boot IDs or paths needed in shareable evidence.
-            for key in ('supervisor_pid','child_pid','boot_id','updated'):report['shutdown'].pop(key,None)
+            for key in ('supervisor_pid','child_pid','supervisor_identity','child_identity','boot_id','updated'):report['shutdown'].pop(key,None)
             report['supervisor_exit_code']=process.returncode
             if success and (stop.returncode!=0 or process.returncode!=0 or report['shutdown'].get('state')!='stopped'):raise RuntimeError('native_shutdown_failed')
     args.report.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')

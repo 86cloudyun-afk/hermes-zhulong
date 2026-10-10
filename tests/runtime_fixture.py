@@ -3,6 +3,7 @@ import json
 import os
 import signal
 import sys
+import subprocess
 import threading
 import time
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
@@ -17,6 +18,12 @@ def gateway(mode):
     service=Path(os.environ['ZHULONG_SERVICE_DIR']);root=service.parent
     counts=read_json(root/'fixture-counts.json');counts['starts']=counts.get('starts',0)+1
     atomic_json(root/'fixture-counts.json',counts)
+    if mode in {'descendant-crash','descendant-normal'}:
+        marker=root/'descendant.json'
+        code="import os,signal,time,json; from pathlib import Path; signal.signal(signal.SIGINT,signal.SIG_IGN); signal.signal(signal.SIGTERM,signal.SIG_IGN); Path(%r).write_text(json.dumps({'pid':os.getpid(),'group':os.getpgrp()})); time.sleep(30)"%str(marker)
+        subprocess.Popen([sys.executable,'-c',code],close_fds=False)
+        while not marker.exists():time.sleep(0.01)
+        if mode=='descendant-crash':os._exit(23)
     if mode=='crash' or (mode=='fail-first' and counts['starts']<=2):os._exit(23)
     boot=os.environ['ZHULONG_BOOT_ID'];stop=threading.Event();key=os.environ['API_SERVER_KEY']
     class Handler(BaseHTTPRequestHandler):
@@ -76,7 +83,25 @@ if __name__=='__main__':
         from runtime_policy import load_manifest
         from runtime_supervisor import Supervisor
         m,p=load_manifest(sys.argv[2],verify=False)
-        sys.exit(Supervisor(m,p,preflight=lambda:True,cleanup_workers=lambda:0).run())
+        root=Path(m['root']);stage=sys.argv[3] if len(sys.argv)>3 else None
+        def barrier(name):
+            atomic_json(root/'fixture-barrier.json',{'stage':name})
+            while not (root/'fixture-release').exists():time.sleep(0.01)
+        def preflight():
+            if stage=='preflight-barrier':barrier('checking')
+            return True
+        def cleanup_workers():
+            counts=read_json(root/'cleanup-counts.json');calls=counts.get('calls',0)+1
+            atomic_json(root/'cleanup-counts.json',{'calls':calls})
+            if stage=='cleanup-barrier' and calls==2:barrier('failure_cleanup')
+            return 0
+        class FixtureSupervisor(Supervisor):
+            def reserve_launch(self):
+                value=super().reserve_launch()
+                if stage=='before-start-barrier':barrier('before_start')
+                return value
+        sys.exit(FixtureSupervisor(m,p,preflight=None if stage=='native-preflight' else preflight,
+            cleanup_workers=cleanup_workers).run())
     elif sys.argv[1]=='runs-server':runs_server(sys.argv[2],sys.argv[3])
     elif sys.argv[1]=='source-crash':
         from autonomy_store import Ledger

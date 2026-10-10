@@ -66,6 +66,17 @@ for name,path in [('root_readonly','/etc/zhulong-write-probe'),('facts_readonly'
     try:
         fd=os.open(path,os.O_WRONLY|os.O_CREAT,0o600);os.close(fd);checks[name]=False
     except OSError:checks[name]=True
+alias=Path(WORK)/(ARTIFACT+'-source-alias')
+try:
+    os.rename(FACTS,alias)
+except OSError:checks['facts_rename_denied']=True
+else:
+    checks['facts_rename_denied']=False;os.rename(alias,FACTS)
+try:
+    os.link(FACTS,alias)
+except OSError:checks['facts_hardlink_denied']=True
+else:
+    checks['facts_hardlink_denied']=False;alias.unlink()
 try:
     socket.create_connection(('127.0.0.1',PORT),timeout=0.2).close();checks['control_api_unreachable']=False
 except OSError:checks['control_api_unreachable']=True
@@ -86,7 +97,8 @@ print(json.dumps(checks,sort_keys=True))
             if artifact.read_text()!='native-docker-verified':raise ValueError('worker_bind_write_missing')
         finally:artifact.unlink(missing_ok=True)
         return {'ok':True,'native_revision':m['host_revision'],'model_tools':names,
-            'docker':boundary,'denied_action_checks':checks,'external_llm_calls':0}
+            'source_topology':'direct_regular_single_link','docker':boundary,
+            'denied_action_checks':checks,'external_llm_calls':0}
     finally:
         if environment is not None:environment.cleanup(force_remove=True)
         agent.close()

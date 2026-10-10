@@ -37,7 +37,10 @@ plugins, the Docker daemon or another host process with the same user privileges
    profile and an empty skills directory. They contain this runtime's data.
    Bind only
    authorized work at identical absolute paths; source facts get read-only
-   overlays. Never mount profile controls, plugin code or the Docker socket.
+   overlays. Source facts must be direct regular single-link children of work,
+   without symlinks or mutable intermediate parents. Preserve work/source inode
+   topology and check it before launch and during supervision. Never mount
+   profile controls, plugin code or the Docker socket.
 4. Enforce CPU, memory, PID and tmpfs limits in actual Docker configuration.
    Inspect mounts/user/network/security/resource settings and execute denied
    control-file/socket/network checks before permitting new work. Docker vfs
@@ -73,6 +76,13 @@ Do not mark uncertain executions settled to obtain a clean exit. Gateway exit
 does not imply plugin unload; explicit control and thread joining are required.
 Outer process-manager cgroup cleanup is required for supervisor/host failure;
 the lock alone deliberately prevents duplicates but cannot reap an orphan.
+Operator stop intent uses a separate deployment-scoped request that survives
+internal shutdown/restart transitions; explicit later run begins a new invocation
+without refunding launch budget. Both checking and running own probe/gateway
+process groups and clean up even when their direct leaders have exited.
+Operational status/stop use only control-plane paths, remaining usable despite
+work/config failure. Status derives current state from PID start identity and
+fresh matching health, labeling historical and orphan records.
 
 ## Durable recovery refinements
 
