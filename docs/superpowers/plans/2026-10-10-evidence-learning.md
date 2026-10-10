@@ -31,27 +31,27 @@
 **Files:** create `experience_store.py`, `tests/test_experience_store.py`.
 **Interfaces:** `ExperienceStore(ledger)`; `sync(now)`, `claim(now)`, `begin(job, now)`, `complete(job, guidance, now)`, `defer(job, now, reason)`, `reject(job, now)`, `retrieve(goal, identity)`, `evaluate(now)`, `summary()`.
 
-- [ ] Write tests for verified-failure-only learning, scoped immutable guidance, lease takeover, duplicate completion, two independent first-pass successes, original retry exclusion, false result retirement and unknown exclusion.
-- [ ] Run `zhulong-python -m unittest discover -s tests -p test_experience_store.py -v`; expect failures because module is absent.
-- [ ] Implement transactional jobs/strategies/evaluations with IDs tied to evidence, frozen guidance and machine-constructed scope. Inspect frozen submission input for use provenance.
-- [ ] Run the same command; expect all pass. Commit `feat: add evidence-grounded strategy ledger`.
+- [x] Write tests for verified-failure-only learning, scoped immutable guidance, lease takeover, duplicate completion, two independent first-pass successes, original retry exclusion, false result retirement and unknown exclusion.
+- [x] Run `zhulong-python -m unittest discover -s tests -p test_experience_store.py -v`; expect failures because module is absent.
+- [x] Implement transactional jobs/strategies/evaluations with IDs tied to evidence, frozen guidance and machine-constructed scope. Inspect frozen submission input for use provenance.
+- [x] Run the same command; expect all pass. Commit `feat: add evidence-grounded strategy ledger`.
 
 ### Task 2: Autonomous generation and actual execution reuse
 
 **Files:** create `experience.py`, `tests/test_experience.py`; modify `autonomy.py`, `self_model.py`, `__init__.py`, `commands.py`, `tests/test_autonomy.py`.
 **Interfaces:** `ExperienceLearner(store, llm, budget).tick(now, admissible)`; Controller optional `experience` parameter; SelfModel optional `experience` parameter.
 
-- [ ] Write budget/stop/schema tests and Controller behavior tests: failure→lesson→future request; baseline without experience; safe retry after failure uses lesson; lost reply freezes guidance; scope changes omit it; public read-only state and model export.
-- [ ] Run targeted unittest discovery; expect assertion failures for missing learning/reuse.
-- [ ] Wire one generation/tick after recovery, before synthesis, with lifecycle checks and fail-open recovery. Include scoped contexts/commitments in planning; freeze retrieved hypotheses in requests, expose `autonomy experience` read-only.
-- [ ] Run learning and autonomy tests; expect all pass. Commit `feat: learn and reuse scoped strategies autonomously`.
+- [x] Write budget/stop/schema tests and Controller behavior tests: failure→lesson→future request; baseline without experience; safe retry after failure uses lesson; lost reply freezes guidance; scope changes omit it; public read-only state and model export.
+- [x] Run targeted unittest discovery; expect assertion failures for missing learning/reuse.
+- [x] Wire one generation/tick after recovery, before synthesis, with lifecycle checks and fail-open recovery. Include scoped contexts/commitments in planning; freeze retrieved hypotheses in requests, expose `autonomy experience` read-only.
+- [x] Run learning and autonomy tests; expect all pass. Commit `feat: learn and reuse scoped strategies autonomously`.
 
 ### Task 3: Native integration, documentation and review
 
 **Files:** modify `plugin.yaml`, `scripts/install.sh`, `runtime_policy.py`, README/SPEC; add research/validation docs and finite native learning smoke.
 
-- [ ] Verify runtime deployment copies/protects both modules using native smoke and existing policy tests. Update version to 0.6.0 and installer file list.
-- [ ] Run full `HERMES_AGENT_ROOT=/workspace/.cloud-onboarding/dependencies/hermes-agent zhulong-python -m unittest discover -s tests -v`; expect zero failures/skips in native environment.
-- [ ] Execute bounded DeepSeek PluginLlm learning smoke, record exact code revision, one charged auxiliary generation and trusted evidence attribution.
-- [ ] Dispatch fresh whole-branch review; fix Critical/Important with RED→GREEN in one pass, record all rulings/minors.
-- [ ] Create PR, verify Python matrix CI and review; merge per existing user instruction, refresh cloud setup with exact merged HEAD and report remaining roadmap. No new permission gate.
+- [x] Verify runtime deployment copies/protects both modules using native smoke and existing policy tests. Update version to 0.6.0 and installer file list.
+- [x] Run full `HERMES_AGENT_ROOT=/workspace/.cloud-onboarding/dependencies/hermes-agent zhulong-python -m unittest discover -s tests -v`; expect zero failures/skips in native environment.
+- [x] Execute bounded DeepSeek PluginLlm learning smoke, record exact code revision, one charged auxiliary generation and trusted evidence attribution.
+- [x] Dispatch fresh whole-branch review; fix Critical/Important with RED→GREEN in one pass, record all rulings/minors.
+- [x] Create PR, verify Python matrix CI and review; merge per existing user instruction, refresh cloud setup with exact merged HEAD and report remaining roadmap. No new permission gate.
