@@ -30,32 +30,34 @@
 **Files:** Create skill_evaluator.py, tests/test_skill_evaluator.py.
 **Interfaces:** `validate_skills(raw, sources) -> list[dict]`; `DockerEvaluator(ledger_path)`; `locked() -> context manager bool`; `cleanup() -> bool`; `evaluate(code, task, token, admissible) -> dict`.
 
-- [ ] 写清单非法值、host 独立比较、隐藏值不进 stdin、Docker 限制、锁竞争/清理未知的失败测试；运行 unittest 观察缺失功能。
-- [ ] 实现规范验证、锁及固定 Docker 命令、逐 case stdin/stdout、有界清理和 hash 报告；运行针对测试与完整 suite。
-- [ ] 提交 evaluator 与测试。
+- [x] 写清单非法值、host 独立比较、隐藏值不进 stdin、Docker 限制、锁竞争/清理未知的失败测试；运行 unittest 观察缺失功能。
+- [x] 实现规范验证、锁及固定 Docker 命令、逐 case stdin/stdout、有界清理和 hash 报告；运行针对测试与完整 suite。
+- [x] 提交 evaluator 与测试。
 
 ### Task 2: Durable skill publication and rollback
 
 **Files:** Create skill_store.py, tests/test_skill_store.py; modify autonomy_store.py.
 **Interfaces:** `SkillStore(ledger,tasks,identity)`, `sync(now)`, `claim(now)`, `begin(job,now)`, `freeze(job,code,now)`, `finish(job,report,now)`, `defer(job,now,reason)`, `owned(job,now)`, `retrieve(goal,identity)`, `summary()`; `valid_bindings(connection,goal,identity,request)` atomic admission helper.
 
-- [ ] 写静止证据、去重、2 次上限、重启 fencing、immutable、过期评测重用、active/standby/retired 回退、旧请求/测试/身份漂移测试；运行观察 RED。
-- [ ] 实现 additive tables、证据扫描、冻结候选、评测发布事务；新绑定只允许 active，重放沿用已有提交；运行针对测试和完整 suite。
-- [ ] 提交 ledger 与测试。
+- [x] 写静止证据、去重、2 次上限、重启 fencing、immutable、过期评测重用、active/standby/retired 回退、旧请求/测试/身份漂移测试；运行观察 RED。
+- [x] 实现 additive tables、证据扫描、冻结候选、评测发布事务；新绑定只允许 active，重放沿用已有提交；运行针对测试和完整 suite。
+- [x] 提交 ledger 与测试。
 
 ### Task 3: Autonomous generation and native execution
 
 **Files:** Create skill_learning.py, tests/test_skill_learning.py; modify autonomy_checks.py, autonomy.py, __init__.py, runtime_policy.py, commands.py, plugin.yaml, scripts/install.sh; extend tests/test_plugin_autonomy.py and runtime policy tests.
 **Interfaces:** `SkillLearner(store,llm,budget,evaluator,clock).tick(now,admissible)`; Controller optional `skills`, `skills_status()`; read-only autonomy action `skills`.
 
-- [ ] 写共享预算/停止/隐藏清单/独立评测失败不发布/恢复不重复模型、请求冻结和 protected image 错配测试，运行观察 RED。
-- [ ] 接入 learning 和状态，控制 recovery 先执行；保留空原生 skills、只带单一已评测代码；所有新增模块纳入安装及 protected hashes；升级 v0.7.0。
-- [ ] 完成真实 Docker 及原生 paid smoke，结果持久化，不声称精确故障回放或因果收益；完整 suite 后提交。
+- [x] 写共享预算/停止/隐藏清单/独立评测失败不发布/恢复不重复模型、请求冻结和 protected image 错配测试，运行观察 RED。
+- [x] 接入 learning 和状态，控制 recovery 先执行；保留空原生 skills、只带单一已评测代码；所有新增模块纳入安装及 protected hashes；升级 v0.7.0。
+- [x] 完成真实 Docker 及原生 paid smoke，结果持久化，不声称精确故障回放或因果收益；完整 suite 后提交。
 
 ### Task 4: Review and delivery
 
 **Files:** Research, deployment, review/evidence docs；云环境 setup 位于 checkout 外。
 
-- [ ] 更新研究和操作文档；fresh whole-branch reviewer 独立审查，逐条裁定；Important/Critical 一次 RED→GREEN 修复并完整 suite。
+- [x] 更新研究和操作文档；fresh whole-branch reviewer 独立审查，逐条裁定；Important/Critical 一次 RED→GREEN 修复并完整 suite。
 - [ ] PR、精确 commit CI；审查后 squash 合并；同步 main 并确认 tree 与已验证代码一致。
 - [ ] 运行 installer 和 native offline smoke，完整 checkout discovery 后保存 exact main 的环境配置草稿；配置发布仍由产品负责。
+
+交付进度以 [PR #4](https://github.com/86cloudyun-afk/hermes-zhulong/pull/4) 和云环境配置草稿为准；后两项在合并及保存完成后由交付记录结算，计划文件不要求再次修改 main。

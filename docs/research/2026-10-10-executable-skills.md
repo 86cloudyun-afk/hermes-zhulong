@@ -15,3 +15,5 @@ Reflexion（2303.11366v4）的方法是语言反馈记忆，不能直接认证�
 两个独立审计明确指出旧账本未保存失败时业务输入。因此本版只评测可信清单的回归和未公开例，不把任意旧失败称为精确回放。真实 native smoke 使用明确标注的无输出执行夹具触发学习，然后额外审查持久 terminal 调用、对应结果、代码 hash 和机械产物；不把夹具称为真实 provider 故障。
 
 详见 [规格](../superpowers/specs/2026-10-10-executable-skills-design.md) 和 [实施计划](../superpowers/plans/2026-10-10-executable-skills.md)。后续仍需不可变失败输入、步骤依赖与重规划、实际外部连接器、磁盘配额和长时运行研究，最后才到独立内核发布与回滚。
+
+独立整分支审查发现并修复了强杀遗留评测容器、生成途中暂停丢失已付费代码两项 Important，详见 [审查与修复](2026-10-10-v0.7-review.md)。修复后完整真实 Docker/native suite 为 198/198，精确代码 commit 的原生 DeepSeek Flash 验证包含实际程序执行证据。
