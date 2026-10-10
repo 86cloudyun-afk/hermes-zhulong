@@ -50,7 +50,7 @@ class PluginTests(unittest.TestCase):
         self.plugin.register(self.ctx)
         self.assertIn('zhulong_autonomy',self.ctx.tools)
         tool=self.ctx.tools['zhulong_autonomy']
-        self.assertEqual(tool['schema']['parameters']['properties']['action']['enum'],['status','goals','tick','experience'])
+        self.assertEqual(tool['schema']['parameters']['properties']['action']['enum'],['status','goals','tick','experience','skills'])
         self.assertFalse(json.loads(tool['handler']({'action':'succeeded'}))['ok'])
         before=(self.home/'zhulong'/'self_model.json').read_bytes()
         model_tool=self.ctx.tools['zhulong_model'];model_tool['handler']({});model_tool['handler']({})
@@ -61,7 +61,7 @@ class PluginTests(unittest.TestCase):
         result=subprocess.run(['bash',str(ROOT/'scripts'/'install.sh')],env=os.environ.copy(),capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
         destination=self.home/'plugins'/'zhulong'
-        for name in ('autonomy','autonomy_store','autonomy_checks','hermes_runs','self_model','experience','experience_store'):
+        for name in ('autonomy','autonomy_store','autonomy_checks','hermes_runs','self_model','experience','experience_store','skill_store','skill_learning','skill_evaluator'):
             self.assertTrue((destination/(name+'.py')).is_file(),name)
         self.assertEqual((destination/'plugin.yaml').read_bytes(),(ROOT/'plugin.yaml').read_bytes())
 

@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
+import signal
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -103,6 +105,38 @@ class EvaluatorTests(unittest.TestCase):
         with self.evaluator.locked(), patch.object(self.evaluator, 'cleanup', return_value=True), patch.object(self.evaluator, '_case', side_effect=case):
             result = self.evaluator.evaluate('print(3)', self.task, 'a'*32, lambda: gate[0])
         self.assertEqual(result['verdict'], 'unknown'); self.assertEqual(result['reason'], 'admission_closed')
+
+    def test_orphaned_control_client_releases_inherited_lock_on_independent_deadline(self):
+        marker = Path(self.temp.name)/'started'
+        code = '''import sys
+from pathlib import Path
+from skill_evaluator import DockerEvaluator
+e=DockerEvaluator(Path(sys.argv[1]))
+with e.locked() as acquired:
+    def command(args):
+        Path(sys.argv[2]).write_text('ready')
+        import os
+        return [sys.executable,'-c','import time;time.sleep(30)'],os.environ.copy()
+    e._command=command
+    e._control(['unused'])
+'''
+        child = subprocess.Popen([sys.executable, '-c', code, str(self.evaluator.ledger_path), str(marker)], start_new_session=True,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            deadline = time.monotonic()+5
+            while not marker.exists() and time.monotonic()<deadline: time.sleep(0.02)
+            self.assertTrue(marker.exists()); time.sleep(0.2)
+            child.kill(); child.wait(timeout=5)
+            recovered = False; deadline = time.monotonic()+12
+            while time.monotonic()<deadline:
+                with self.evaluator.locked() as acquired:
+                    if acquired: recovered = True; break
+                time.sleep(0.05)
+            self.assertTrue(recovered, 'orphan Docker client retained the evaluator lock beyond its control deadline')
+        finally:
+            try: os.killpg(child.pid, signal.SIGKILL)
+            except ProcessLookupError: pass
+            child.wait(timeout=5)
 
 
 @unittest.skipUnless(os.environ.get('ZHULONG_SKILL_DOCKER_TESTS') == '1', 'explicit local Docker validation')

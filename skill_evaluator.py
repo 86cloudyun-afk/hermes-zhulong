@@ -117,7 +117,9 @@ class DockerEvaluator:
     def _control(self, args):
         command, env = self._command(args)
         try:
-            process = subprocess.run(command, env=env, capture_output=True, timeout=10, pass_fds=(self._lock_fd,))
+            # Independent watchdog survives a killed caller and bounds inherited-lock lifetime.
+            process = subprocess.run(['/usr/bin/timeout', '--signal=KILL', '10', *command], env=env,
+                                     capture_output=True, timeout=12, pass_fds=(self._lock_fd,))
             if process.returncode: raise DockerError('docker_control_failed')
             return process.stdout
         except (OSError, subprocess.SubprocessError): raise DockerError('docker_control_unavailable') from None
@@ -169,7 +171,8 @@ class DockerEvaluator:
             self._control(args)
             self._verify_boundary(strict_json(self._control(['inspect', name]))[0], directory, image)
             command, env = self._command(['start', '-ai', name])
-            process = subprocess.Popen(command, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            process = subprocess.Popen(['/usr/bin/timeout', '--signal=KILL', '3', *command], env=env,
+                                       stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        start_new_session=True, pass_fds=(self._lock_fd,))
             selector = selectors.DefaultSelector(); outputs = [bytearray(), bytearray()]
             try:

@@ -1,7 +1,7 @@
 name: zhulong
 label: 烛龙 Zhulong — Hermes 观测、校准与自主核心
 kind: standalone
-version: 0.6.0
+version: 0.7.0
 author: YG + LCS
-description: "开眼即观测。烛龙 v0.6：证据型经验学习、策略试用/晋升/退役、受监督运行与自主目标；观测脱敏、预算有界、预测不可自评。"
+description: "开眼即观测。烛龙 v0.7：独立 Docker 技能评测、不可变版本发布与回退、证据型经验学习、受监督运行及自主目标。"
 provides_hooks: [post_tool_call, post_llm_call, on_session_start, on_session_end, on_session_finalize, on_session_reset, on_skill_lifecycle, subagent_stop, api_request_error, agent_loop_stopped, pre_command]

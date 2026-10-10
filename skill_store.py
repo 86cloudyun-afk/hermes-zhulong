@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from datetime import datetime, timezone
 
 try:
     from .autonomy_store import canonical, digest
@@ -79,6 +80,7 @@ class SkillStore:
                 '''CREATE TABLE IF NOT EXISTS skill_uses(version_id TEXT NOT NULL REFERENCES skill_versions(id),
                     submission_id TEXT NOT NULL REFERENCES submissions(id), verdict INTEGER NOT NULL,
                     evidence_hash TEXT NOT NULL, created REAL NOT NULL, PRIMARY KEY(version_id,submission_id))''',
+                '''CREATE TABLE IF NOT EXISTS skill_evaluation_budget(day TEXT PRIMARY KEY,evaluations INTEGER NOT NULL)''',
                 '''CREATE TRIGGER IF NOT EXISTS frozen_skill_content BEFORE UPDATE OF
                     id,job_id,attempt,scope,code,code_hash,token,created ON skill_versions
                     BEGIN SELECT RAISE(ABORT,'frozen_skill_content'); END''',
@@ -214,6 +216,23 @@ class SkillStore:
         with self.ledger._connection() as c:
             row = c.execute("SELECT * FROM skill_versions WHERE state='active' AND scope IN ("+','.join('?' for _ in scopes)+') ORDER BY sequence DESC LIMIT 1', scopes).fetchone()
             return [binding_for(row)] if row else []
+
+    def needs_cleanup(self):
+        with self.ledger._connection() as c:
+            return c.execute("SELECT 1 FROM skill_versions WHERE state='candidate' LIMIT 1").fetchone() is not None
+
+    def evaluation_available(self, now, cap):
+        day = datetime.fromtimestamp(now, timezone.utc).date().isoformat()
+        with self.ledger._connection() as c:
+            row = c.execute('SELECT evaluations FROM skill_evaluation_budget WHERE day=?', (day,)).fetchone()
+            return cap > 0 and (row is None or row[0] < cap)
+
+    def reserve_evaluation(self, now, cap):
+        day = datetime.fromtimestamp(now, timezone.utc).date().isoformat()
+        with self.ledger._connection(True) as c:
+            row = c.execute('SELECT evaluations FROM skill_evaluation_budget WHERE day=?', (day,)).fetchone()
+            if cap <= 0 or row and row[0] >= cap: return False
+            c.execute('INSERT INTO skill_evaluation_budget VALUES(?,1) ON CONFLICT(day) DO UPDATE SET evaluations=evaluations+1', (day,)); return True
 
     def summary(self):
         with self.ledger._connection() as c:

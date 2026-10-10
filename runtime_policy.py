@@ -17,7 +17,8 @@ from runtime_channel import atomic_json
 HOST_REVISION='73162b00eefde3794bed0afb53d84a19c0eed230'
 PLUGIN_FILES=('plugin.yaml','__init__.py','storage.py','sensor.py','commands.py',
     'calibrate.py','reflect.py','probes.py','autonomy_store.py','autonomy_checks.py',
-    'hermes_runs.py','self_model.py','autonomy.py','runtime_channel.py','experience_store.py','experience.py')
+    'hermes_runs.py','self_model.py','autonomy.py','runtime_channel.py','experience_store.py','experience.py',
+    'skill_store.py','skill_evaluator.py','skill_learning.py')
 DOCKER_ENV_KEYS=('DOCKER_CONTEXT','DOCKER_TLS','DOCKER_TLS_VERIFY','DOCKER_CERT_PATH')
 CACHE_PATHS=('cache/documents','cache/images','cache/audio','cache/videos','cache/screenshots',
     'cache/web','cache/delegation','cache/spillover','cache/generated','images','attachments','composer-pastes')
@@ -70,6 +71,7 @@ def source_topology(m,sources,base=None):
 
 
 def validate_worker_policy(m,policy):
+    if any(task['image']!=m['image'] for task in policy.get('executable_skills',[])):raise ValueError('skill_worker_image_mismatch')
     if policy['workspace_roots']!=[m['work']]:raise ValueError('one_authorized_work_root_required')
     topology=source_topology(m,policy['sources'])
     if m.get('source_topology') is not None and topology!=m['source_topology']:raise ValueError('source_topology_changed')
