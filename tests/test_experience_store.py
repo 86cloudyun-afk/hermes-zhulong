@@ -103,7 +103,11 @@ class ExperienceStoreTests(unittest.TestCase):
         self.attempt('old', True, [strategy], now=1010, goal=old)
         self.attempt('unknown', None, [strategy], now=1020)
         forged = dict(strategy, body_hash='other')
-        self.attempt('forged', True, [forged], now=1030)
+        future=make_goal(self.ledger,source_revision='forged',now=1030)
+        lease=self.ledger.claim('next',1030,20,(future['id'],))
+        result=self.ledger.prepare_submission(lease,{'input':json.dumps({'experience':[forged]})},'next',
+            self.identity,1030,100,10,3,86400)
+        self.assertFalse(result['admitted'])
         self.store.evaluate(1040)
         self.assertEqual(self.store.summary()['strategies'][0]['heldout_successes'], 0)
         self.assertEqual(self.store.retrieve(origin, self.identity)[0]['status'], 'candidate')
@@ -162,6 +166,18 @@ class ExperienceStoreTests(unittest.TestCase):
         policy={'sources':[{'id':origin['source_id'],'domain':origin['domain'],
                             'contracts':{'result':dict(origin['contract'],text='different')}}]}
         self.assertEqual(self.store.planning_context(observations,self.identity,policy),[])
+
+    def test_retirement_between_retrieval_and_admission_blocks_stale_binding(self):
+        origin, _, strategy=self.candidate()
+        future=make_goal(self.ledger,source_revision='future',now=1010)
+        self.attempt('regression',False,[strategy],now=1020)
+        self.store.evaluate(1022)
+        lease=self.ledger.claim('next',1030,20,(future['id'],))
+        result=self.ledger.prepare_submission(lease,{'input':json.dumps({'experience':[strategy]})},'next',
+            self.identity,1030,100,10,3,86400)
+        self.assertFalse(result['admitted'])
+        self.assertEqual(result['reason'],'strategy_no_longer_applicable')
+        self.assertEqual(self.ledger.get_goal(future['id'])['attempts'],0)
 
 
 if __name__ == '__main__': unittest.main()

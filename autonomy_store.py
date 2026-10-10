@@ -174,6 +174,12 @@ class Ledger:
             if goal['cancel_requested']:return {'admitted':False,'reason':'cancelled'}
             if goal['state']!='ready':return {'admitted':False,'reason':'not_ready'}
             if goal['attempts']>=max_attempts:return {'admitted':False,'reason':'max_attempts'}
+            try:
+                from .experience_store import valid_bindings
+            except ImportError:
+                from experience_store import valid_bindings
+            if not valid_bindings(c,self._goal(c,goal),execution_identity,request):
+                return {'admitted':False,'reason':'strategy_no_longer_applicable'}
             if c.execute('SELECT COUNT(*) FROM submissions WHERE settled=0').fetchone()[0]>=max_active:
                 return {'admitted':False,'reason':'max_active'}
             contract=json.loads(goal['contract'])

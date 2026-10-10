@@ -18,6 +18,24 @@ def scope_for(goal, identity):
             'contract_hash': goal['contract_hash'], 'execution_identity': identity}
 
 
+def valid_bindings(connection, goal, identity, request):
+    """Validate new bindings inside the same write transaction as admission."""
+    try: intent=json.loads(request['input'])
+    except (KeyError, TypeError, ValueError): return True  # Compatible legacy plain-text intents.
+    if not isinstance(intent,dict) or 'experience' not in intent:return True
+    bindings=intent['experience']
+    if not isinstance(bindings,list) or len(bindings)>2:return False
+    if not bindings:return True
+    if not connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='strategies'").fetchone():return False
+    for binding in bindings:
+        if not isinstance(binding,dict) or not isinstance(binding.get('id'),str):return False
+        row=connection.execute('SELECT * FROM strategies WHERE id=?',(binding['id'],)).fetchone()
+        if (row is None or row['state']=='retired' or row['body_hash']!=binding.get('body_hash')
+                or row['guidance']!=binding.get('guidance')
+                or row['scope']!=canonical(scope_for(goal,identity))):return False
+    return True
+
+
 class ExperienceStore:
     def __init__(self, ledger):
         self.ledger = ledger

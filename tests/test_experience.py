@@ -70,5 +70,22 @@ class LearnerTests(unittest.TestCase):
         self.assertEqual(self.store.summary()['jobs'], {'invalid': 1})
         self.assertEqual(self.store.summary()['strategies'], [])
 
+    def test_native_validation_seed_uses_real_verifier_and_no_external_run(self):
+        import importlib.util
+        from helpers import policy_config
+        from autonomy_checks import validate_config
+        spec=importlib.util.spec_from_file_location('runtime_learning_smoke',Path(__file__).resolve().parents[1]/'scripts/supervised_runtime_smoke.py')
+        smoke=importlib.util.module_from_spec(spec);spec.loader.exec_module(smoke)
+        self.assertTrue(hasattr(smoke,'seed_learning_failure'),'native learning validation seed missing')
+        root=self.ledger.path.parent
+        (root/'facts.json').write_text('{}')
+        policy=validate_config(policy_config(root),root)
+        smoke.seed_learning_failure(self.ledger,policy,1000)
+        records=self.ledger.model_records()
+        self.assertEqual(len(records['submissions']),1)
+        self.assertIs(records['submissions'][0]['evidence']['verdict'],False)
+        self.assertTrue(records['submissions'][0]['settled'])
+        self.assertEqual(records['submissions'][0]['host_status'],'completed')
+
 
 if __name__ == '__main__': unittest.main()

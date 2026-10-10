@@ -167,6 +167,12 @@ class AutonomyTests(unittest.TestCase):
         self.assertEqual(payload['self_model']['active_commitments'],model['active_commitments'])
         self.assertEqual(payload['self_model']['experience'],model['experience'])
 
+    def test_disabled_learning_excludes_existing_guidance(self):
+        self.attach_learning();self.runs.complete_artifact=False
+        self.controller.tick();self.now[0]+=1;self.controller.tick()
+        self.controller.policy['learning_enabled']=False
+        self.assertNotIn('experience',json.loads(self.controller._request(self.ledger.goals()[0])['input']))
+
     def test_existing_artifact_never_dispatches(self):
         (self.root/'result.txt').write_text('done')
         self.controller.tick()

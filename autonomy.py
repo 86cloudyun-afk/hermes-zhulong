@@ -134,7 +134,8 @@ class Controller:
                 if not self._admissible():raise PlannerError('service_not_running')
                 self._phase('planning')
                 context=dict(self.model.snapshot())
-                if self.experience is not None:
+                context['experience']=[]
+                if self.experience is not None and self.policy.get('learning_enabled',True):
                     try:context['experience']=self.experience.store.planning_context(selected,self.execution_identity,self.policy)
                     except Exception:context['experience']=[]
                 raw=self.planner.plan(selected,context,self.policy)
@@ -164,7 +165,7 @@ class Controller:
                 'source_path':source['path'],'workspace_roots':self.policy['workspace_roots'],
                 'acceptance_contract':goal['contract'],
                 'execution_rules':'Use Hermes tools to perform this concrete goal within the authorized workspaces. Do not modify source facts, acceptance rules, plugin state/config or control code. Do not ask for human scoring. Your answer is not completion evidence.'}
-        if self.experience is not None:
+        if self.experience is not None and self.policy.get('learning_enabled',True):
             try:strategies=self.experience.store.retrieve(goal,self.execution_identity)
             except Exception:strategies=[]
             if strategies:
