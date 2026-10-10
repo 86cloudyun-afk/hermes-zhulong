@@ -88,6 +88,7 @@ def main():
         policy={'mission':'Discover the missing local engineering report from source facts. Create one report using terminal tools and the configured acceptance contract. Do only this local demo work.',
             'daily_runs':2 if args.learning or args.skills else 1,'max_attempts':1,'tick_interval_seconds':2,'lease_seconds':20,'run_deadline_seconds':180,
             'request_timeout_seconds':5,'sources':[{'id':'runtime-demo','domain':'code','path':str(work/'facts.json'),
+                'direction':'Create the missing local report from observations using the configured acceptance.',
                 'contracts':{'report':{'type':'file_contains','path':str(work/'report.txt'),'text':'verified-runtime-report','require_change':True}}}]}
         if args.skills:
             policy['sources'][0]['contracts']['report']={'type':'json_equals','path':str(work/'report.txt'),'field':'sum','value':6,'require_change':True}
