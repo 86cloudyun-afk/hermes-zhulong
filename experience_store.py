@@ -126,9 +126,10 @@ class ExperienceStore:
 
     def defer(self, job, now, reason='unavailable'):
         with self.ledger._connection(True) as c:
-            if self._owned(c, job, now) is None: return False
-            c.execute("UPDATE learning_jobs SET state='pending',owner=NULL,lease_until=NULL,next_retry=? WHERE submission_id=?",
-                      (now+60, job['submission_id']))
+            row=self._owned(c, job, now)
+            if row is None: return False
+            c.execute("UPDATE learning_jobs SET state=?,owner=NULL,lease_until=NULL,next_retry=? WHERE submission_id=?",
+                      ('invalid' if row['attempts']>=2 else 'pending',now+60, job['submission_id']))
             return True
 
     def reject(self, job, now):
@@ -193,7 +194,13 @@ class ExperienceStore:
                              'contract_hash': digest(contract), 'execution_identity': identity})
                   for source in policy['sources'] if source['id'] in source_ids
                   for contract in source['contracts'].values()}
-        return [s for s in self.summary()['strategies'] if canonical(s['scope']) in scopes and s['status']!='retired'][:2]
+        with self.ledger._connection() as c:
+            rows=[]
+            for scope in sorted(scopes):
+                rows.extend(c.execute('''SELECT * FROM strategies WHERE scope=? AND state IN ('candidate','active')
+                    ORDER BY CASE state WHEN 'active' THEN 0 ELSE 1 END,created DESC,id LIMIT 2''',(scope,)).fetchall())
+            rows.sort(key=lambda row:(row['state']!='active',-row['created'],row['id']))
+            return [self._strategy(row) for row in rows[:2]]
 
     def summary(self):
         with self.ledger._connection() as c:

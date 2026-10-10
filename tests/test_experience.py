@@ -87,5 +87,23 @@ class LearnerTests(unittest.TestCase):
         self.assertTrue(records['submissions'][0]['settled'])
         self.assertEqual(records['submissions'][0]['host_status'],'completed')
 
+    def test_second_response_stopped_closes_exhausted_job_across_restart(self):
+        self.attempt('origin')
+        self.llm.complete_structured=lambda **kw:SimpleNamespace(parsed={'bad':'response'})
+        self.learner.tick(1002,lambda:True)
+        active=[True];self.now[0]=1063
+        def stopped(**kw):
+            active[0]=False
+            return SimpleNamespace(parsed={'guidance':'Stopped before accepting the second response.'})
+        self.llm.complete_structured=stopped
+        self.learner.tick(1063,lambda:active[0])
+        from experience_store import ExperienceStore
+        from autonomy_store import Ledger
+        restarted=ExperienceStore(Ledger(self.ledger.path))
+        self.assertEqual(restarted.summary()['jobs'],{'invalid':1})
+        self.assertIsNone(restarted.claim(2000))
+        self.assertEqual(self.spent,2)
+        self.assertEqual(restarted.summary()['strategies'],[])
+
 
 if __name__ == '__main__': unittest.main()

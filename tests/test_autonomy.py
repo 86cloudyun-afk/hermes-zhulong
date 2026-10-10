@@ -173,6 +173,30 @@ class AutonomyTests(unittest.TestCase):
         self.controller.policy['learning_enabled']=False
         self.assertNotIn('experience',json.loads(self.controller._request(self.ledger.goals()[0])['input']))
 
+    def test_planner_capability_scope_is_filtered_before_history_limit(self):
+        for i in range(22):
+            goal=make_goal(self.ledger,domain='research',source_revision='foreign-'+str(i))
+            lease=self.ledger.claim('history',1000,30,(goal['id'],))
+            identity=dict(self.controller.execution_identity,identity_version='identity-'+str(i))
+            sub=self.ledger.prepare_submission(lease,{'input':'history'},'history',identity,1000,100,1,1,86400)['submission']
+            self.ledger.finish(lease,evidence(goal,True),'succeeded',True,1001,expected_submission_id=sub['id'])
+        self.model.refresh()
+        self.raw['api_identity_version']='identity-21';self.controller=self.build()
+        captured=[]
+        llm=SimpleNamespace(complete_structured=lambda **kw:(captured.append(kw) or SimpleNamespace(parsed={'candidates':[]})))
+        self.controller.planner=self.m.LLMPlanner(llm,SimpleNamespace(take=lambda:True))
+        self.controller.tick()
+        context=json.loads(captured[0]['input'][0]['text'])['self_model']
+        self.assertEqual(len(context['contexts']),1)
+        self.assertEqual(next(iter(context['contexts'].values()))['execution_context'],self.controller.execution_identity)
+        self.assertEqual(context['current_execution_identity'],self.controller.execution_identity)
+        self.assertEqual(len(self.model.snapshot()['contexts']),22)
+        self.raw['api_identity_version']='brand-new';self.controller=self.build()
+        (self.root/'facts.json').write_text('{"report":"new identity gap"}')
+        self.controller.planner=self.m.LLMPlanner(llm,SimpleNamespace(take=lambda:True));self.controller.tick()
+        context=json.loads(captured[-1]['input'][0]['text'])['self_model']
+        self.assertEqual(context['contexts'],{})
+
     def test_existing_artifact_never_dispatches(self):
         (self.root/'result.txt').write_text('done')
         self.controller.tick()

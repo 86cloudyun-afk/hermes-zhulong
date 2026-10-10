@@ -35,7 +35,8 @@ class LLMPlanner:
         payload={'mission':policy['mission'],'observations':[{**o,'facts':o.get('facts','')[:2000],
                   'facts_truncated':len(o.get('facts',''))>2000} for o in observations],
                  'self_model':{k:self_model.get(k,[] if k in ('policy_hypotheses','active_commitments','experience') else {})
-                               for k in ('domains','contexts','policy_hypotheses','active_commitments','experience')}}
+                               for k in ('domains','contexts','policy_hypotheses','active_commitments','experience','current_execution_identity')}}
+        payload['self_model']['domain_statistics_scope']='Historical aggregates across execution identities; use matching contexts for current capability.'
         payload['self_model']['contexts']=dict(list(payload['self_model']['contexts'].items())[:20])
         for key in ('policy_hypotheses','active_commitments'):payload['self_model'][key]=payload['self_model'][key][:20]
         payload['self_model']['experience']=payload['self_model']['experience'][:2]
@@ -134,6 +135,9 @@ class Controller:
                 if not self._admissible():raise PlannerError('service_not_running')
                 self._phase('planning')
                 context=dict(self.model.snapshot())
+                context['current_execution_identity']=self.execution_identity
+                context['contexts']={k:v for k,v in context.get('contexts',{}).items()
+                                     if v.get('execution_context')==self.execution_identity}
                 context['experience']=[]
                 if self.experience is not None and self.policy.get('learning_enabled',True):
                     try:context['experience']=self.experience.store.planning_context(selected,self.execution_identity,self.policy)

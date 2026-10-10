@@ -179,5 +179,23 @@ class ExperienceStoreTests(unittest.TestCase):
         self.assertEqual(result['reason'],'strategy_no_longer_applicable')
         self.assertEqual(self.ledger.get_goal(future['id'])['attempts'],0)
 
+    def test_planner_retrieval_preserves_older_relevant_active_strategy(self):
+        origin, _, strategy=self.candidate()
+        for i in range(2):
+            self.attempt('heldout-'+str(i),True,[strategy],now=1010+i*10)
+        self.store.evaluate(1030)
+        for i in range(21):
+            self.attempt('unrelated-'+str(i),False,domain='research',now=1100+i*10)
+            self.store.sync(1102+i*10);job=self.store.claim(1102+i*10)
+            self.store.begin(job,1102+i*10);self.store.complete(job,'An unrelated research precaution.',1103+i*10)
+        self.attempt('new-code-candidate',False,now=1500)
+        self.store.sync(1502);job=self.store.claim(1502);self.store.begin(job,1502)
+        self.store.complete(job,'A newer candidate.',1503)
+        policy={'sources':[{'id':origin['source_id'],'domain':origin['domain'],'contracts':{'result':origin['contract']}}]}
+        selected=self.store.planning_context([{'id':origin['source_id']}],self.identity,policy)
+        self.assertEqual(len(selected),2)
+        self.assertEqual(selected[0]['id'],strategy['id'])
+        self.assertEqual(selected[0]['status'],'active')
+
 
 if __name__ == '__main__': unittest.main()
