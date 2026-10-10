@@ -52,7 +52,7 @@
 
 - [x] 写类型混淆/重复key拒绝、错误input SHA、一次读取后同bytes执行、绑定canonical SHA和原生call/result对应、安装/保护新模块测试；观察RED。
 - [x] 实现严格audit与回归native场景，新增模块纳入安装/保护，版本0.8.0。完整真实Docker/native suite，Expected全通过。
-- [ ] 干净commit做有限真实DeepSeek Flash --replay smoke；Expected认证包含原例与确切程序/输入SHA执行，静止结算，同run重放，停止/清理真实标记。持久化证据与提交。
+- [x] 干净commit做有限真实DeepSeek Flash --replay smoke；Expected认证包含原例与确切程序/输入SHA执行，静止结算，同run重放，停止/清理真实标记。持久化证据与提交。
 
 ### Task 4: Review and delivery
 
