@@ -156,8 +156,11 @@ AUTONOMY_SCHEMA = {
 
 
 def _public_goals(ledger):
-    return [{k:g[k] for k in ('id','domain','objective','state','attempts','deadline','recovery_reason')}
-            for g in ledger.goals(20)]
+    try:
+        from .task_inputs import public_goals
+    except ImportError:
+        from task_inputs import public_goals
+    return public_goals(ledger)
 
 
 def _model_handler(model):

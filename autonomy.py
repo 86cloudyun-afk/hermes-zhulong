@@ -11,10 +11,12 @@ try:
     from .autonomy_checks import observe_sources,validate_candidates
     from .autonomy_store import canonical
     from .hermes_runs import RunsError
+    from . import task_inputs
 except ImportError:
     from autonomy_checks import observe_sources,validate_candidates
     from autonomy_store import canonical
     from hermes_runs import RunsError
+    import task_inputs
 
 
 class PlannerError(Exception):pass
@@ -32,7 +34,7 @@ class LLMPlanner:
                 'objective':{'type':'string','maxLength':500},'reason':{'type':'string','maxLength':500},
                 'expected_benefit':{'type':'number','minimum':0,'maximum':1},
                 'confidence':{'type':['number','null'],'minimum':0,'maximum':1}}}}
-        payload={'mission':policy['mission'],'observations':[{**o,'facts':o.get('facts','')[:2000],
+        payload={'mission':policy['mission'],'observations':[{**{k:o[k] for k in ('id','domain','direction','contract_ids','available','revision','reason') if k in o},'facts':o.get('facts','')[:2000],
                   'facts_truncated':len(o.get('facts',''))>2000} for o in observations],
                  'self_model':{k:self_model.get(k,[] if k in ('policy_hypotheses','active_commitments','experience') else {})
                                for k in ('domains','contexts','policy_hypotheses','active_commitments','experience','current_execution_identity')}}
@@ -58,6 +60,7 @@ class Controller:
     def __init__(self,ledger,policy,planner,runs,verifier,model,clock=time.time,experience=None,skills=None):
         self.ledger,self.policy,self.planner,self.runs,self.verifier,self.model=ledger,policy,planner,runs,verifier,model
         self.clock=clock;self.owner=uuid.uuid4().hex
+        task_inputs.configure(ledger,policy.get('sources',[]),policy.get('input_snapshot_bytes',8388608))
         self.experience=experience
         self.skills=skills
         self.execution_identity={'api_url':policy.get('api_url'),'credential_env':policy.get('api_key_env','API_SERVER_KEY'),
@@ -127,6 +130,7 @@ class Controller:
         owner=uuid.uuid4().hex;selected=[]
         for observation in observations:
             if not observation['available']:continue
+            if not task_inputs.available(self.ledger,observation.get('task_input')):continue
             if len(selected)>=self.policy['max_candidates']:break
             if self.ledger.claim_source(observation['id'],observation['revision'],owner,self.clock(),self.policy['lease_seconds'],self.policy['max_attempts']):selected.append(observation)
         if not selected:return 0
@@ -152,7 +156,8 @@ class Controller:
                     if current.get(candidate['source_id'])!=candidate['source_revision']:raise PlannerError('source_changed')
                     contract=sources[candidate['source_id']]['contracts'][candidate['contract_id']]
                     baseline=self.verifier.capture(contract)
-                    goal=self.ledger.create_goal(candidate,candidate['source_revision'],contract,baseline,self.clock(),self.policy['run_deadline_seconds'],source_owner=owner)
+                    observed=next(o for o in selected if o['id']==candidate['source_id'])
+                    goal=self.ledger.create_goal(candidate,candidate['source_revision'],contract,baseline,self.clock(),self.policy['run_deadline_seconds'],source_owner=owner,task_input=observed.get('task_input'))
                     if goal is None:raise PlannerError('source_lease_lost')
                     accepted+=1
                 success=True
@@ -170,6 +175,9 @@ class Controller:
                 'source_path':source['path'],'workspace_roots':self.policy['workspace_roots'],
                 'acceptance_contract':goal['contract'],
                 'execution_rules':'Use Hermes tools to perform this concrete goal within the authorized workspaces. Do not modify source facts, acceptance rules, plugin state/config or control code. Do not ask for human scoring. Your answer is not completion evidence.'}
+        if goal.get('task_input') is not None:
+            intent['task_input']=goal['task_input']
+            intent['input_rule']='Use the frozen canonical JSON data in task_input for this goal. A current source file is not a replacement for that input. Binding alone is not evidence of use.'
         if self.experience is not None and self.policy.get('learning_enabled',True):
             try:strategies=self.experience.store.retrieve(goal,self.execution_identity)
             except Exception:strategies=[]
@@ -346,6 +354,7 @@ class Controller:
                 'active_executions':sum(not s['settled'] for s in records['submissions']),
                 'required_human_interventions':0,'runtime_rule':'Approval-required work is blocked and stopped',
                 'limits':{k:self.policy.get(k) for k in ('daily_runs','max_active','max_attempts')},
+                'input_snapshots':task_inputs.summary(self.ledger),
                 'subjective_consciousness':'not established'}
 
     def pause(self):self.ledger.set_pause(True);return self.status()

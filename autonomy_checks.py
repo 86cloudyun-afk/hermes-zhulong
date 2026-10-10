@@ -21,7 +21,7 @@ except ImportError:
     from autonomy_store import digest, canonical
 
 LIMIT=65536
-DEFAULTS={'daily_runs':8,'skill_daily_evaluations':16,'max_active':1,'max_candidates':3,'lease_seconds':120,
+DEFAULTS={'daily_runs':8,'skill_daily_evaluations':16,'input_snapshot_bytes':8388608,'max_active':1,'max_candidates':3,'lease_seconds':120,
           'run_deadline_seconds':600,'max_attempts':3,'request_timeout_seconds':15,'tick_interval_seconds':15}
 
 
@@ -86,7 +86,7 @@ def validate_config(raw,base):
     if type(policy.get('learning_enabled',True)) is not bool:raise ValueError('invalid_learning_enabled')
     policy['learning_enabled']=policy.get('learning_enabled',True)
     for key in DEFAULTS:
-        if type(policy[key]) is not int or policy[key]<(0 if key in {'daily_runs','skill_daily_evaluations'} else 1):raise ValueError('invalid_'+key)
+        if type(policy[key]) is not int or policy[key]<(0 if key in {'daily_runs','skill_daily_evaluations','input_snapshot_bytes'} else 1):raise ValueError('invalid_'+key)
     policy['mission']=bounded_text(policy.get('mission'),'mission',2000)
     roots=policy.get('workspace_roots')
     if not isinstance(roots,list) or not roots or any(not isinstance(r,str) or not r for r in roots):raise ValueError('missing_workspace_roots')
@@ -101,7 +101,7 @@ def validate_config(raw,base):
     if not isinstance(sources,list) or not sources or len(sources)>32:raise ValueError('missing_sources')
     normalized=[];ids=set()
     for raw_source in sources:
-        if not isinstance(raw_source,dict) or set(raw_source)-{'id','domain','path','direction','input_fields','contracts'}:raise ValueError('invalid_source')
+        if not isinstance(raw_source,dict) or set(raw_source)-{'id','domain','path','direction','input_fields','persist_input_fields','contracts'}:raise ValueError('invalid_source')
         source=dict(raw_source);sid=bounded_text(source.get('id'),'source_id',100)
         if sid in ids or source.get('domain') not in {'code','research','personal'}:raise ValueError('invalid_source_identity')
         ids.add(sid);source['id']=sid
@@ -110,6 +110,12 @@ def validate_config(raw,base):
         if 'input_fields' in source:
             fields=source['input_fields']
             if not isinstance(fields,list) or not fields or len(fields)>32 or any(not isinstance(f,str) or not f or len(f)>200 for f in fields):raise ValueError('invalid_input_fields')
+        try:
+            from .task_inputs import rule_for
+        except ImportError:
+            from task_inputs import rule_for
+        rule=rule_for(source)
+        if rule is not None:source['persist_input_fields']=rule['fields']
         contracts=source.get('contracts')
         if not isinstance(contracts,dict) or not contracts or len(contracts)>16:raise ValueError('missing_contracts')
         source['contracts']={bounded_text(k,'contract_id',100):contract_policy(v,policy) for k,v in contracts.items()}
@@ -154,10 +160,23 @@ def observe_sources(policy):
               'contract_ids':list(source['contracts']),'available':False,'reason':'source_unavailable'}
         try:
             content=_read(source['path'],policy).decode('utf-8')
+            snapshot=None
+            if source.get('persist_input_fields'):
+                try:
+                    from .task_inputs import project
+                    from .skill_evaluator import strict_json
+                except ImportError:
+                    from task_inputs import project
+                    from skill_evaluator import strict_json
+                parsed=strict_json(content);snapshot=project(source,parsed)
             if source.get('input_fields'):
-                parsed=json.loads(content)
+                if snapshot is None:parsed=json.loads(content)
                 content=canonical({f:_field(parsed,f) for f in source['input_fields']})
-            item.update(available=True,revision=digest({'facts':content,'direction':source['direction'],'contracts':source['contracts'],'mission':policy['mission']}),facts=content,reason='observed')
+            basis={'facts':content,'direction':source['direction'],'contracts':source['contracts'],'mission':policy['mission']}
+            if snapshot is not None:basis['input_snapshot']={k:snapshot[k] for k in ('rule_hash','input_hash')}
+            revision=digest(basis)
+            item.update(available=True,revision=revision,facts=content,reason='observed')
+            if snapshot is not None:item['task_input']={**snapshot,'source_revision':revision}
         except (OSError,ValueError,KeyError,UnicodeError):pass
         observations.append(item)
     return observations

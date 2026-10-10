@@ -29,16 +29,16 @@
 
 ### Task 1: Trusted projections and immutable input binding
 
-**Files:** Create task_inputs.py, tests/test_task_inputs.py; modify autonomy_checks.py, autonomy_store.py, autonomy.py, commands.py, __init__.py.
+**Files:** Create task_inputs.py, tests/test_task_inputs.py; modify autonomy_checks.py, autonomy_store.py, autonomy.py, commands.py, __init__.py, runtime_policy.py, scripts/install.sh.
 **Interfaces:** task_inputs.rule_for(source)->dict|None; project(source,parsed)->dict|None; initialize(connection); configure(ledger,sources,cap); bind_goal(connection,goal_id,source_id,revision,binding); binding(connection,goal_id)->dict|None; valid_binding(connection,goal,request)->bool; available(ledger,binding)->bool; summary(ledger)->dict; public_goals(ledger)->list. Ledger.create_goal(...,task_input=None) keyword. Controller captures selected observation input and freezes request.
 
-- [ ] 写 test_task_inputs：非法授权/严格JSON、同观察和rule revision、不可变/旧goal不可补写、两连接最后额度、事务失败rollback、篡改请求不花预算、规则移除仍reconcile原提交、planner/本地goals/self-model不泄漏。运行 `zhulong-python -m unittest discover -s tests -p test_task_inputs.py`，Expected缺模块/接口或新行为断言失败。
-- [ ] 实现上述接口及配置/控制器接入，普通请求默认兼容。运行该测试和 `HERMES_AGENT_ROOT=... zhulong-python -m unittest discover -s tests`，Expected全通过，Docker仅明确skip。
-- [ ] 提交 input binding 与测试。
+- [x] 写 test_task_inputs：非法授权/严格JSON、同观察和rule revision、不可变/旧goal不可补写、两连接最后额度、事务失败rollback、篡改请求不花预算、规则移除仍reconcile原提交、planner/本地goals/self-model不泄漏。运行 `zhulong-python -m unittest discover -s tests -p test_task_inputs.py`，Expected缺模块/接口或新行为断言失败。
+- [x] 实现上述接口及配置/控制器接入，普通请求默认兼容。运行该测试和 `HERMES_AGENT_ROOT=... zhulong-python -m unittest discover -s tests`，Expected全通过，Docker仅明确skip。
+- [x] 提交 input binding 与测试。
 
 ### Task 2: Trusted original-goal regression gate
 
-**Files:** Create skill_replay.py, tests/test_skill_replay.py; modify skill_evaluator.py, skill_store.py, skill_learning.py.
+**Files:** Create skill_replay.py, tests/test_skill_replay.py; modify skill_evaluator.py, skill_store.py, skill_learning.py, runtime_policy.py, scripts/install.sh.
 **Interfaces:** skill_replay.evaluation_task(task,goal,submission)->dict (private _evaluation_cases, evaluation_digest, origin_replay); trusted replay uses task_input.binding and current-rule metadata. DockerEvaluator.evaluate existing signature; SkillStore.claim returns private augmented task, finish rebuilds same plan in writeTX.
 
 - [ ] 写基本case过而原例错、去重并保持完整输出、条件冲突付费前阻止、缺快照unavailable、原数据不进模型、wrong-origin/digest报告、当前settings漂移、暂停/unknown恢复回归测试。运行 test_skill_replay，Expected新功能断言失败。
