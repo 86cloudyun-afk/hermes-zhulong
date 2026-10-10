@@ -25,15 +25,19 @@ plugins, the Docker daemon or another host process with the same user privileges
 1. Dedicated profile outside every authorized workspace; workspace must also
    exclude plugin/native host code. Configuration is valid JSON (also YAML),
    immutable for a running supervisor and hashed without credentials.
-2. Pin the native host revision and worker image digest. Load only Zhulong,
+2. Pin the native host revision and worker image digest. Load only Zhulong as
+   a user plugin (native bundled provider/platform plugins remain trusted),
    default context engine, no MCP, API surface `[terminal, no_mcp]`, and known
    plugin toolsets `[zhulong]`. Check the final concrete schemas, not only the
    `/v1/toolsets` endpoint. Unexpected tool names block startup.
 3. Use the native Docker backend, nonroot host UID, read-only root, network none,
-   no host cwd mount, no environment forwarding or credential/cache/skill
-   mounts, no cross-process reuse, no persistent container home. Bind only
+   no host cwd mount, no environment forwarding or credential mounts,
+   no cross-process reuse, no persistent container home. Native automatically
+   mounts cache directories; allow only read-only named caches in this dedicated
+   profile and an empty skills directory. They contain this runtime's data.
+   Bind only
    authorized work at identical absolute paths; source facts get read-only
-   overlays. Never mount the profile, plugin code or Docker socket.
+   overlays. Never mount profile controls, plugin code or the Docker socket.
 4. Enforce CPU, memory, PID and tmpfs limits in actual Docker configuration.
    Inspect mounts/user/network/security/resource settings and execute denied
    control-file/socket/network checks before permitting new work. Docker vfs
