@@ -33,6 +33,9 @@ try:
     from .runtime_channel import ServiceChannel
     from .experience_store import ExperienceStore
     from .experience import ExperienceLearner
+    from .skill_store import SkillStore
+    from .skill_evaluator import DockerEvaluator
+    from .skill_learning import SkillLearner
 except ImportError:
     if str(_HERE) not in sys.path:
         sys.path.insert(0, str(_HERE))
@@ -50,6 +53,9 @@ except ImportError:
     from runtime_channel import ServiceChannel
     from experience_store import ExperienceStore
     from experience import ExperienceLearner
+    from skill_store import SkillStore
+    from skill_evaluator import DockerEvaluator
+    from skill_learning import SkillLearner
 
 _SENSOR = None
 
@@ -145,7 +151,7 @@ MODEL_SCHEMA = {
 AUTONOMY_SCHEMA = {
     "name": "zhulong_autonomy", "description": "查看自主目标/状态，或推进一个有界自主循环；不能直接评分或改验收。",
     "parameters": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["status", "goals", "tick", "experience"]}}, "additionalProperties": False},
+        "action": {"type": "string", "enum": ["status", "goals", "tick", "experience", "skills"]}}, "additionalProperties": False},
 }
 
 
@@ -168,12 +174,13 @@ def _autonomy_handler(controller, ledger, error=None):
         if not isinstance(params, dict) or set(params)-{'action'}:
             return json.dumps({"ok": False, "reason": "invalid_autonomy_action"})
         action=params.get('action','status')
-        if action not in ('status','goals','tick','experience'):
+        if action not in ('status','goals','tick','experience','skills'):
             return json.dumps({"ok": False, "reason": "invalid_autonomy_action"})
         try:
             if action=='goals':return json.dumps({"ok": True, "goals": _public_goals(ledger)},ensure_ascii=False)
             if controller is None:return json.dumps({"ok": False,"enabled": False,"blocked_reason":error or 'runtime_unavailable'})
-            result=controller.tick() if action=='tick' else (controller.experience_status() if action=='experience' else controller.status())
+            result=controller.tick() if action=='tick' else (controller.experience_status() if action=='experience' else
+                (controller.skills_status() if action=='skills' else controller.status()))
             return json.dumps({"ok": True, **result},ensure_ascii=False)
         except Exception:return json.dumps({"ok": False,"reason": "autonomy_unavailable"})
     return handler
@@ -207,6 +214,12 @@ def register(ctx) -> None:
                 runs=RunsClient(policy['api_url'],policy['api_key_env'],policy['api_identity_version'],
                     policy['request_timeout_seconds'],profile=policy['api_profile']) if policy['enabled'] else None
                 controller=Controller(ledger,policy,LLMPlanner(llm,budget),runs,Verifier(policy),model,experience=learner)
+                try:
+                    skill_store=SkillStore(ledger,policy.get('executable_skills',[]),controller.execution_identity)
+                    controller.skills=SkillLearner(skill_store,llm,budget,DockerEvaluator(ledger.path),
+                        daily_evaluations=policy.get('skill_daily_evaluations',16))
+                    model.skills=skill_store;model.refresh()
+                except Exception:logger.warning('zhulong: skill storage unavailable')
             except (ValueError,TypeError):autonomy_error='invalid_autonomy_config'
 
         try:

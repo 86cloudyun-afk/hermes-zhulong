@@ -1,0 +1,30 @@
+{
+  "enabled": true,
+  "mission": "根据新观察发现缺失的统计报告，使用已评测的程序计算 JSON observations 列表总和，写出 JSON 报告并通过机械验收。",
+  "workspace_roots": ["/absolute/authorized-work"],
+  "api_url": "http://127.0.0.1:8642",
+  "api_identity_version": "deployment-v1",
+  "daily_runs": 8,
+  "skill_daily_evaluations": 16,
+  "sources": [{
+    "id": "statistics",
+    "domain": "code",
+    "path": "/absolute/authorized-work/facts.json",
+    "contracts": {"sum-report": {
+      "type": "json_equals", "path": "/absolute/authorized-work/report.json",
+      "field": "sum", "value": 6, "require_change": true
+    }}
+  }],
+  "executable_skills": [{
+    "id": "sum-observations",
+    "source_id": "statistics",
+    "contract_id": "sum-report",
+    "description": "Read a JSON object with an observations list of integers; output exactly {sum: total}. Other metadata is irrelevant and an empty list has total 0.",
+    "image": "python@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1",
+    "examples": [{"input": {"observations": [1, 2]}, "output": {"sum": 3}}],
+    "holdout": [
+      {"input": {"observations": []}, "output": {"sum": 0}},
+      {"input": {"observations": [-5, 2]}, "output": {"sum": -3}}
+    ]
+  }]
+}

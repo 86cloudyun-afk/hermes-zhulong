@@ -21,7 +21,7 @@ except ImportError:
     from autonomy_store import digest, canonical
 
 LIMIT=65536
-DEFAULTS={'daily_runs':8,'max_active':1,'max_candidates':3,'lease_seconds':120,
+DEFAULTS={'daily_runs':8,'skill_daily_evaluations':16,'max_active':1,'max_candidates':3,'lease_seconds':120,
           'run_deadline_seconds':600,'max_attempts':3,'request_timeout_seconds':15,'tick_interval_seconds':15}
 
 
@@ -80,13 +80,13 @@ def validate_config(raw,base):
     if not isinstance(raw,dict):raise ValueError('invalid_autonomy_config')
     if type(raw.get('enabled',False)) is not bool:raise ValueError('invalid_enabled')
     if not raw.get('enabled',False):return {'enabled':False,'base':str(base)}
-    allowed={'enabled','mission','workspace_roots','sources','api_url','api_key_env','api_identity_version','api_profile','learning_enabled',*DEFAULTS}
+    allowed={'enabled','mission','workspace_roots','sources','api_url','api_key_env','api_identity_version','api_profile','learning_enabled','executable_skills',*DEFAULTS}
     if set(raw)-allowed:raise ValueError('unknown_autonomy_setting')
     policy={**DEFAULTS,**raw,'base':str(Path(base).resolve())}
     if type(policy.get('learning_enabled',True)) is not bool:raise ValueError('invalid_learning_enabled')
     policy['learning_enabled']=policy.get('learning_enabled',True)
     for key in DEFAULTS:
-        if type(policy[key]) is not int or policy[key]<(0 if key=='daily_runs' else 1):raise ValueError('invalid_'+key)
+        if type(policy[key]) is not int or policy[key]<(0 if key in {'daily_runs','skill_daily_evaluations'} else 1):raise ValueError('invalid_'+key)
     policy['mission']=bounded_text(policy.get('mission'),'mission',2000)
     roots=policy.get('workspace_roots')
     if not isinstance(roots,list) or not roots or any(not isinstance(r,str) or not r for r in roots):raise ValueError('missing_workspace_roots')
@@ -117,6 +117,11 @@ def validate_config(raw,base):
             if contract.get('path')==source['path'] and not source.get('input_fields'):raise ValueError('source_output_feedback')
         normalized.append(source)
     policy['sources']=normalized
+    try:
+        from .skill_evaluator import validate_skills
+    except ImportError:
+        from skill_evaluator import validate_skills
+    policy['executable_skills']=validate_skills(raw.get('executable_skills',[]),normalized)
     return policy
 
 

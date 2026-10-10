@@ -180,6 +180,12 @@ class Ledger:
                 from experience_store import valid_bindings
             if not valid_bindings(c,self._goal(c,goal),execution_identity,request):
                 return {'admitted':False,'reason':'strategy_no_longer_applicable'}
+            try:
+                from .skill_store import valid_bindings as valid_skill_bindings
+            except ImportError:
+                from skill_store import valid_bindings as valid_skill_bindings
+            if not valid_skill_bindings(c,self._goal(c,goal),execution_identity,request):
+                return {'admitted':False,'reason':'skill_no_longer_applicable'}
             if c.execute('SELECT COUNT(*) FROM submissions WHERE settled=0').fetchone()[0]>=max_active:
                 return {'admitted':False,'reason':'max_active'}
             contract=json.loads(goal['contract'])

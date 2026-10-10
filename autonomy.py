@@ -55,10 +55,11 @@ class LLMPlanner:
 
 
 class Controller:
-    def __init__(self,ledger,policy,planner,runs,verifier,model,clock=time.time,experience=None):
+    def __init__(self,ledger,policy,planner,runs,verifier,model,clock=time.time,experience=None,skills=None):
         self.ledger,self.policy,self.planner,self.runs,self.verifier,self.model=ledger,policy,planner,runs,verifier,model
         self.clock=clock;self.owner=uuid.uuid4().hex
         self.experience=experience
+        self.skills=skills
         self.execution_identity={'api_url':policy.get('api_url'),'credential_env':policy.get('api_key_env','API_SERVER_KEY'),
                                  'identity_version':policy.get('api_identity_version'),'profile':policy.get('api_profile','default')}
         self._tick_lock=threading.Lock();self._lifecycle_lock=threading.Lock();self._stop=threading.Event();self._thread=None;self._recovery_cursor=0;self._ready_cursor=0
@@ -175,6 +176,12 @@ class Controller:
             if strategies:
                 intent['experience']=strategies
                 intent['experience_rule']='These are scoped strategy hypotheses. Use only when applicable; they never override the frozen acceptance contract or execution rules.'
+        if self.skills is not None and self.policy.get('learning_enabled',True):
+            try:programs=self.skills.store.retrieve(goal,self.execution_identity)
+            except Exception:programs=[]
+            if programs:
+                intent['skills']=programs
+                intent['skill_rule']='These immutable programs passed a limited trusted JSON test suite. When applicable, copy the exact code into the authorized workspace, check its SHA-256, and run it through the isolated terminal with JSON stdin. The frozen acceptance contract still decides goal completion. Do not change control files or trust self-reported success.'
         text=canonical(intent)
         if len(text.encode())>16384:raise RunsError('execution_intent_too_large')
         return {'input':text,'session_id':'zhulong-'+goal['id']}
@@ -296,6 +303,12 @@ class Controller:
                                          and self.policy.get('learning_enabled',True))
                 except Exception:
                     with self._progress_lock:self._progress_state['learning_reason']='experience_unavailable'
+            if self.skills is not None:
+                self._phase('skill_learning')
+                try:self.skills.tick(self.clock(),lambda:self._admissible() and not self.ledger.paused()
+                                     and self.policy.get('learning_enabled',True))
+                except Exception:
+                    with self._progress_lock:self._progress_state['skill_reason']='skills_unavailable'
             if self._admissible() and not self.ledger.paused():
                 summary['accepted']=self._synthesize(observations)
                 ready=self.rank_ready([g for g in self.ledger.work_goals() if g['state'] in ('ready','blocked') and (not g['submission'] or g['submission']['settled'])])
@@ -340,6 +353,11 @@ class Controller:
         if self.experience is None:return {'enabled':False,'reason':'experience_unavailable'}
         try:return {'enabled':self.policy.get('learning_enabled',True),**self.experience.store.summary()}
         except Exception:return {'enabled':False,'reason':'experience_unavailable'}
+    def skills_status(self):
+        if self.skills is None:return {'enabled':False,'reason':'skills_unavailable'}
+        try:return {'enabled':bool(self.policy.get('learning_enabled',True) and self.policy.get('executable_skills')),
+                    **self.skills.store.summary()}
+        except Exception:return {'enabled':False,'reason':'skills_unavailable'}
     def resume(self):self.ledger.set_pause(False);return self.status()
     def cancel(self,goal_id):
         return {'ok':self.ledger.request_cancel(goal_id),'goal_id':goal_id,'cancel_requested':True}

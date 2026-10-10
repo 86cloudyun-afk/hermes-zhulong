@@ -1,0 +1,96 @@
+{
+  "scenario": "finite-native-supervised-runtime",
+  "paid": true,
+  "provider_validation": "verified_native_run",
+  "code_revision": "9eb5efcb2d7f0ea1cce1de20a611edd956d42820",
+  "code_dirty": false,
+  "learning": false,
+  "skills": true,
+  "learning_origin": "Real mechanical failure of a synthetic settled no-output executor fixture; no provider failure claimed",
+  "standalone_check_passed": true,
+  "boundary": {
+    "denied_action_checks": {
+      "capabilities_zero": true,
+      "control_absent": true,
+      "control_api_unreachable": true,
+      "docker_socket_absent": true,
+      "facts_hardlink_denied": true,
+      "facts_readonly": true,
+      "facts_rename_denied": true,
+      "no_external_interface": true,
+      "provider_key_absent": true,
+      "root_readonly": true,
+      "work_writable": true
+    },
+    "docker": {
+      "bind_disk_quota": "not_enforced",
+      "bind_mounts": 15,
+      "cpu": 1,
+      "memory_bytes": 536870912,
+      "memory_plus_swap_bytes": 536870912,
+      "network": "none",
+      "pids": 128,
+      "readonly_root": true,
+      "shm_bytes": 67108864,
+      "tmpfs_checked": true,
+      "uid": 1000
+    },
+    "external_llm_calls": 0,
+    "model_tools": [
+      "process_manage",
+      "terminal"
+    ],
+    "native_revision": "73162b00eefde3794bed0afb53d84a19c0eed230",
+    "ok": true,
+    "source_topology": "direct_regular_single_link"
+  },
+  "readiness": {
+    "matching_boot": true,
+    "controller_live": true,
+    "paused": true
+  },
+  "duplicate_launch_blocked": true,
+  "executable_skill": {
+    "code_hash": "fc3052ae57ec66faa1b255177d016a361db43db1cbc3c92a3f02ebc7dcb22f9c",
+    "test_digest": "a4d02d1018eb986cb3867594064fb58c2f32bba74601b38bc439e03e45b54063",
+    "state": "active",
+    "passed_cases": 3,
+    "cleanup_confirmed": true,
+    "daily_evaluations_reserved": 1,
+    "generation_jobs": {
+      "published": 1
+    },
+    "execution_command_observed": true,
+    "execution_result_successful": true,
+    "worker_copy_matches_published_code": true,
+    "execution_command_sha256": "702d1f86614572e069bbad90f13f78d10f77dbb0d8824a62fdda9ec3a36fbb93",
+    "claim": "Observed execution in this finite smoke; no general execution enforcement or causal improvement claim"
+  },
+  "goal": {
+    "state": "succeeded",
+    "attempts": 1,
+    "settled": true,
+    "runtime": {
+      "model": "deepseek-flash",
+      "provider": "deepseek"
+    },
+    "usage": {
+      "input_tokens": 43499,
+      "output_tokens": 2302,
+      "total_tokens": 45801
+    },
+    "native_replay_same_run": true,
+    "verified_receipts": 1,
+    "artifact_sha256": "ae0b88d2d8e9179b048e13a4d4d903b0ffb6609e5c5c633500d7ab1f2cdd810d"
+  },
+  "auxiliary_budget_calls": 3,
+  "shutdown": {
+    "admission_acknowledged": true,
+    "forced_shutdown": true,
+    "launches": 1,
+    "reason": null,
+    "removed_workers": 0,
+    "state": "stopped"
+  },
+  "supervisor_exit_code": 0
+}

@@ -15,6 +15,7 @@ from pathlib import Path
 
 from runtime_channel import atomic_json,read_json,current_health,process_identity
 from runtime_policy import child_environment,file_hash,DOCKER_ENV_KEYS,validate_manifest,validate_worker_policy
+from skill_evaluator import DockerEvaluator
 
 
 def docker(m,args):
@@ -33,7 +34,21 @@ def remove_owned_workers(m):
         workers=json.loads(docker(m,['inspect',*ids]).stdout)
         if any(w['Config']['Labels'].get('zhulong.runtime')!=m['deployment_id'] for w in workers):raise ValueError('worker_ownership_changed')
         docker(m,['rm','-f',*ids])
-    return len(ids)
+    return len(ids)+remove_owned_evaluators(m)
+
+
+def remove_owned_evaluators(m):
+    """Wait for inherited clients, then confirm this deployment's candidates are gone."""
+    evaluator=DockerEvaluator(Path(m['root'])/'profile/zhulong/autonomy.db')
+    deadline=time.monotonic()+min(12,m.get('shutdown_seconds',12))
+    while True:
+        with evaluator.locked() as acquired:
+            if acquired:
+                ids=evaluator._control(['ps','-aq','--filter','label=zhulong.eval='+evaluator.namespace]).split()
+                if not evaluator.cleanup():raise ValueError('evaluator_cleanup_unknown')
+                return len(ids)
+        if time.monotonic()>=deadline:raise ValueError('evaluator_cleanup_busy')
+        time.sleep(0.025)
 
 
 def ready_body(health,capabilities,pid):
