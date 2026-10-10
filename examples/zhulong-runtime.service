@@ -1,0 +1,27 @@
+# Example only: replace user, paths and PM-selected Python before installation.
+[Unit]
+Description=Zhulong supervised native Hermes autonomy
+After=docker.service network-online.target
+Requires=docker.service
+StartLimitIntervalSec=3600
+StartLimitBurst=6
+
+[Service]
+Type=simple
+User=hermes
+Group=hermes
+SupplementaryGroups=docker
+EnvironmentFile=/etc/zhulong/provider.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+WorkingDirectory=/srv/zhulong-runtime/profile
+ExecStart=/opt/hermes-pm/bin/python /opt/hermes-zhulong/scripts/runtime.py run --deployment /srv/zhulong-runtime/deployment.json
+ExecStop=/opt/hermes-pm/bin/python /opt/hermes-zhulong/scripts/runtime.py stop --deployment /srv/zhulong-runtime/deployment.json
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=90
+NoNewPrivileges=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
