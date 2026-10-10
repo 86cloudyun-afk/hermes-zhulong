@@ -43,6 +43,39 @@ class Runs:
 
 
 class AutonomyTests(unittest.TestCase):
+    def test_service_starting_and_stopping_gate_planning_but_allow_recovery(self):
+        self.controller.admission_gate=lambda:False
+        self.controller.tick()
+        self.assertEqual(self.planner.calls,0)
+        self.controller.admission_gate=lambda:True
+        self.controller.tick()
+        self.controller.admission_gate=lambda:False
+        self.controller.tick()
+        self.assertEqual(self.ledger.goals()[0]['state'],'succeeded')
+        self.assertEqual(self.planner.calls,1)
+        self.assertEqual(self.runs.calls,1)
+
+    def test_stop_request_prevents_planner_and_exposes_progress(self):
+        self.controller.request_stop()
+        self.controller.tick()
+        self.assertEqual(self.planner.calls,0)
+        progress=self.controller.progress()
+        self.assertEqual(progress['ticks'],1)
+        self.assertEqual(progress['phase'],'idle')
+        self.assertTrue(self.controller.stop(timeout=0.1))
+
+    def test_background_errors_are_sanitized_and_counted(self):
+        def broken():raise RuntimeError('private-provider-response')
+        self.controller.tick=broken
+        self.controller.start(0.01)
+        until=time.monotonic()+2
+        while self.controller.progress()['errors']==0 and time.monotonic()<until:time.sleep(0.01)
+        self.assertTrue(self.controller.stop(timeout=2))
+        progress=self.controller.progress()
+        self.assertGreater(progress['errors'],0)
+        self.assertEqual(progress['reason'],'tick_error:RuntimeError')
+        self.assertNotIn('private-provider-response',json.dumps(progress))
+
     def setUp(self):
         self.assertIsNotNone(importlib.util.find_spec('autonomy'),'autonomous loop is missing')
         self.m=importlib.import_module('autonomy')
