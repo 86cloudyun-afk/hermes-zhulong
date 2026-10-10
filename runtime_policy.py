@@ -20,6 +20,9 @@ PLUGIN_FILES=('plugin.yaml','__init__.py','storage.py','sensor.py','commands.py'
 DOCKER_ENV_KEYS=('DOCKER_CONTEXT','DOCKER_TLS','DOCKER_TLS_VERIFY','DOCKER_CERT_PATH')
 CACHE_PATHS=('cache/documents','cache/images','cache/audio','cache/videos','cache/screenshots',
     'cache/web','cache/delegation','cache/spillover','cache/generated','images','attachments','composer-pastes')
+OTHER_PLATFORMS=('local','telegram','discord','whatsapp','whatsapp_cloud','slack','signal',
+    'mattermost','matrix','email','sms','dingtalk','webhook','msgraph_webhook','feishu','wecom',
+    'wecom_callback','weixin','bluebubbles','qqbot','yuanbao','relay')
 
 
 def overlaps(a,b):
@@ -78,8 +81,9 @@ def native_config(m,policy,boot_id='preflight'):
         'memory':{'memory_enabled':False,'user_profile_enabled':False},
         'agent':{'max_turns':8,'disabled_toolsets':['file','web','code_execution','delegation'],
             'cron_drain_timeout':10},
-        'platforms':{'api_server':{'enabled':True,'host':'127.0.0.1','port':m['port']}},
-        'gateway':{'api_server':{'max_concurrent_runs':1}},'terminal':terminal}
+        'platforms':{**{name:{'enabled':False} for name in OTHER_PLATFORMS},
+            'api_server':{'enabled':True,'host':'127.0.0.1','port':m['port']}},
+        'gateway':{'multiplex_profiles':False,'api_server':{'max_concurrent_runs':1}},'terminal':terminal}
 
 
 def child_environment(m,boot_id,inherited=None,*,api_key):

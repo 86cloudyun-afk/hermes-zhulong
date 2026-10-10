@@ -51,6 +51,8 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(config.get('tools',{}).get('tool_search',{}).get('enabled'),'off')
         self.assertFalse(config['terminal']['docker_network'])
         self.assertFalse(config['terminal']['docker_mount_cwd_to_workspace'])
+        self.assertFalse(config['gateway'].get('multiplex_profiles',True))
+        self.assertFalse(config['platforms'].get('telegram',{}).get('enabled',True))
         self.assertNotIn('private-key',json.dumps(config))
 
     def test_actual_worker_inspection_denies_mount_network_user_and_limits_drift(self):
