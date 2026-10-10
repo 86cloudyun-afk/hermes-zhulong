@@ -31,6 +31,8 @@ try:
     from .self_model import SelfModel
     from .autonomy import Controller, LLMPlanner
     from .runtime_channel import ServiceChannel
+    from .experience_store import ExperienceStore
+    from .experience import ExperienceLearner
 except ImportError:
     if str(_HERE) not in sys.path:
         sys.path.insert(0, str(_HERE))
@@ -46,6 +48,8 @@ except ImportError:
     from self_model import SelfModel
     from autonomy import Controller, LLMPlanner
     from runtime_channel import ServiceChannel
+    from experience_store import ExperienceStore
+    from experience import ExperienceLearner
 
 _SENSOR = None
 
@@ -141,7 +145,7 @@ MODEL_SCHEMA = {
 AUTONOMY_SCHEMA = {
     "name": "zhulong_autonomy", "description": "查看自主目标/状态，或推进一个有界自主循环；不能直接评分或改验收。",
     "parameters": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["status", "goals", "tick"]}}, "additionalProperties": False},
+        "action": {"type": "string", "enum": ["status", "goals", "tick", "experience"]}}, "additionalProperties": False},
 }
 
 
@@ -164,12 +168,12 @@ def _autonomy_handler(controller, ledger, error=None):
         if not isinstance(params, dict) or set(params)-{'action'}:
             return json.dumps({"ok": False, "reason": "invalid_autonomy_action"})
         action=params.get('action','status')
-        if action not in ('status','goals','tick'):
+        if action not in ('status','goals','tick','experience'):
             return json.dumps({"ok": False, "reason": "invalid_autonomy_action"})
         try:
             if action=='goals':return json.dumps({"ok": True, "goals": _public_goals(ledger)},ensure_ascii=False)
             if controller is None:return json.dumps({"ok": False,"enabled": False,"blocked_reason":error or 'runtime_unavailable'})
-            result=controller.tick() if action=='tick' else controller.status()
+            result=controller.tick() if action=='tick' else (controller.experience_status() if action=='experience' else controller.status())
             return json.dumps({"ok": True, **result},ensure_ascii=False)
         except Exception:return json.dumps({"ok": False,"reason": "autonomy_unavailable"})
     return handler
@@ -187,8 +191,13 @@ def register(ctx) -> None:
         reflector=Reflector(journal,cal,db,cfg,llm=llm,budget=budget,tasks=tasks)
         probes=Probes(journal,db,cfg,llm=llm,budget=budget,tasks=tasks)
         ledger=None;model=None;controller=None;autonomy_error=None
+        experience=None;learner=None
         try:
-            ledger=Ledger(journal.base/'autonomy.db');model=SelfModel(ledger,journal.base);model.refresh()
+            ledger=Ledger(journal.base/'autonomy.db')
+            try:
+                experience=ExperienceStore(ledger);learner=ExperienceLearner(experience,llm,budget)
+            except Exception:logger.warning('zhulong: experience storage unavailable')
+            model=SelfModel(ledger,journal.base,experience=experience);model.refresh()
         except Exception:
             ledger=None;model=None;autonomy_error='autonomy_storage_unavailable'
             logger.warning('zhulong: autonomy storage unavailable',exc_info=True)
@@ -197,7 +206,7 @@ def register(ctx) -> None:
                 policy=validate_config(cfg.get('autonomy',{}),journal.base)
                 runs=RunsClient(policy['api_url'],policy['api_key_env'],policy['api_identity_version'],
                     policy['request_timeout_seconds'],profile=policy['api_profile']) if policy['enabled'] else None
-                controller=Controller(ledger,policy,LLMPlanner(llm,budget),runs,Verifier(policy),model)
+                controller=Controller(ledger,policy,LLMPlanner(llm,budget),runs,Verifier(policy),model,experience=learner)
             except (ValueError,TypeError):autonomy_error='invalid_autonomy_config'
 
         try:

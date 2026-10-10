@@ -149,5 +149,19 @@ class ExperienceStoreTests(unittest.TestCase):
             with self.assertRaises(ValueError): self.store.complete(job, invalid, 1003)
         self.assertEqual(self.store.summary()['strategies'], [])
 
+    def test_last_generation_crash_is_exhausted_after_lease_expiry(self):
+        self.attempt('origin'); self.store.sync(1002)
+        first=self.store.claim(1002); self.store.begin(first,1002)
+        second=self.store.claim(1123); self.store.begin(second,1123)
+        self.assertIsNone(self.store.claim(1244))
+        self.assertEqual(self.store.summary()['jobs'],{'invalid':1})
+
+    def test_planning_context_excludes_changed_acceptance(self):
+        origin, _, strategy=self.candidate()
+        observations=[{'id':origin['source_id']}]
+        policy={'sources':[{'id':origin['source_id'],'domain':origin['domain'],
+                            'contracts':{'result':dict(origin['contract'],text='different')}}]}
+        self.assertEqual(self.store.planning_context(observations,self.identity,policy),[])
+
 
 if __name__ == '__main__': unittest.main()

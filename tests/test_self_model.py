@@ -30,6 +30,22 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(self.model.expected_success('code'),0.5)
         self.assertEqual(self.model.refresh()['version'],snapshot['version'])
 
+    def test_experience_export_revision_tracks_strategy_state(self):
+        from experience_store import ExperienceStore
+        store=ExperienceStore(self.ledger)
+        self.model=self.m.SelfModel(self.ledger,self.root,experience=store)
+        snapshot=self.model.refresh()
+        self.assertEqual(snapshot['experience']['states'],{})
+        goal=make_goal(self.ledger);lease=self.ledger.claim('a',1000,20);submission=self.prepare(lease)
+        self.ledger.record_admission(lease,submission['id'],'r','completed',1000)
+        self.ledger.record_attempt_result(lease,submission['id'],evidence(goal,False),1001)
+        self.ledger.finish(lease,evidence(goal,False),'failed',True,1001,expected_submission_id=submission['id'])
+        store.sync(1002);job=store.claim(1002);store.begin(job,1002);store.complete(job,'A scoped lesson.',1003)
+        changed=self.model.refresh()
+        self.assertEqual(changed['experience']['states'],{'candidate':1})
+        self.assertGreater(changed['version'],snapshot['version'])
+        self.assertEqual(self.model.refresh()['version'],changed['version'])
+
     def test_retry_final_success_is_one_sample(self):
         goal=make_goal(self.ledger);lease=self.ledger.claim('a',1000,20)
         first=self.prepare(lease)

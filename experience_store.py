@@ -67,6 +67,7 @@ class ExperienceStore:
 
     def claim(self, now):
         with self.ledger._connection(True) as c:
+            c.execute("UPDATE learning_jobs SET state='invalid',owner=NULL,lease_until=NULL WHERE attempts>=2 AND state IN ('claimed','generating') AND lease_until<=?", (now,))
             row = c.execute('''SELECT * FROM learning_jobs WHERE attempts<2 AND next_retry<=?
                 AND (state='pending' OR (state IN ('claimed','generating') AND lease_until<=?))
                 ORDER BY next_retry,submission_id LIMIT 1''', (now, now)).fetchone()
@@ -168,10 +169,13 @@ class ExperienceStore:
                                 c.execute("UPDATE strategies SET state='active',reason='two_independent_first_pass_results' WHERE id=? AND state!='retired'", (strategy['id'],))
                 c.execute('INSERT INTO experience_scans VALUES(?)', (sub['id'],))
 
-    def planning_context(self, observations, identity):
+    def planning_context(self, observations, identity, policy):
         source_ids = {o['id'] for o in observations}
-        return [s for s in self.summary()['strategies'] if s['scope']['source_id'] in source_ids
-                and s['scope']['execution_identity']==identity and s['status']!='retired']
+        scopes = {canonical({'schema': SCHEMA, 'source_id': source['id'], 'domain': source['domain'],
+                             'contract_hash': digest(contract), 'execution_identity': identity})
+                  for source in policy['sources'] if source['id'] in source_ids
+                  for contract in source['contracts'].values()}
+        return [s for s in self.summary()['strategies'] if canonical(s['scope']) in scopes and s['status']!='retired'][:2]
 
     def summary(self):
         with self.ledger._connection() as c:
