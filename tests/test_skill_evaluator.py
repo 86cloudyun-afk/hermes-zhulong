@@ -163,5 +163,53 @@ class RealDockerTests(EvaluatorTests):
         code = 'import os,json,sys\nx=json.load(sys.stdin)\nassert os.getuid()==1000\nassert not os.path.exists("/var/run/docker.sock")\nassert os.listdir("/candidate")==["main.py"]\nassert not any(k for k,v in os.environ.items() if v and any(s in k for s in ("SECRET","TOKEN","PROXY","PASSWORD")))\ntry:\n open("/candidate/main.py","w").write("changed")\n raise AssertionError("writable")\nexcept OSError: pass\nprint(json.dumps(sum(x)))\n'
         self.assertIs(self.evaluate(code)['verdict'], True)
 
+    def test_supervisor_cleans_running_evaluator_after_parent_sigkill(self):
+        from runtime_supervisor import remove_owned_workers
+        root = Path(self.temp.name)/'deployment'; ledger = root/'profile/zhulong/autonomy.db'
+        evaluator = self.module.DockerEvaluator(ledger)
+        script = '''import sys
+from pathlib import Path
+from skill_evaluator import DockerEvaluator,validate_skills
+sys.path.insert(0,'tests')
+from test_skill_evaluator import task,sources
+e=DockerEvaluator(Path(sys.argv[1]))
+with e.locked() as acquired:
+    e.evaluate('while True: pass\\n',validate_skills([task()],sources())[0],'f'*32,lambda:True)
+'''
+        child = subprocess.Popen([sys.executable, '-c', script, str(ledger)], start_new_session=True,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            def containers():
+                return subprocess.check_output(['docker', '--host=unix:///var/run/docker.sock', 'ps', '-q', '--filter', 'label=zhulong.eval='+evaluator.namespace], text=True).split()
+            deadline = time.monotonic()+8
+            while not containers() and time.monotonic()<deadline: time.sleep(0.02)
+            self.assertTrue(containers()); child.kill(); child.wait(timeout=5)
+            removed = remove_owned_workers({'root': str(root), 'deployment_id': 'isolated-evaluator-test', 'shutdown_seconds': 12})
+            self.assertGreaterEqual(removed, 1)
+            self.assertEqual(containers(), [])
+        finally:
+            try: os.killpg(child.pid, signal.SIGKILL)
+            except ProcessLookupError: pass
+            child.wait(timeout=5)
+            deadline = time.monotonic()+12
+            while time.monotonic()<deadline:
+                with evaluator.locked() as acquired:
+                    if acquired: evaluator.cleanup(); break
+                time.sleep(0.05)
+
+
+class SupervisorEvaluatorCleanupTests(unittest.TestCase):
+    def test_busy_or_unknown_evaluation_cleanup_cannot_report_stopped_resources(self):
+        import runtime_supervisor
+        self.assertTrue(hasattr(runtime_supervisor, 'remove_owned_evaluators'), 'supervisor evaluator cleanup missing')
+        from skill_evaluator import DockerEvaluator
+        with tempfile.TemporaryDirectory() as tmp:
+            m = {'root': tmp, 'deployment_id': 'cleanup-test', 'shutdown_seconds': 0.05}
+            evaluator = DockerEvaluator(Path(tmp)/'profile/zhulong/autonomy.db')
+            with evaluator.locked():
+                with self.assertRaisesRegex(ValueError, 'evaluator_cleanup_busy'):runtime_supervisor.remove_owned_evaluators(m)
+            with patch.object(DockerEvaluator, '_control', return_value=b''), patch.object(DockerEvaluator, 'cleanup', return_value=False):
+                with self.assertRaisesRegex(ValueError, 'evaluator_cleanup_unknown'):runtime_supervisor.remove_owned_evaluators(m)
+
 
 if __name__ == '__main__': unittest.main()

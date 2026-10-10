@@ -40,7 +40,9 @@ class SkillLearner:
                         json_mode=True, max_tokens=1800, timeout=45, purpose='zhulong.skill.learn')
                     parsed = getattr(response, 'parsed', None)
                     if not isinstance(parsed, dict) or set(parsed) != {'code'}: raise ValueError('invalid_skill_response')
-                    if not admissible() or not self.store.freeze(job, parsed['code'], self.clock()):
+                    # Persist an already-paid response while its lease is owned.
+                    # Closing admission prevents execution, not saving this work.
+                    if not self.store.freeze(job, parsed['code'], self.clock()):
                         self.store.defer(job, self.clock(), 'late_or_invalid_code'); return {'generated': 0}
                     generated = 1
                 def gate(): return admissible() and self.store.owned(job, self.clock())

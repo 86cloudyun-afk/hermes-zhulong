@@ -63,6 +63,31 @@ class SkillLearnerTests(unittest.TestCase):
         self.learner.tick(1063, lambda: active[0]); self.assertEqual(self.spent, 1)
         self.assertEqual(self.store.summary()['states'], {'active': 1})
 
+    def test_pause_during_paid_completion_freezes_response_without_evaluating(self):
+        self.attempt('paused-completion'); active = [True]
+        def paused(**kwargs):
+            response = self.complete(**kwargs); active[0] = False; return response
+        self.llm.complete_structured = paused
+        self.learner.tick(1002, lambda: active[0])
+        self.assertEqual(self.store.summary()['states'], {'candidate': 1})
+        self.assertEqual(self.evaluations, 0); self.assertEqual(self.spent, 1)
+        self.now[0] = 1063; active[0] = True; self.llm.complete_structured = self.complete
+        self.learner.tick(1063, lambda: active[0])
+        self.assertEqual(self.spent, 1); self.assertEqual(self.store.summary()['states'], {'active': 1})
+
+    def test_pause_on_second_completion_keeps_last_paid_candidate(self):
+        self.attempt('second-completion')
+        self.llm.complete_structured = lambda **kw: SimpleNamespace(parsed={'wrong': True})
+        self.learner.tick(1002, lambda: True); self.now[0] = 1063
+        active = [True]
+        def paused(**kwargs):
+            response = self.complete(**kwargs); active[0] = False; return response
+        self.llm.complete_structured = paused; self.learner.tick(1063, lambda: active[0])
+        self.assertEqual(self.store.summary()['states'], {'candidate': 1})
+        self.now[0] = 1124; active[0] = True
+        self.learner.tick(1124, lambda: active[0])
+        self.assertEqual(len(self.requests), 1); self.assertEqual(self.store.summary()['states'], {'active': 1})
+
     def test_independent_failure_is_rejected_and_generation_is_bounded(self):
         self.attempt('origin'); self.evaluator.evaluate = lambda *args: self.report(verdict=False)
         for now in [1002, 1063, 1124]:
