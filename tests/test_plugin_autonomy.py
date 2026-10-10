@@ -61,8 +61,8 @@ class PluginTests(unittest.TestCase):
         result=subprocess.run(['bash',str(ROOT/'scripts'/'install.sh')],env=os.environ.copy(),capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
         destination=self.home/'plugins'/'zhulong'
-        for name in ('autonomy','autonomy_store','autonomy_checks','hermes_runs','self_model','experience','experience_store','skill_store','skill_learning','skill_evaluator'):
-            self.assertTrue((destination/(name+'.py')).is_file(),name)
+        for name in ('autonomy','autonomy_store','autonomy_checks','hermes_runs','self_model','experience','experience_store','skill_store','skill_learning','skill_evaluator','task_inputs','skill_replay'):
+            self.assertEqual((destination/(name+'.py')).read_bytes(),(ROOT/(name+'.py')).read_bytes(),name)
         self.assertEqual((destination/'plugin.yaml').read_bytes(),(ROOT/'plugin.yaml').read_bytes())
 
     def test_optional_storage_failure_keeps_legacy_interfaces_and_cleanup(self):
