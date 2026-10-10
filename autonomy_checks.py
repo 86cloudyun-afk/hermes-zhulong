@@ -80,9 +80,11 @@ def validate_config(raw,base):
     if not isinstance(raw,dict):raise ValueError('invalid_autonomy_config')
     if type(raw.get('enabled',False)) is not bool:raise ValueError('invalid_enabled')
     if not raw.get('enabled',False):return {'enabled':False,'base':str(base)}
-    allowed={'enabled','mission','workspace_roots','sources','api_url','api_key_env','api_identity_version','api_profile',*DEFAULTS}
+    allowed={'enabled','mission','workspace_roots','sources','api_url','api_key_env','api_identity_version','api_profile','learning_enabled',*DEFAULTS}
     if set(raw)-allowed:raise ValueError('unknown_autonomy_setting')
     policy={**DEFAULTS,**raw,'base':str(Path(base).resolve())}
+    if type(policy.get('learning_enabled',True)) is not bool:raise ValueError('invalid_learning_enabled')
+    policy['learning_enabled']=policy.get('learning_enabled',True)
     for key in DEFAULTS:
         if type(policy[key]) is not int or policy[key]<(0 if key=='daily_runs' else 1):raise ValueError('invalid_'+key)
     policy['mission']=bounded_text(policy.get('mission'),'mission',2000)

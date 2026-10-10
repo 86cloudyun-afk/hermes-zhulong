@@ -58,8 +58,9 @@ def _stats(goals,truth,submissions,scope=None):
 
 
 class SelfModel:
-    def __init__(self,ledger,base:Path):
+    def __init__(self,ledger,base:Path,experience=None):
         self.ledger,self.base=ledger,Path(base)
+        self.experience=experience
         self.base.mkdir(parents=True,exist_ok=True)
 
     def _export(self,snapshot):
@@ -78,9 +79,14 @@ class SelfModel:
 
     def refresh(self):
         records=self.ledger.model_records();goals=records['goals'];submissions=records['submissions']
+        experience=None
+        if self.experience is not None:
+            try:experience=self.experience.summary()
+            except Exception:experience={'reason':'experience_unavailable'}
         revision=digest({'goals':sorted((g['id'],g['state'],g['attempts']) for g in goals),
                          'receipts':sorted(e['receipt'] for e in records['evidence']),
-                         'attempt_evidence':[(s['id'],s.get('evidence')) for s in submissions]})
+                         'attempt_evidence':[(s['id'],s.get('evidence')) for s in submissions],
+                         'experience':experience})
         versions=self.ledger.model_versions(1)
         if versions and versions[0]['evidence_revision']==revision:
             self._export(versions[0]);return versions[0]
@@ -102,6 +108,7 @@ class SelfModel:
                       'scope':g['contract_id'],'evidence_receipt':truth[g['id']]['receipt'],
                       'statement':'Previous execution did not satisfy this configured contract; reconsider prerequisites before related work.'}
                       for g in goals if g['id'] in truth and truth[g['id']]['outcome']=='failed'][-20:]}
+        if experience is not None:snapshot['experience']=experience
         snapshot=self.ledger.save_model(snapshot)
         self._export(snapshot);return snapshot
 

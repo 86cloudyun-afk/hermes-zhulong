@@ -108,6 +108,95 @@ class AutonomyTests(unittest.TestCase):
         goal=self.ledger.goals()[0];self.assertEqual(goal['state'],'failed')
         self.assertEqual(self.model.snapshot()['domains']['code']['success'],0)
 
+    def attach_learning(self):
+        self.assertIsNotNone(importlib.util.find_spec('experience'), 'learning integration missing')
+        from experience import ExperienceLearner
+        from experience_store import ExperienceStore
+        self.learning_calls = []
+        def complete(**kw):
+            self.learning_calls.append(kw)
+            return SimpleNamespace(parsed={'guidance': 'Read the acceptance text before writing the file.'})
+        self.store = ExperienceStore(self.ledger)
+        self.controller.experience = ExperienceLearner(self.store, SimpleNamespace(complete_structured=complete),
+            SimpleNamespace(take=lambda: True), clock=lambda: self.now[0])
+
+    def test_failure_learning_changes_future_execution_and_plain_baseline_has_no_lesson(self):
+        self.attach_learning(); self.runs.complete_artifact=False
+        self.controller.tick(); self.now[0]+=1; self.controller.tick()
+        self.assertEqual(len(self.learning_calls),1)
+        self.assertEqual(self.controller.experience_status()['states'],{'candidate':1})
+        (self.root/'facts.json').write_text('{"report":"a new gap"}')
+        self.now[0]+=1; self.runs.complete_artifact=True; self.controller.tick()
+        request=json.loads(self.ledger.goals()[0]['submission']['request']['input'])
+        self.assertEqual(request['experience'][0]['guidance'],'Read the acceptance text before writing the file.')
+        goal=self.ledger.goals()[0]
+        self.controller=self.build()
+        request=json.loads(self.controller._request(goal)['input'])
+        self.assertNotIn('experience',request)
+
+    def test_learning_error_and_pause_preserve_pending_execution_recovery(self):
+        self.attach_learning(); self.controller.tick(); self.controller.pause()
+        self.controller.experience.tick=lambda *a: (_ for _ in ()).throw(RuntimeError('private-model-details'))
+        self.controller.tick()
+        self.assertEqual(self.ledger.goals()[0]['state'],'succeeded')
+        self.assertEqual(self.controller.progress()['learning_reason'],'experience_unavailable')
+        self.assertNotIn('private-model-details',json.dumps(self.controller.progress()))
+
+    def test_safe_retry_receives_lesson_and_lost_reply_freezes_original_binding(self):
+        self.raw['sources'][0]['contracts']['result']['safe_retry']=True
+        self.controller=self.build(); self.attach_learning(); self.runs.complete_artifact=False
+        self.controller.tick(); self.now[0]+=1; self.controller.tick()
+        self.now[0]+=1; self.runs.lose=True; self.controller.tick()
+        goal=self.ledger.goals()[0]; frozen=goal['submission']['request']
+        self.assertEqual(len(json.loads(frozen['input'])['experience']),1)
+        self.controller.experience.store.retrieve=lambda *a: self.fail('recovery rebuilt guidance')
+        self.runs.complete_artifact=True; self.controller.pause(); self.now[0]+=1; self.controller.tick()
+        self.now[0]+=1; self.controller.tick()
+        self.assertEqual(self.ledger.goals()[0]['submission']['request'],frozen)
+        self.assertEqual(self.ledger.goals()[0]['state'],'succeeded')
+        self.assertEqual(self.store.summary()['strategies'][0]['heldout_successes'],0)
+
+    def test_planner_gets_contexts_commitments_and_experience(self):
+        received=[]
+        llm=SimpleNamespace(complete_structured=lambda **kw: (received.append(kw) or SimpleNamespace(parsed={'candidates':[]})))
+        model={'domains':{},'contexts':{'ctx':{'domain':'code'}},'active_commitments':[{'goal_id':'g'}],
+               'experience':[{'guidance':'lesson'}]}
+        self.m.LLMPlanner(llm,SimpleNamespace(take=lambda:True)).plan([],model,validate_config(self.raw,self.root))
+        payload=json.loads(received[0]['input'][0]['text'])
+        self.assertEqual(payload['self_model']['contexts'],model['contexts'])
+        self.assertEqual(payload['self_model']['active_commitments'],model['active_commitments'])
+        self.assertEqual(payload['self_model']['experience'],model['experience'])
+
+    def test_disabled_learning_excludes_existing_guidance(self):
+        self.attach_learning();self.runs.complete_artifact=False
+        self.controller.tick();self.now[0]+=1;self.controller.tick()
+        self.controller.policy['learning_enabled']=False
+        self.assertNotIn('experience',json.loads(self.controller._request(self.ledger.goals()[0])['input']))
+
+    def test_planner_capability_scope_is_filtered_before_history_limit(self):
+        for i in range(22):
+            goal=make_goal(self.ledger,domain='research',source_revision='foreign-'+str(i))
+            lease=self.ledger.claim('history',1000,30,(goal['id'],))
+            identity=dict(self.controller.execution_identity,identity_version='identity-'+str(i))
+            sub=self.ledger.prepare_submission(lease,{'input':'history'},'history',identity,1000,100,1,1,86400)['submission']
+            self.ledger.finish(lease,evidence(goal,True),'succeeded',True,1001,expected_submission_id=sub['id'])
+        self.model.refresh()
+        self.raw['api_identity_version']='identity-21';self.controller=self.build()
+        captured=[]
+        llm=SimpleNamespace(complete_structured=lambda **kw:(captured.append(kw) or SimpleNamespace(parsed={'candidates':[]})))
+        self.controller.planner=self.m.LLMPlanner(llm,SimpleNamespace(take=lambda:True))
+        self.controller.tick()
+        context=json.loads(captured[0]['input'][0]['text'])['self_model']
+        self.assertEqual(len(context['contexts']),1)
+        self.assertEqual(next(iter(context['contexts'].values()))['execution_context'],self.controller.execution_identity)
+        self.assertEqual(context['current_execution_identity'],self.controller.execution_identity)
+        self.assertEqual(len(self.model.snapshot()['contexts']),22)
+        self.raw['api_identity_version']='brand-new';self.controller=self.build()
+        (self.root/'facts.json').write_text('{"report":"new identity gap"}')
+        self.controller.planner=self.m.LLMPlanner(llm,SimpleNamespace(take=lambda:True));self.controller.tick()
+        context=json.loads(captured[-1]['input'][0]['text'])['self_model']
+        self.assertEqual(context['contexts'],{})
+
     def test_existing_artifact_never_dispatches(self):
         (self.root/'result.txt').write_text('done')
         self.controller.tick()

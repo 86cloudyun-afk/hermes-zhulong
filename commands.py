@@ -184,14 +184,15 @@ class Commands:
         if self.a is None:return '自主核心配置不可用；请检查 profile 的 zhulong/config.json。'
         action=args[0] if args else 'status'
         if action=='goals':result={'goals':self.a.ledger.goals(20)}
+        elif action=='experience':result=self.a.experience_status()
         elif action in ('status','tick','pause','resume'):result=getattr(self.a,action)()
         elif action=='cancel' and len(args)==2:result=self.a.cancel(args[1])
-        else:return '用法：/zhulong autonomy [status|goals|tick|pause|resume|cancel <id>]'
+        else:return '用法：/zhulong autonomy [status|goals|experience|tick|pause|resume|cancel <id>]'
         return json.dumps(result,ensure_ascii=False,indent=2)
 
     def _help(self) -> str:
         return (
-            "🐉 烛龙（Zhulong）· 观测/校准/自主核心 v0.4\n"
+            "🐉 烛龙（Zhulong）· 观测/校准/自主核心 v0.6\n"
             "  /zhulong status               — 概况\n"
             "  /zhulong tail N               — 最近 N 条事件\n"
             "  /zhulong calibrate            — 校准账报告\n"
@@ -200,7 +201,7 @@ class Commands:
             "  /zhulong reflect [run]        — 反思 digest 信息/生成\n"
             "  /zhulong probes [run]         — 探针历史/立即运行\n"
             "  /zhulong model                — 证据型自我模型（只读）\n"
-            "  /zhulong autonomy [status|goals|tick|pause|resume|cancel <id>]"
+            "  /zhulong autonomy [status|goals|experience|tick|pause|resume|cancel <id>]"
         )
 
 
