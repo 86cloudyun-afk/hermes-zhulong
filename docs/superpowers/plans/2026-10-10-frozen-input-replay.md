@@ -41,9 +41,9 @@
 **Files:** Create skill_replay.py, tests/test_skill_replay.py; modify skill_evaluator.py, skill_store.py, skill_learning.py, runtime_policy.py, scripts/install.sh.
 **Interfaces:** skill_replay.evaluation_task(task,goal,submission)->dict (private _evaluation_cases, evaluation_digest, origin_replay); trusted replay uses task_input.binding and current-rule metadata. DockerEvaluator.evaluate existing signature; SkillStore.claim returns private augmented task, finish rebuilds same plan in writeTX.
 
-- [ ] 写基本case过而原例错、去重并保持完整输出、条件冲突付费前阻止、缺快照unavailable、原数据不进模型、wrong-origin/digest报告、当前settings漂移、暂停/unknown恢复回归测试。运行 test_skill_replay，Expected新功能断言失败。
-- [ ] 实现 replay_origin 规范与回归计划、独立字段checker、发布事务门槛及状态。运行 targeted +完整suite；实际Docker验证原例failure/去重/unknown不发布，Expected通过。
-- [ ] 提交 replay gate 与测试。
+- [x] 写基本case过而原例错、去重并保持完整输出、条件冲突付费前阻止、缺快照unavailable、原数据不进模型、wrong-origin/digest报告、当前settings漂移、暂停/unknown恢复回归测试。运行 test_skill_replay，Expected新功能断言失败。
+- [x] 实现 replay_origin 规范与回归计划、独立字段checker、发布事务门槛及状态。运行 targeted +完整suite；实际Docker验证原例failure/去重/unknown不发布，Expected通过。
+- [x] 提交 replay gate 与测试。
 
 ### Task 3: Native evidence and v0.8 deployment
 
