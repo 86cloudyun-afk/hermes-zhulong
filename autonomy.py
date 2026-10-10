@@ -56,6 +56,24 @@ class Controller:
         self.execution_identity={'api_url':policy.get('api_url'),'credential_env':policy.get('api_key_env','API_SERVER_KEY'),
                                  'identity_version':policy.get('api_identity_version'),'profile':policy.get('api_profile','default')}
         self._tick_lock=threading.Lock();self._lifecycle_lock=threading.Lock();self._stop=threading.Event();self._thread=None;self._recovery_cursor=0;self._ready_cursor=0
+        self.admission_gate=None
+        self._progress_lock=threading.Lock()
+        self._progress_state={'phase':'idle','updated_monotonic':time.monotonic(),'ticks':0,'errors':0,'reason':None}
+
+    def _phase(self,phase):
+        with self._progress_lock:
+            self._progress_state.update(phase=phase,updated_monotonic=time.monotonic())
+
+    def progress(self):
+        with self._progress_lock:result=dict(self._progress_state)
+        result['thread_alive']=bool(self._thread and self._thread.is_alive())
+        result['stop_requested']=self._stop.is_set()
+        return result
+
+    def _admissible(self):
+        if self._stop.is_set():return False
+        try:return self.admission_gate is None or self.admission_gate() is True
+        except Exception:return False
 
     def rank_ready(self,goals):
         return sorted(goals,key=lambda g:(0 if g['attempts'] else 1,g['deadline'],
@@ -98,6 +116,7 @@ class Controller:
         finally:stop.set();thread.join(timeout=5)
 
     def _synthesize(self,observations):
+        if not self._admissible():return 0
         owner=uuid.uuid4().hex;selected=[]
         for observation in observations:
             if not observation['available']:continue
@@ -107,6 +126,8 @@ class Controller:
         success=False;accepted=0;deferred=None
         try:
             with self._source_heartbeat(selected,owner) as lost:
+                if not self._admissible():raise PlannerError('service_not_running')
+                self._phase('planning')
                 raw=self.planner.plan(selected,self.model.snapshot(),self.policy)
                 candidates=validate_candidates(raw,selected,self.policy)
                 current={o['id']:o.get('revision') for o in observe_sources(self.policy) if o['available']}
@@ -121,7 +142,7 @@ class Controller:
                     accepted+=1
                 success=True
         except PlannerError as exc:
-            if str(exc) in ('planner_unavailable','auxiliary_budget_exhausted'):deferred=str(exc)
+            if str(exc) in ('planner_unavailable','auxiliary_budget_exhausted','service_not_running'):deferred=str(exc)
         except Exception:pass
         finally:
             for observation in selected:self.ledger.complete_source(observation['id'],observation['revision'],owner,success,self.clock(),deferred_reason=deferred)
@@ -191,7 +212,7 @@ class Controller:
             self._finish(lease,goal,'unknown_result',exc.code,False)
 
     def _dispatch(self,lease,goal,current):
-        if self._stop.is_set():return False
+        if not self._admissible():return False
         now=self.clock()
         if goal.get('cancel_requested'):
             self._finish(lease,goal,'cancelled','cancel_requested',True);return False
@@ -204,6 +225,7 @@ class Controller:
         if before['verdict']!='unknown' and goal['baseline'].get('verdict')!='unknown' and now<goal['deadline']:
             try:
                 capabilities=self.runs.capabilities()
+                if not self._admissible():return False
                 self._transition(lease,goal,'ready','prerequisites_available')
                 prepared=self.ledger.prepare_submission(lease,self._request(goal),'zhulong-'+goal['id'],self.execution_identity,
                     self.clock(),self.policy['daily_runs'],self.policy['max_active'],self.policy['max_attempts'],capabilities['retention_seconds'],
@@ -227,6 +249,7 @@ class Controller:
         if not self._tick_lock.acquire(blocking=False):return {'ok':False,'reason':'tick_in_progress'}
         summary={'ok':True,'new_dispatches':0,'accepted':0}
         try:
+            self._phase('observing')
             observations=observe_sources(self.policy)
             current={o['id']:o.get('revision') for o in observations if o['available']}
             work=self.ledger.work_goals();recovered=set();processed=0
@@ -236,6 +259,7 @@ class Controller:
                 recovery=recovery[start:]+recovery[:start]
                 self._recovery_cursor=(start+min(10,len(recovery)))%len(recovery)
             for goal in recovery[:10]:
+                self._phase('reconciling')
                 processed+=1
                 lease=self.ledger.claim(self.owner,self.clock(),self.policy['lease_seconds'],(goal['id'],))
                 if lease is None:continue
@@ -245,7 +269,7 @@ class Controller:
                         goal=self.ledger.owned_goal(lease,self.clock())
                         if goal and goal['submission']:self._reconcile(lease,goal)
                 finally:self.ledger.release(lease,self.clock())
-            if not self.ledger.paused():
+            if self._admissible() and not self.ledger.paused():
                 summary['accepted']=self._synthesize(observations)
                 ready=self.rank_ready([g for g in self.ledger.work_goals() if g['state'] in ('ready','blocked') and (not g['submission'] or g['submission']['settled'])])
                 if ready:
@@ -253,6 +277,7 @@ class Controller:
                     ready=ready[start:]+ready[:start]
                     self._ready_cursor=(start+min(20-processed,len(ready)))%len(ready)
                 for goal in ready[:20-processed]:
+                    self._phase('dispatching')
                     if goal['id'] in recovered:continue
                     lease=self.ledger.claim(self.owner,self.clock(),self.policy['lease_seconds'],(goal['id'],))
                     if lease is None:continue
@@ -267,10 +292,12 @@ class Controller:
                     if goal is None:continue
                     fresh=self.ledger.get_goal(goal['id'])
                     if fresh['attempts']>goal['attempts']:break
-            self.model.refresh()
+            self._phase('model_refresh');self.model.refresh()
             summary['work_limit']=20
             return summary
-        finally:self._tick_lock.release()
+        finally:
+            with self._progress_lock:self._progress_state['ticks']+=1
+            self._phase('idle');self._tick_lock.release()
 
     def status(self):
         records=self.ledger.model_records();counts={}
@@ -293,11 +320,17 @@ class Controller:
             def loop():
                 while not self._stop.is_set():
                     try:self.tick()
-                    except Exception:pass
+                    except Exception as exc:
+                        with self._progress_lock:
+                            self._progress_state['errors']+=1
+                            self._progress_state.update(reason='tick_error:'+type(exc).__name__,updated_monotonic=time.monotonic())
                     if self._stop.wait(interval_seconds):break
             self._thread=threading.Thread(target=loop,daemon=True,name='zhulong-autonomy');self._thread.start()
 
-    def stop(self):
+    def request_stop(self):self._stop.set()
+
+    def stop(self,timeout=5):
         with self._lifecycle_lock:
             self._stop.set();thread=self._thread
-        if thread and thread is not threading.current_thread():thread.join(timeout=5)
+        if thread and thread is not threading.current_thread():thread.join(timeout=timeout)
+        return not (thread and thread.is_alive())

@@ -63,7 +63,7 @@ class PluginTests(unittest.TestCase):
         destination=self.home/'plugins'/'zhulong'
         for name in ('autonomy','autonomy_store','autonomy_checks','hermes_runs','self_model'):
             self.assertTrue((destination/(name+'.py')).is_file(),name)
-        self.assertIn('version: 0.4.0',(destination/'plugin.yaml').read_text())
+        self.assertEqual((destination/'plugin.yaml').read_bytes(),(ROOT/'plugin.yaml').read_bytes())
 
     def test_optional_storage_failure_keeps_legacy_interfaces_and_cleanup(self):
         for obstruction in ('autonomy.db','self_model.json'):

@@ -30,6 +30,7 @@ try:
     from .hermes_runs import RunsClient
     from .self_model import SelfModel
     from .autonomy import Controller, LLMPlanner
+    from .runtime_channel import ServiceChannel
 except ImportError:
     if str(_HERE) not in sys.path:
         sys.path.insert(0, str(_HERE))
@@ -44,6 +45,7 @@ except ImportError:
     from hermes_runs import RunsClient
     from self_model import SelfModel
     from autonomy import Controller, LLMPlanner
+    from runtime_channel import ServiceChannel
 
 _SENSOR = None
 
@@ -211,17 +213,21 @@ def register(ctx) -> None:
             try:ctx.register_tool(name=name,toolset='zhulong',schema=schema,handler=handler)
             except Exception:logger.warning('zhulong: tool registration failed',exc_info=True)
 
-        stop_event=threading.Event();scheduler=None
+        stop_event=threading.Event();scheduler=None;service=None
+        if os.environ.get('ZHULONG_SERVICE_DIR'):
+            service=ServiceChannel(os.environ['ZHULONG_SERVICE_DIR'],os.environ.get('ZHULONG_BOOT_ID',''),controller,stop_event)
+            service.start()
         def cleanup():
             stop_event.set()
-            if controller is not None:controller.stop()
+            controller_stopped=controller is None or controller.stop()
             if scheduler is not None:scheduler.join(timeout=5)
             # Stop subsequent ticks and probe calls. A bounded in-flight call retains its resources
             # until it returns rather than racing a closed connection.
-            if scheduler is None or not scheduler.is_alive():
+            if controller_stopped and (scheduler is None or not scheduler.is_alive()):
                 db.close()
                 with cal._lock:cal._conn.close()
                 with journal._lock:journal._conn.close()
+            if service is not None:service.stop()
         lifecycle=getattr(ctx,'on_unload',None)
         if callable(lifecycle):lifecycle(cleanup)
         if callable(lifecycle) and cfg.get('scheduler',True) and not os.environ.get('ZHULONG_NO_AUTOSWEEP'):

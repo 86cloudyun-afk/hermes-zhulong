@@ -11,7 +11,7 @@ Zhulong 是 [Hermes Agent](https://github.com/NousResearch/hermes-agent) 的插�
 1. **观测（S2）**：订阅 11 个 observer hooks，把每个生命周期事件规范化、脱敏、写入本地日记（JSONL + SQLite）。
 2. **校准（S3）**：登记 agent 的预测/声明（工具 `zhulong_predict`），由**机械核验器或人工**结算，产出 Brier / ECE / 命中率 / 弃答统计与历史快照。
 
-3. **自主核心（v0.4）**：观察配置来源、合成可验证目标、持久提交、独立核验及维护有样本分母的自我模型。配置启用后，日常闭环无需逐项人工评分。
+3. **自主核心（v0.5）**：观察配置来源、合成可验证目标、持久提交、独立核验及维护有样本分母的自我模型；增加受监督运行与 Docker 执行边界。配置启用后，日常闭环无需逐项人工评分。
 
 这是可测试的功能自我模型，测试不证明主观意识。关键纪律：**agent 永远不能给自己的预测打分**。
 
@@ -111,7 +111,7 @@ zhulong_autonomy(action=status|goals|tick)     # 不提供直接评分/改验收
 - ✅ v0.2.0（S3）：校准账
 - ✅ v0.3.0（S4）：反思引擎 + 自省探针（本次）
 - ✅ v0.4.0：自主目标闭环、可靠恢复、自我模型和 `/zhulong model`
-- ⏳ 后续：周报投递、真实外部事务、部署沙箱、控制内核自动晋升与长期测试
+- ⏳ 后续：周报投递、真实外部事务、控制内核自动晋升与长期测试
 
 ## License
 
@@ -137,7 +137,9 @@ MIT © 2026 YG
 
 技能文档和提示词负责描述意图。插件的 SQLite 事务、不可变字段触发器、租约代次、原子预算和验收接口负责约束自身状态与派发。模型不能通过公开插件工具直接把任务标成成功、降低验收或绕过预算。所有提交状态写入还比较当前 submission ID，防止旧快照结算新执行；命令验收可能读取 cwd 外的路径，因此同一账本中的 argv 验收执行保守串行，避免跨任务认领成果。
 
-插件所在的 Python 进程与执行器仍需可信部署。Hermes 普通 Runs 没有请求级 workspace 沙箱；公开 `pre_tool_call` 的 block 可阻止正常工具派发，但插件缺席、派发基础设施异常及可信插件直接调用 registry 都有边界，不能把它称为 OS 安全隔离。profile、cwd、路径检查、审批提示或 YOLO 设置也不能替代文件 / 进程 / 网络权限。对执行器的隔离与控制文件保护应由宿主 / OS 实施，本版不自动部署这类沙箱。
+插件所在的 Python 进程与执行器仍需可信部署。Hermes 普通 Runs 没有请求级 workspace 沙箱；profile、cwd、路径检查或审批提示不能替代文件 / 进程 / 网络权限。v0.5 提供 [受监督部署入口](docs/deployment/supervised-runtime.md)：验证实际模型工具权限，把终端动作放入非 root、无网络、只读根、有限资源的原生 Docker worker，保护控制文件和只读源事实。默认插件安装仍不自行创建此部署；可信宿主/插件 Python 与 Docker daemon 处于隔离边界之外。
+
+受监督部署只接受数据型验收，拒绝宿主 `argv` 执行模型生成代码。进程级测试覆盖重复/孤儿锁、持久重启预算、停止顺序、错误 boot 及丢回复后的唯一副作用；有限测试不代表长期可用率。详细命令、资源/磁盘限制及 Linux 常驻示例见部署文档。
 
 ## 验证
 
@@ -150,4 +152,4 @@ HERMES_AGENT_ROOT=/path/to/hermes-agent python -m unittest discover -s tests -p 
 python scripts/live_autonomy_smoke.py --hermes-root /path/to/hermes-agent --report /tmp/zhulong-live.json
 ```
 
-GitHub Actions 覆盖 Python 3.11 / 3.12 / 3.14。模拟多领域与故障测试、离线真实宿主 smoke、付费真实模型及工具验证分别报告；长期稳定性只在实际运行后宣称。研究与规格在 [研究正文](docs/research/2026-10-09-cross-disciplinary-autonomy.md)和 [设计规格](docs/superpowers/specs/2026-10-09-autonomous-core-design.md)，实际证据见[验证记录](docs/research/2026-10-09-v0.4-validation.md)及[审查闭环](docs/research/2026-10-09-v0.4-review.md)。
+GitHub Actions 覆盖 Python 3.11 / 3.12 / 3.14。模拟多领域与故障测试、离线真实宿主 smoke、付费真实模型及工具验证分别报告；长期稳定性只在实际运行后宣称。研究与规格在 [研究正文](docs/research/2026-10-09-cross-disciplinary-autonomy.md)和 [设计规格](docs/superpowers/specs/2026-10-09-autonomous-core-design.md)。当前 v0.5 证据见[验证记录](docs/research/2026-10-10-v0.5-validation.md)及[审查闭环](docs/research/2026-10-10-v0.5-review.md)；v0.4 历史证据保留在 docs/research 中。

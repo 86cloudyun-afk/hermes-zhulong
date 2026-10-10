@@ -210,7 +210,7 @@ class Ledger:
             if not self._current(c,lease,now,expected_submission_id):return False
             c.execute('UPDATE goals SET state=?,reason=? WHERE id=?',(state,str(reason)[:240],lease.goal_id))
             if execution_settled is not None:
-                c.execute('UPDATE submissions SET settled=? WHERE id=(SELECT submission_id FROM goals WHERE id=?)',(int(execution_settled),lease.goal_id))
+                c.execute('UPDATE submissions SET settled=MAX(settled,?) WHERE id=(SELECT submission_id FROM goals WHERE id=?)',(int(execution_settled),lease.goal_id))
             return True
 
     def record_attempt_result(self,lease,submission_id,evidence,now):
@@ -231,8 +231,10 @@ class Ledger:
             if outcome=='failed' and evidence.get('verdict') is not False:raise ValueError('unverified_failure')
             receipt=digest([lease.goal_id,outcome,evidence])
             c.execute('INSERT OR IGNORE INTO evidence(goal_id,receipt,outcome,data,created) VALUES(?,?,?,?,?)',(lease.goal_id,receipt,outcome,canonical(evidence),now))
+            truth=c.execute("SELECT outcome FROM evidence WHERE goal_id=? AND outcome IN ('succeeded','failed')",(lease.goal_id,)).fetchone()
+            if truth is not None:outcome=truth['outcome']
             c.execute('UPDATE goals SET state=?,reason=?,owner=NULL,lease_until=NULL WHERE id=?',(outcome,str(evidence.get('reason',''))[:240],lease.goal_id))
-            c.execute('UPDATE submissions SET settled=? WHERE id=?',(int(execution_settled),goal['submission_id']))
+            c.execute('UPDATE submissions SET settled=MAX(settled,?) WHERE id=?',(int(execution_settled),goal['submission_id']))
             return True
 
     def request_cancel(self,goal_id):
@@ -256,10 +258,14 @@ class Ledger:
             row=c.execute('SELECT * FROM sources WHERE id=?',(id,)).fetchone()
             prior=json.loads(row['outcome']) if row and row['fingerprint']==fingerprint else {}
             if not isinstance(prior,dict):prior={}
-            if prior.get('status')=='processed' or prior.get('attempts',0)>=max_attempts:return False
             if prior.get('status')=='planning' and prior.get('until',0)>now:return False
+            attempts=prior.get('attempts',0)
+            # v0.4 counted claims. Only the expired in-flight legacy claim is
+            # refundable; completed failures remain counted through migration.
+            if prior.get('status')=='planning' and prior.get('accounting')!='completed_plans':attempts=max(0,attempts-1)
+            if prior.get('status')=='processed' or attempts>=max_attempts:return False
             if prior.get('next_retry',0)>now:return False
-            outcome={'status':'planning','owner':owner,'until':now+lease_seconds,'attempts':prior.get('attempts',0)+1}
+            outcome={'status':'planning','owner':owner,'until':now+lease_seconds,'attempts':attempts,'accounting':'completed_plans'}
             c.execute('INSERT INTO sources VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint,outcome=excluded.outcome,updated=excluded.updated',(id,fingerprint,canonical(outcome),now))
             return True
 
@@ -279,7 +285,7 @@ class Ledger:
             old=json.loads(row['outcome'])
             if old.get('owner')!=owner or old.get('until',0)<=now:return False
             outcome={'status':'deferred' if deferred_reason else ('processed' if success else 'failed'),
-                     'attempts':max(0,old['attempts']-int(bool(deferred_reason))),'next_retry':now+60}
+                     'attempts':old['attempts']+int(not bool(deferred_reason)),'next_retry':now+60,'accounting':'completed_plans'}
             if deferred_reason:outcome['reason']=deferred_reason
             c.execute('UPDATE sources SET outcome=?,updated=? WHERE id=?',(canonical(outcome),now,id))
             return True
