@@ -1,0 +1,77 @@
+{
+  "scenario": "finite-native-supervised-runtime",
+  "paid": true,
+  "provider_validation": "verified_native_run",
+  "code_revision": "5c37d86c034ef7fbceed1a38659d71752a8d6d94",
+  "code_dirty": false,
+  "standalone_check_passed": true,
+  "boundary": {
+    "denied_action_checks": {
+      "capabilities_zero": true,
+      "control_absent": true,
+      "control_api_unreachable": true,
+      "docker_socket_absent": true,
+      "facts_hardlink_denied": true,
+      "facts_readonly": true,
+      "facts_rename_denied": true,
+      "no_external_interface": true,
+      "provider_key_absent": true,
+      "root_readonly": true,
+      "work_writable": true
+    },
+    "docker": {
+      "bind_disk_quota": "not_enforced",
+      "bind_mounts": 15,
+      "cpu": 1,
+      "memory_bytes": 536870912,
+      "memory_plus_swap_bytes": 536870912,
+      "network": "none",
+      "pids": 128,
+      "readonly_root": true,
+      "shm_bytes": 67108864,
+      "tmpfs_checked": true,
+      "uid": 1000
+    },
+    "external_llm_calls": 0,
+    "model_tools": [
+      "process_manage",
+      "terminal"
+    ],
+    "native_revision": "73162b00eefde3794bed0afb53d84a19c0eed230",
+    "ok": true,
+    "source_topology": "direct_regular_single_link"
+  },
+  "readiness": {
+    "matching_boot": true,
+    "controller_live": true,
+    "paused": true
+  },
+  "duplicate_launch_blocked": true,
+  "goal": {
+    "state": "succeeded",
+    "attempts": 1,
+    "settled": true,
+    "runtime": {
+      "model": "deepseek-flash",
+      "provider": "deepseek"
+    },
+    "usage": {
+      "input_tokens": 13040,
+      "output_tokens": 332,
+      "total_tokens": 13372
+    },
+    "native_replay_same_run": true,
+    "verified_receipts": 1,
+    "artifact_sha256": "7aae77332bb6a6e754b983a301611af709594b110ec83702d4dabc3d83b09605"
+  },
+  "auxiliary_budget_calls": 1,
+  "shutdown": {
+    "admission_acknowledged": true,
+    "forced_shutdown": false,
+    "launches": 1,
+    "reason": null,
+    "removed_workers": 0,
+    "state": "stopped"
+  },
+  "supervisor_exit_code": 0
+}

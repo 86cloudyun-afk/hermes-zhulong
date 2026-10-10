@@ -152,4 +152,4 @@ HERMES_AGENT_ROOT=/path/to/hermes-agent python -m unittest discover -s tests -p 
 python scripts/live_autonomy_smoke.py --hermes-root /path/to/hermes-agent --report /tmp/zhulong-live.json
 ```
 
-GitHub Actions 覆盖 Python 3.11 / 3.12 / 3.14。模拟多领域与故障测试、离线真实宿主 smoke、付费真实模型及工具验证分别报告；长期稳定性只在实际运行后宣称。研究与规格在 [研究正文](docs/research/2026-10-09-cross-disciplinary-autonomy.md)和 [设计规格](docs/superpowers/specs/2026-10-09-autonomous-core-design.md)，实际证据见[验证记录](docs/research/2026-10-09-v0.4-validation.md)及[审查闭环](docs/research/2026-10-09-v0.4-review.md)。
+GitHub Actions 覆盖 Python 3.11 / 3.12 / 3.14。模拟多领域与故障测试、离线真实宿主 smoke、付费真实模型及工具验证分别报告；长期稳定性只在实际运行后宣称。研究与规格在 [研究正文](docs/research/2026-10-09-cross-disciplinary-autonomy.md)和 [设计规格](docs/superpowers/specs/2026-10-09-autonomous-core-design.md)。当前 v0.5 证据见[验证记录](docs/research/2026-10-10-v0.5-validation.md)及[审查闭环](docs/research/2026-10-10-v0.5-review.md)；v0.4 历史证据保留在 docs/research 中。
