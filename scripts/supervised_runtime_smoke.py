@@ -80,11 +80,12 @@ def main():
         command=[args.hermes_command] if args.hermes_command else [sys.executable,str(args.hermes_root/'hermes')]
         manifest=create_deployment(base/'service',work,args.hermes_root,args.image,
             command+['gateway','run','--no-supervise'],policy,port=port)
-        deployment=manifest.parent;ledger=Ledger(deployment/'profile/zhulong/autonomy.db');ledger.set_pause(True)
+        deployment=manifest.parent;ledger=Ledger(deployment/'profile/zhulong/autonomy.db')
         if args.learning:
             policy=validate_config(read_json(deployment/'profile/zhulong/config.json')['autonomy'],deployment/'profile/zhulong')
             seed_learning_failure(ledger,policy,time.time())
             report['learning_origin']='Real mechanical failure of a synthetic settled no-output executor fixture; no provider failure claimed'
+        ledger.set_pause(True)
         checked=subprocess.run([sys.executable,str(ROOT/'scripts/runtime.py'),'check','--deployment',str(manifest)],
             capture_output=True,text=True,timeout=150)
         if checked.returncode or json.loads(checked.stdout).get('ok') is not True:raise RuntimeError('standalone_native_check_failed')
