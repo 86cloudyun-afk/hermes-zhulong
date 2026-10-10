@@ -4,6 +4,8 @@
 stdlib 监督器启动一个原生 Hermes 网关，现有插件使用 `ctx.llm` 规划，通过
 原生 Runs 接口执行。监督器不另建认知循环。
 
+v0.8 可选的[授权输入冻结与原目标字段回归](executable-skills.md)不改变此处的挂载、源 inode 和进程边界。源原子替换仍不支持，输入额度也不是磁盘硬配额；既有未决提交必须按原账本对账，不能用换 profile 或删除 SQLite 来解除。
+
 需要 Linux、非 root 用户、有 Docker socket 权限、可用 cgroup 资源限制、
 Hermes 官方 PM 管理的 Python（含 messaging/aiohttp），以及固定宿主提交
 `73162b00eefde3794bed0afb53d84a19c0eed230`。云开发环境已具备这些条件；

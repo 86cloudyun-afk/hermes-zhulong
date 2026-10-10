@@ -71,6 +71,11 @@ class Ledger:
             columns={r[1] for r in c.execute('PRAGMA table_info(submissions)')}
             for name in ('usage','runtime'):
                 if name not in columns:c.execute(f'ALTER TABLE submissions ADD COLUMN {name} TEXT')
+            try:
+                from .task_inputs import initialize
+            except ImportError:
+                from task_inputs import initialize
+            initialize(c)
 
     @contextmanager
     def _connection(self, write=False):
@@ -104,18 +109,33 @@ class Ledger:
         result.update({key:result['candidate'].get(key) for key in ('domain','objective','reason','source_id','contract_id','confidence','expected_benefit')})
         result['recovery_reason']=row['reason']
         result['submission']=self._submission(c.execute('SELECT * FROM submissions WHERE id=?',(row['submission_id'],)).fetchone()) if row['submission_id'] else None
+        try:
+            from .task_inputs import binding
+        except ImportError:
+            from task_inputs import binding
+        result['task_input']=binding(c,row['id'])
         return result
 
-    def create_goal(self,candidate,source_revision,contract,baseline,now,deadline_seconds,*,source_owner=None):
+    def create_goal(self,candidate,source_revision,contract,baseline,now,deadline_seconds,*,source_owner=None,task_input=None):
         key=digest([candidate['source_id'],source_revision,candidate['contract_id'],contract])
         with self._connection(True) as c:
             if source_owner is not None:
                 source=c.execute('SELECT outcome FROM sources WHERE id=? AND fingerprint=?',(candidate['source_id'],source_revision)).fetchone()
                 state=json.loads(source[0]) if source else {}
                 if state.get('owner')!=source_owner or state.get('until',0)<=now:return None
-            c.execute('INSERT OR IGNORE INTO goals(id,dedupe,candidate,source_revision,contract,contract_hash,baseline,created,deadline) VALUES(?,?,?,?,?,?,?,?,?)',
+            inserted=c.execute('INSERT OR IGNORE INTO goals(id,dedupe,candidate,source_revision,contract,contract_hash,baseline,created,deadline) VALUES(?,?,?,?,?,?,?,?,?)',
                 (uuid.uuid4().hex,key,canonical(candidate),source_revision,canonical(contract),digest(contract),canonical(baseline),now,now+deadline_seconds))
-            return self._goal(c,c.execute('SELECT * FROM goals WHERE dedupe=?',(key,)).fetchone())
+            goal=c.execute('SELECT * FROM goals WHERE dedupe=?',(key,)).fetchone()
+            try:
+                from .task_inputs import bind_goal,binding
+            except ImportError:
+                from task_inputs import bind_goal,binding
+            if inserted.rowcount:bind_goal(c,goal['id'],candidate['source_id'],source_revision,task_input)
+            elif task_input is not None:
+                original=binding(c,goal['id'])
+                if original is None:raise ValueError('input_snapshot_legacy_unavailable')
+                if canonical(original)!=canonical(task_input):raise ValueError('input_snapshot_conflict')
+            return self._goal(c,goal)
 
     @staticmethod
     def _owned(c,lease,now):
@@ -174,6 +194,12 @@ class Ledger:
             if goal['cancel_requested']:return {'admitted':False,'reason':'cancelled'}
             if goal['state']!='ready':return {'admitted':False,'reason':'not_ready'}
             if goal['attempts']>=max_attempts:return {'admitted':False,'reason':'max_attempts'}
+            try:
+                from .task_inputs import valid_binding
+            except ImportError:
+                from task_inputs import valid_binding
+            if not valid_binding(c,self._goal(c,goal),request):
+                return {'admitted':False,'reason':'input_snapshot_no_longer_applicable'}
             try:
                 from .experience_store import valid_bindings
             except ImportError:

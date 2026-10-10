@@ -13,14 +13,15 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from autonomy_store import Ledger
-from autonomy_checks import Verifier, validate_config
+from autonomy_store import Ledger, canonical
+from autonomy_checks import Verifier, validate_config, observe_sources
 from experience_store import ExperienceStore
 from hermes_runs import RunsClient
 from runtime_channel import read_json
 from runtime_policy import create_deployment
 from skill_store import SkillStore
 from scripts.skill_smoke_evidence import runner_command, audit_native_skill
+import task_inputs
 
 
 def wait_for(predicate,timeout,process):
@@ -42,18 +43,23 @@ def seed_learning_failure(ledger, policy, now):
     source=policy['sources'][0];contract_id=next(iter(source['contracts']))
     contract=source['contracts'][contract_id];checked=Verifier(policy).capture(contract)
     if checked['verdict'] is not False:raise RuntimeError('learning_fixture_not_false')
+    task_inputs.configure(ledger,policy['sources'],policy['input_snapshot_bytes'])
+    observation=observe_sources(policy)[0]
+    snapshot=observation.get('task_input')
     goal=ledger.create_goal({'source_id':source['id'],'contract_id':contract_id,'domain':source['domain'],
         'objective':'Create the missing local report according to the configured acceptance.',
         'reason':'Validation fixture: executor deliberately produced no output.','confidence':0.5},
-        'validation-fixture-before-live-source',contract,checked,now,600)
+        observation['revision'] if snapshot else 'validation-fixture-before-live-source',contract,checked,now,600,
+        task_input=snapshot)
     lease=ledger.claim('validation-fixture',now,20,(goal['id'],))
     identity={'api_url':policy['api_url'],'credential_env':policy['api_key_env'],
         'identity_version':policy['api_identity_version'],'profile':policy['api_profile']}
-    submission=ledger.prepare_submission(lease,{'input':'{"fixture":"no external execution"}'},'fixture',
+    submission=ledger.prepare_submission(lease,{'input':canonical({'fixture':'no external execution',**({'task_input':snapshot} if snapshot else {})})},'fixture',
         identity,now,2,1,1,86400)['submission']
     ledger.record_admission(lease,submission['id'],'validation-fixture-no-native-run','completed',now)
     ledger.record_attempt_result(lease,submission['id'],checked,now)
     ledger.finish(lease,checked,'failed',True,now,expected_submission_id=submission['id'])
+    return goal['id']
 
 
 def main():
@@ -64,22 +70,25 @@ def main():
     parser.add_argument('--paid',action='store_true')
     parser.add_argument('--learning',action='store_true',help='With --paid: real strategy generation plus one real Docker goal from a labeled failure fixture')
     parser.add_argument('--skills',action='store_true',help='With --paid: independently evaluated program and transcript-verified native execution')
+    parser.add_argument('--replay',action='store_true',help='With --paid --skills: frozen input and original-goal field regression')
     parser.add_argument('--report',required=True,type=Path)
     args=parser.parse_args()
     if args.learning and not args.paid:parser.error('--learning requires --paid')
     if args.skills and not args.paid:parser.error('--skills requires --paid')
+    if args.replay and not (args.paid and args.skills):parser.error('--replay requires --paid --skills')
     if args.paid and not os.environ.get('DEEPSEEK_API_KEY'):raise RuntimeError('provider_binding_missing')
     revision=subprocess.check_output(['git','-C',str(ROOT),'rev-parse','HEAD'],text=True).strip()
     dirty=subprocess.run(['git','-C',str(ROOT),'diff','--quiet'],check=False).returncode!=0
     report={'scenario':'finite-native-supervised-runtime','paid':args.paid,'provider_validation':'not_called',
-        'code_revision':revision,'code_dirty':dirty,'learning':args.learning,'skills':args.skills}
+        'code_revision':revision,'code_dirty':dirty,'learning':args.learning,'skills':args.skills,'replay_origin':args.replay}
     with tempfile.TemporaryDirectory(prefix='zhulong-runtime-smoke-') as tmp:
         base=Path(tmp);work=base/'work';work.mkdir()
-        (work/'facts.json').write_text(json.dumps({'component':'isolated-runtime-demo','report_status':'missing','observations':[1,2,3]}))
+        (work/'facts.json').write_text(json.dumps({'component':'isolated-runtime-demo','report_status':'missing','observations':[2,4] if args.replay else [1,2,3]}))
         with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
         policy={'mission':'Discover the missing local engineering report from source facts. Create one report using terminal tools and the configured acceptance contract. Do only this local demo work.',
             'daily_runs':2 if args.learning or args.skills else 1,'max_attempts':1,'tick_interval_seconds':2,'lease_seconds':20,'run_deadline_seconds':180,
             'request_timeout_seconds':5,'sources':[{'id':'runtime-demo','domain':'code','path':str(work/'facts.json'),
+                'direction':'Create the missing local report from observations using the configured acceptance.',
                 'contracts':{'report':{'type':'file_contains','path':str(work/'report.txt'),'text':'verified-runtime-report','require_change':True}}}]}
         if args.skills:
             policy['sources'][0]['contracts']['report']={'type':'json_equals','path':str(work/'report.txt'),'field':'sum','value':6,'require_change':True}
@@ -88,15 +97,27 @@ def main():
                 'image':args.image,'examples':[{'input':{'observations':[1,2]},'output':{'sum':3}}],
                 'holdout':[{'input':{'observations':[]},'output':{'sum':0}},
                            {'input':{'observations':[-5,2]},'output':{'sum':-3}}]}]
-            template=runner_command('CODE_HASH',work/'facts.json',work/'report.txt')
-            policy['mission']='Create the missing JSON report by using the published program in the frozen skills binding. First copy its code exactly to .zhulong-skill-<code_hash>.py. Then use a separate foreground terminal call containing EXACTLY this command, replacing CODE_HASH only with the binding code_hash. No changes to the command, no additional shell commands. Do this once:\n'+template
+            if args.replay:
+                policy['sources'][0].update(input_fields=['observations'],persist_input_fields=['observations'])
+                policy['executable_skills'][0]['replay_origin']=True
+            source=work/'.zhulong-input-INPUT_HASH.json' if args.replay else work/'facts.json'
+            template=runner_command('CODE_HASH',source,work/'report.txt',input_hash='INPUT_HASH' if args.replay else None)
+            policy['mission']='Create the missing JSON report using the published skills binding. Copy its code exactly to .zhulong-skill-<code_hash>.py. '+(
+                'Copy task_input.data as compact canonical JSON (sorted keys, no spaces or newline) to .zhulong-input-<input_hash>.json. ' if args.replay else '')+(
+                'Then use a separate foreground terminal call containing EXACTLY this command, replacing CODE_HASH with skills code_hash'+
+                (' and INPUT_HASH with task_input.input_hash' if args.replay else '')+'. No changes to the command or additional shell commands. Do this once:\n')+template
         command=[args.hermes_command] if args.hermes_command else [sys.executable,str(args.hermes_root/'hermes')]
         manifest=create_deployment(base/'service',work,args.hermes_root,args.image,
             command+['gateway','run','--no-supervise'],policy,port=port)
         deployment=manifest.parent;ledger=Ledger(deployment/'profile/zhulong/autonomy.db')
+        fixture_id=None
         if args.learning or args.skills:
             policy=validate_config(read_json(deployment/'profile/zhulong/config.json')['autonomy'],deployment/'profile/zhulong')
-            seed_learning_failure(ledger,policy,time.time())
+            fixture_id=seed_learning_failure(ledger,policy,time.time())
+            if args.replay:
+                # A new observation of the same inode makes the live goal distinct;
+                # the fixture retains its genuine authorized [2,4] projection.
+                (work/'facts.json').write_text(json.dumps({'component':'isolated-runtime-demo','report_status':'missing','observations':[1,2,3]}))
             report['learning_origin']='Real mechanical failure of a synthetic settled no-output executor fixture; no provider failure claimed'
         ledger.set_pause(True)
         checked=subprocess.run([sys.executable,str(ROOT/'scripts/runtime.py'),'check','--deployment',str(manifest)],
@@ -119,7 +140,7 @@ def main():
                 ledger.set_pause(False)
                 def completed():
                     goals=ledger.goals()
-                    if goals and goals[0]['state'] in {'failed','blocked','unknown_result'} and goals[0]['source_revision']!='validation-fixture-before-live-source':raise RuntimeError('autonomous_goal_'+goals[0]['state']+':'+goals[0]['recovery_reason'])
+                    if goals and goals[0]['state'] in {'failed','blocked','unknown_result'} and goals[0]['id']!=fixture_id:raise RuntimeError('autonomous_goal_'+goals[0]['state']+':'+goals[0]['recovery_reason'])
                     return goals[0] if goals and goals[0]['state']=='succeeded' and goals[0]['submission']['settled'] else None
                 goal=wait_for(completed,210,process)
                 submission=goal['submission'];identity=submission['execution_identity']
@@ -141,13 +162,17 @@ def main():
                         evaluations=c.execute('SELECT COALESCE(SUM(evaluations),0) FROM skill_evaluation_budget').fetchone()[0]
                     if row is None or row['state']!='active':raise RuntimeError('native_program_not_published')
                     certified=json.loads(row['report'])
-                    if certified['verdict'] is not True or certified['passed']!=3 or not certified['cleanup_confirmed']:raise RuntimeError('native_program_certification_missing')
+                    if certified['verdict'] is not True or certified['passed']!=(4 if args.replay else 3) or not certified['cleanup_confirmed']:raise RuntimeError('native_program_certification_missing')
+                    snapshot=goal.get('task_input') if args.replay else None
+                    if args.replay and (snapshot is None or certified.get('origin_replay',{}).get('passed') is not True):raise RuntimeError('native_original_regression_missing')
+                    source=work/('.zhulong-input-'+snapshot['input_hash']+'.json') if snapshot else work/'facts.json'
                     audited=audit_native_skill(deployment/'profile',submission,program,
-                        runner_command(program['code_hash'],work/'facts.json',work/'report.txt'),
-                        work/('.zhulong-skill-'+program['code_hash']+'.py'),{'sum':6})
+                        runner_command(program['code_hash'],source,work/'report.txt',input_hash=snapshot['input_hash'] if snapshot else None),
+                        work/('.zhulong-skill-'+program['code_hash']+'.py'),{'sum':6},task_input=snapshot)
                     report['executable_skill']={'code_hash':program['code_hash'],'test_digest':program['scope']['task_digest'],
                         'state':row['state'],'passed_cases':certified['passed'],'cleanup_confirmed':certified['cleanup_confirmed'],
                         'daily_evaluations_reserved':evaluations,'generation_jobs':store.summary()['jobs'],**audited}
+                    if args.replay:report['executable_skill'].update(origin_replay=certified['origin_replay'],evaluation_digest=certified['evaluation_digest'])
                 if args.learning:
                     binding=json.loads(submission['request']['input']).get('experience',[])
                     summary=ExperienceStore(ledger).summary()

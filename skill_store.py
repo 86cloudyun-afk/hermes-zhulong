@@ -95,6 +95,25 @@ class SkillStore:
     def _task(self, job):
         return next((task for task in self.tasks if task['task_digest'] == job['task_digest']), None)
 
+    def _evaluation_task(self, c, task, submission_id):
+        if not task.get('replay_origin'): return task
+        try:
+            from .task_inputs import valid_binding
+            from .skill_replay import evaluation_task
+        except ImportError:
+            from task_inputs import valid_binding
+            from skill_replay import evaluation_task
+        sub = self.ledger._submission(c.execute('SELECT * FROM submissions WHERE id=?', (submission_id,)).fetchone())
+        if sub is None: raise ValueError('replay_unavailable')
+        goal = self.ledger._goal(c,c.execute('SELECT * FROM goals WHERE id=?',(sub['goal_id'],)).fetchone())
+        if goal is None or not valid_binding(c, goal, sub['request']): raise ValueError('replay_unavailable')
+        return evaluation_task(task,goal,sub)
+
+    @staticmethod
+    def _configured(c, task):
+        row = c.execute("SELECT value FROM settings WHERE key='skill_manifests'").fetchone()
+        return row is not None and json.loads(row[0]).get(task['id']) == task['task_digest']
+
     def sync(self, now):
         with self.ledger._connection(True) as c:
             rows = c.execute('''SELECT s.* FROM submissions s WHERE s.settled=1 AND s.evidence IS NOT NULL
@@ -127,8 +146,14 @@ class SkillStore:
                             if task['source_id'] != goal['source_id'] or task['domain'] != goal['domain'] or task['contract_hash'] != goal['contract_hash']: continue
                             payload = {'objective': goal['objective'], 'scope': scope_for(task, self.identity),
                                        'receipt': digest([sub['id'], checked]), 'reason': str(checked.get('reason', ''))[:240]}
+                            state = 'pending'
+                            try:
+                                evaluated = self._evaluation_task(c, task, sub['id'])
+                                if task.get('replay_origin'):
+                                    payload.update(origin_replay=evaluated['origin_replay'], evaluation_digest=evaluated['evaluation_digest'])
+                            except ValueError as error: state = str(error)
                             c.execute('INSERT OR IGNORE INTO skill_jobs(id,submission_id,task_digest,payload,state) VALUES(?,?,?,?,?)',
-                                      (uuid.uuid4().hex, sub['id'], task['task_digest'], canonical(payload), 'pending'))
+                                      (uuid.uuid4().hex, sub['id'], task['task_digest'], canonical(payload), state))
                 c.execute('INSERT OR IGNORE INTO skill_scans VALUES(?,?)', (sub['id'], self.config_digest))
 
     def claim(self, now):
@@ -139,8 +164,11 @@ class SkillStore:
                  OR (state IN ('claimed','generating') AND lease_until<=?)) ORDER BY next_retry,id''', (now, now, now)).fetchall()
             for row in rows:
                 job = dict(row); task = self._task(job)
-                if task is None or json.loads(job['payload'])['scope'] != scope_for(task, self.identity):
+                if task is None or not self._configured(c,task) or json.loads(job['payload'])['scope'] != scope_for(task, self.identity):
                     c.execute("UPDATE skill_jobs SET state='invalid',owner=NULL,lease_until=NULL WHERE id=?", (job['id'],)); continue
+                try: task = self._evaluation_task(c,task,job['submission_id'])
+                except ValueError as error:
+                    c.execute('UPDATE skill_jobs SET state=?,owner=NULL,lease_until=NULL WHERE id=?',(str(error),job['id']));continue
                 owner = uuid.uuid4().hex; state = 'evaluating' if job['candidate_id'] else 'claimed'
                 c.execute('UPDATE skill_jobs SET state=?,owner=?,generation=generation+1,lease_until=? WHERE id=?',
                           (state, owner, now+LEASE_SECONDS, job['id']))
@@ -188,12 +216,20 @@ class SkillStore:
             if row is None or row['state'] != 'evaluating': return False
             version = c.execute('SELECT * FROM skill_versions WHERE id=?', (row['candidate_id'],)).fetchone()
             task = self._task(dict(row))
-            if task is None or json.loads(version['scope']) != scope_for(task, self.identity): return False
+            if task is None or not self._configured(c,task) or json.loads(version['scope']) != scope_for(task, self.identity): return False
+            try: task = self._evaluation_task(c,task,row['submission_id'])
+            except ValueError: return False
             if (type(report.get('verdict')) is not bool or report.get('cleanup_confirmed') is not True
                 or report.get('code_hash') != version['code_hash'] or report.get('task_digest') != task['task_digest']
                 or report.get('image') != task['image']): return False
+            if task.get('replay_origin'):
+                replay = report.get('origin_replay')
+                if (not isinstance(replay,dict) or type(replay.get('passed')) is not bool
+                    or report.get('evaluation_digest') != task['evaluation_digest']
+                    or canonical({k:v for k,v in replay.items() if k!='passed'}) != canonical(task['origin_replay'])): return False
             if report['verdict']:
-                cases = task['examples']+task['holdout']; receipts = report.get('cases')
+                cases = task.get('_evaluation_cases',task['examples']+task['holdout']); receipts = report.get('cases')
+                if task.get('replay_origin') and report['origin_replay']['passed'] is not True: return False
                 if (report.get('passed') != len(cases) or not isinstance(receipts, list) or len(receipts) != len(cases)
                     or any(r.get('passed') is not True or r.get('input_hash') != digest(case['input']) for r, case in zip(receipts, cases))): return False
                 head = c.execute("SELECT * FROM skill_versions WHERE scope=? AND state='active'", (version['scope'],)).fetchone()

@@ -24,16 +24,16 @@ OUTPUT_LIMIT = 16384
 IMAGE_PATTERN = r'[a-zA-Z0-9./_:-]+@sha256:[0-9a-f]{64}'
 
 
-def _shape(value, depth=0):
-    if depth > 32: raise ValueError('json_depth_limit')
+def _shape(value, depth=0, max_depth=32):
+    if depth > max_depth: raise ValueError('json_depth_limit')
     if isinstance(value, dict):
         if any(not isinstance(key, str) for key in value): raise ValueError('invalid_json_key')
-        for item in value.values(): _shape(item, depth+1)
+        for item in value.values(): _shape(item, depth+1, max_depth)
     elif isinstance(value, list):
-        for item in value: _shape(item, depth+1)
+        for item in value: _shape(item, depth+1, max_depth)
 
 
-def strict_json(raw):
+def strict_json(raw, *, max_depth=32):
     def pairs(items):
         result = {}
         for key, value in items:
@@ -43,7 +43,7 @@ def strict_json(raw):
     def invalid(value): raise ValueError('nonfinite_json')
     try: value = json.loads(raw, object_pairs_hook=pairs, parse_constant=invalid)
     except RecursionError: raise ValueError('json_depth_limit') from None
-    _shape(value)
+    _shape(value, max_depth=max_depth)
     # Numeric exponent overflow (1e999) also produces non-finite floats.
     json.dumps(value, allow_nan=False)
     return value
@@ -54,7 +54,8 @@ def validate_skills(raw, sources):
     result = []; ids = set()
     for item in raw:
         required = {'id', 'source_id', 'contract_id', 'description', 'image', 'examples', 'holdout'}
-        if not isinstance(item, dict) or set(item) != required: raise ValueError('invalid_skill_manifest')
+        if not isinstance(item, dict) or not required <= set(item) or set(item)-required-{'replay_origin'}: raise ValueError('invalid_skill_manifest')
+        if 'replay_origin' in item and type(item['replay_origin']) is not bool: raise ValueError('invalid_replay_origin')
         sid = item['id']
         if not isinstance(sid, str) or not re.fullmatch('[a-zA-Z0-9_-]{1,64}', sid) or sid in ids: raise ValueError('invalid_skill_id')
         ids.add(sid)
@@ -76,6 +77,15 @@ def validate_skills(raw, sources):
         # Copy so caller mutation cannot change a trusted task after normalization.
         normalized = strict_json(canonical(item))
         normalized.update(domain=source['domain'], contract_hash=digest(source['contracts'][item['contract_id']]), task_digest=digest(item))
+        if item.get('replay_origin'):
+            try:
+                from .task_inputs import rule_for
+            except ImportError:
+                from task_inputs import rule_for
+            rule = rule_for(source)
+            if rule is None or source['contracts'][item['contract_id']]['type'] != 'json_equals': raise ValueError('invalid_replay_scope')
+            normalized['input_rule_hash'] = digest(rule)
+            normalized['task_digest'] = digest([item, normalized['input_rule_hash']])
         result.append(normalized)
     return result
 
@@ -204,16 +214,28 @@ class DockerEvaluator:
         report = {'verdict': 'unknown', 'reason': 'cleanup_unknown', 'cleanup_confirmed': False,
                   'code_hash': hashlib.sha256(code.encode()).hexdigest(), 'task_digest': task['task_digest'],
                   'image': task['image'], 'passed': 0, 'cases': []}
+        if task.get('replay_origin'):
+            report.update(evaluation_digest=task['evaluation_digest'], origin_replay={**task['origin_replay'], 'passed':False})
         if not self.cleanup(): return report
         try:
-            for index, case in enumerate(task['examples']+task['holdout']):
+            for index, case in enumerate(task.get('_evaluation_cases', task['examples']+task['holdout'])):
                 if not admissible(): report['reason'] = 'admission_closed'; return report
                 name = 'zhulong-eval-'+self.namespace+'-'+token+'-'+str(index)
                 status, output, _ = self._case(code, case['input'], task['image'], name)
                 valid = False
-                try: valid = status == 0 and canonical(strict_json(output)) == canonical(case['output'])
-                except (ValueError, UnicodeError): pass
+                try:
+                    value = strict_json(output)
+                    valid = status == 0 and ('output' not in case or canonical(value) == canonical(case['output']))
+                    if 'predicate' in case:
+                        try:
+                            from .skill_replay import field
+                        except ImportError:
+                            from skill_replay import field
+                        valid = valid and canonical(field(value, case['predicate']['field'])) == canonical(case['predicate']['value'])
+                except (KeyError, ValueError, UnicodeError): pass
                 report['cases'].append({'input_hash': digest(case['input']), 'output_hash': hashlib.sha256(output).hexdigest(), 'passed': valid})
+                if task.get('replay_origin') and index == task['origin_replay']['case_index']:
+                    report['origin_replay']['passed'] = valid
                 # Cleanup before any further case or publication, including timeout.
                 if not self.cleanup(): return report
                 if not valid: report.update(verdict=False, reason='case_failed'); return report

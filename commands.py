@@ -183,7 +183,12 @@ class Commands:
         import json
         if self.a is None:return '自主核心配置不可用；请检查 profile 的 zhulong/config.json。'
         action=args[0] if args else 'status'
-        if action=='goals':result={'goals':self.a.ledger.goals(20)}
+        if action=='goals':
+            try:
+                from .task_inputs import public_goals
+            except ImportError:
+                from task_inputs import public_goals
+            result={'goals':public_goals(self.a.ledger)}
         elif action=='experience':result=self.a.experience_status()
         elif action=='skills':result=self.a.skills_status()
         elif action in ('status','tick','pause','resume'):result=getattr(self.a,action)()
