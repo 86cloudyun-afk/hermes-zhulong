@@ -390,3 +390,28 @@ class CognitionTests(unittest.TestCase):
         self.assertTrue(c.workspace.receipt_unavailable)
         c.cancel(goal['id']);self.now+=1;c.tick()
         self.assertTrue(self.ledger.get_goal(goal['id'])['cancel_requested'])
+
+    def test_workflow_contract_surface_matches_disabled_controller_llmplanner(self):
+        self.raw['sources']=self.raw['sources'][:1]
+        source=self.raw['sources'][0]
+        source['contracts']['child']=copy.deepcopy(source['contracts']['result'])
+        source['contracts']['child']['path']=str(self.root/'child.txt')
+        self.raw['workflows']=[{'id':'bounded-work','source_id':source['id'],'contract_id':'result',
+            'steps':[{'id':'child','contract_id':'child','objective':'Build child artifact',
+                      'depends_on':[],'effect_mode':'read_only'}]}]
+        delivered=[]
+        for i,enabled in enumerate((False,True)):
+            self.ledger=Ledger(self.root/f'workflow-surface-{i}.db')
+            policy=self.policy(enabled=enabled,capacity=1)
+            def complete(**kw):
+                payload=json.loads(kw['input'][0]['text']);obs=payload['observations'][0]
+                delivered.append(obs['contract_ids'])
+                return SimpleNamespace(parsed={'candidates':[{'source_id':obs['id'],
+                    'contract_id':obs['contract_ids'][-1],'objective':'Build artifact','reason':'Unmet contract'}]})
+            planner=LLMPlanner(SimpleNamespace(complete_structured=complete),SimpleNamespace(take=lambda:True))
+            c=self.controller(policy,planner);result=c.tick()
+            self.assertEqual(delivered[-1],['result'])
+            self.assertEqual(result['accepted'],1)
+            self.assertTrue(any(g['contract_id']=='result' for g in self.ledger.goals()))
+            self.assertEqual(len(c.workflows.summary()['workflows']),1)
+        self.assertEqual(delivered[0],delivered[1])

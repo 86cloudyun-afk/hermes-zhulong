@@ -175,7 +175,12 @@ class Controller:
                         except Exception:context['experience']=[]
                 delivered=selected
                 if frame is not None:
-                    view=self.workspace.planner_view(frame,observe_sources(self.policy),self.clock())
+                    refreshed=observe_sources(self.policy)
+                    authorized={o['id']:o['contract_ids'] for o in selected}
+                    for observed in refreshed:
+                        observed['contract_ids']=[cid for cid in authorized.get(observed['id'],[])
+                                                  if cid in observed['contract_ids']]
+                    view=self.workspace.planner_view(frame,refreshed,self.clock())
                     delivered=view['observations']
                     context={'current_execution_identity':self.execution_identity,'workspace':view['workspace']}
                     self.workspace.record(frame['frame_id'],'planner_method',{'observations':delivered,'context':context,'policy':self.policy},self.clock(),source_owner=owner)
