@@ -1,0 +1,695 @@
+{
+  "schema": 1,
+  "study_head": "f40a2f5d39d6b7e911a731908ba5e8464343e98f",
+  "protocol_raw_sha256": "e67dc590946776c53269e4dc8469d5017733c32b21b281777e8554af331b89b7",
+  "private_panel_sha256": "9dcdcd6c9f8b9593816eea0fd6d0857715011d32876d060db994bb3cae5b9030",
+  "source_checkpoint_before_sha256": "15415776ce8da064c80c709159b3fd068afc99299edafb65a88768e7600d6856",
+  "source_checkpoint_after_sha256": "8f0e968b148dba5966379d06db6c9c9bd43bd1396899fe1f1773a7aa5db9234b",
+  "source_files_unchanged": 96,
+  "provider_calls": 0,
+  "accepted_goals": 0,
+  "prior_observation": "adaptive sequence0 smoke previously observed; deterministic sequences0/3 and1/4 share modulo3 disturbance behavior; five scheduled sequences are not five independent statistical samples",
+  "learning": "continues identically in all arms during temporally held-out evaluation",
+  "arms": [
+    {
+      "mode": "adaptive",
+      "sequence": 0,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.22062222488495428,
+        "selected_fresh": 7,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 14,
+      "all_deliveries": 22,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 53,
+        "revision_drift": 59,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 10,
+        "exact_set_hit_rate": 0.45454545454545453
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 1
+    },
+    {
+      "mode": "constant",
+      "sequence": 0,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.25,
+        "selected_fresh": 5,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 15,
+      "all_deliveries": 23,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 53,
+        "revision_drift": 59,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 7,
+        "exact_set_hit_rate": 0.3181818181818182
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 0
+    },
+    {
+      "mode": "permuted",
+      "sequence": 0,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.2946014599356178,
+        "selected_fresh": 3,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 15,
+      "all_deliveries": 23,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 53,
+        "revision_drift": 59,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 9,
+        "exact_set_hit_rate": 0.4090909090909091
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 0
+    },
+    {
+      "mode": "adaptive",
+      "sequence": 1,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.20970755901860771,
+        "selected_fresh": 7,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 14,
+      "all_deliveries": 22,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 52,
+        "revision_drift": 60,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 10,
+        "exact_set_hit_rate": 0.45454545454545453
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 1
+    },
+    {
+      "mode": "constant",
+      "sequence": 1,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.25,
+        "selected_fresh": 3,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 15,
+      "all_deliveries": 23,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 52,
+        "revision_drift": 60,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 7,
+        "exact_set_hit_rate": 0.3181818181818182
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 0
+    },
+    {
+      "mode": "permuted",
+      "sequence": 1,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.3286986169802537,
+        "selected_fresh": 4,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 15,
+      "all_deliveries": 23,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 52,
+        "revision_drift": 60,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 9,
+        "exact_set_hit_rate": 0.4090909090909091
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 0
+    },
+    {
+      "mode": "adaptive",
+      "sequence": 2,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.21428922710250797,
+        "selected_fresh": 6,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 14,
+      "all_deliveries": 22,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 51,
+        "revision_drift": 61,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 10,
+        "exact_set_hit_rate": 0.45454545454545453
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 1
+    },
+    {
+      "mode": "constant",
+      "sequence": 2,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.25,
+        "selected_fresh": 6,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 15,
+      "all_deliveries": 23,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 51,
+        "revision_drift": 61,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 7,
+        "exact_set_hit_rate": 0.3181818181818182
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 0
+    },
+    {
+      "mode": "permuted",
+      "sequence": 2,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.3187521941074916,
+        "selected_fresh": 5,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 15,
+      "all_deliveries": 23,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 51,
+        "revision_drift": 61,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 9,
+        "exact_set_hit_rate": 0.4090909090909091
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 0
+    },
+    {
+      "mode": "adaptive",
+      "sequence": 3,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.22062222488495428,
+        "selected_fresh": 7,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 14,
+      "all_deliveries": 22,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 53,
+        "revision_drift": 59,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 10,
+        "exact_set_hit_rate": 0.45454545454545453
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 1
+    },
+    {
+      "mode": "constant",
+      "sequence": 3,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.25,
+        "selected_fresh": 5,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 15,
+      "all_deliveries": 23,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 53,
+        "revision_drift": 59,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 7,
+        "exact_set_hit_rate": 0.3181818181818182
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 0
+    },
+    {
+      "mode": "permuted",
+      "sequence": 3,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.2946014599356178,
+        "selected_fresh": 3,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 15,
+      "all_deliveries": 23,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 53,
+        "revision_drift": 59,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 9,
+        "exact_set_hit_rate": 0.4090909090909091
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 0
+    },
+    {
+      "mode": "adaptive",
+      "sequence": 4,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.20970755901860771,
+        "selected_fresh": 7,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 14,
+      "all_deliveries": 22,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 52,
+        "revision_drift": 60,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 10,
+        "exact_set_hit_rate": 0.45454545454545453
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 1
+    },
+    {
+      "mode": "constant",
+      "sequence": 4,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.25,
+        "selected_fresh": 3,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 15,
+      "all_deliveries": 23,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 52,
+        "revision_drift": 60,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 7,
+        "exact_set_hit_rate": 0.3181818181818182
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 0
+    },
+    {
+      "mode": "permuted",
+      "sequence": 4,
+      "held_out": {
+        "n_scored": 70,
+        "n_excluded": 16,
+        "brier": 0.3286986169802537,
+        "selected_fresh": 4,
+        "selected_scored": 12
+      },
+      "held_out_deliveries": 15,
+      "all_deliveries": 23,
+      "events": {
+        "observed_on_time": 21,
+        "overdue": 1,
+        "unobserved": 0,
+        "scope_mismatch": 1,
+        "pending": 1
+      },
+      "n_allocated_events": 24,
+      "source_content": {
+        "fresh": 52,
+        "revision_drift": 60,
+        "input_drift": 0,
+        "facts_drift": 0,
+        "unavailable": 2,
+        "newly_available": 1,
+        "unobserved": 5,
+        "pending": 6
+      },
+      "n_source_cells": 126,
+      "n_scored_all": 110,
+      "n_excluded_all": 16,
+      "schedule": {
+        "n_observed": 22,
+        "n_exact_set_hits": 9,
+        "exact_set_hit_rate": 0.4090909090909091
+      },
+      "coverage_source_count": 6,
+      "maximum_eligible_wait_ticks": 6,
+      "drift_delivery_failures": 0
+    }
+  ],
+  "totals": {
+    "adaptive": {
+      "scheduled_sequences": 5,
+      "held_out_scored": 350,
+      "held_out_excluded": 80,
+      "held_out_brier": 0.2149897589819264,
+      "selected_fresh": 34,
+      "selected_scored": 60,
+      "held_out_deliveries": 70,
+      "all_deliveries": 110,
+      "forecast_events": 120,
+      "all_source_cells": 630,
+      "all_scored": 550,
+      "all_excluded": 80
+    },
+    "constant": {
+      "scheduled_sequences": 5,
+      "held_out_scored": 350,
+      "held_out_excluded": 80,
+      "held_out_brier": 0.25,
+      "selected_fresh": 22,
+      "selected_scored": 60,
+      "held_out_deliveries": 75,
+      "all_deliveries": 115,
+      "forecast_events": 120,
+      "all_source_cells": 630,
+      "all_scored": 550,
+      "all_excluded": 80
+    },
+    "permuted": {
+      "scheduled_sequences": 5,
+      "held_out_scored": 350,
+      "held_out_excluded": 80,
+      "held_out_brier": 0.3130704695878469,
+      "selected_fresh": 19,
+      "selected_scored": 60,
+      "held_out_deliveries": 75,
+      "all_deliveries": 115,
+      "forecast_events": 120,
+      "all_source_cells": 630,
+      "all_scored": 550,
+      "all_excluded": 80
+    }
+  },
+  "A3": {
+    "freshness": "supported_in_this_deterministic_panel",
+    "delivery": "not_supported; adaptive loses one held-out delivery per scheduled sequence",
+    "joint": "mixed_partial",
+    "business_benefit": "not_measured"
+  }
+}

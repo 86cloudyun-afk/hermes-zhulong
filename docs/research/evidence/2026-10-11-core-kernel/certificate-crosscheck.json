@@ -1,0 +1,39 @@
+{
+  "bundle_bytes": 2722,
+  "certificate": {
+    "certificate_hash": "317f4cb2cbcbee28608e44338fb88f846bd64bc1e60d2f037a4343517fb1bdd1",
+    "checker_hash": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+    "checker_soundness": "reviewed_argument_not_machine_formalized",
+    "domain_hash": "40c18c71c5597e4a0298636c9b873811c701690b11e8b44433f5d0b1991e5130",
+    "program_hash": "0998acb4875e3c39b40a515b823a53c1212063a5b31db0653f41d6077545cdf1",
+    "proof_method": "complete_integer_interval_certificate",
+    "reasons": [],
+    "reference_hash": "c24b81478031dcdde6c3483f9dda3392363a497e25045612b2fc311a6e354469",
+    "semantics_hash": "c7f1ec5310fa915d2e3132d8d3d3a9bbd7c905f7ce8de9166e23f412dc883718",
+    "status": "certified_within_scope",
+    "trust": [
+      "fixed_specification_domain",
+      "strict_parser_checker",
+      "same_ast_interpreter",
+      "fixed_insertion_sort_wrapper",
+      "python_integer_unicode_runtime",
+      "protected_code_and_hashes"
+    ],
+    "work": {
+      "ast_nodes": 21,
+      "cells_checked": 26,
+      "covered_rows": 876010,
+      "rule_applications": 428
+    }
+  },
+  "claim": "Supplementary exhaustive execution cross-check; not a mechanically formalized soundness proof",
+  "list_oracle": "independent_work_reference_plus_id_permutation",
+  "max_input_bytes": 2835,
+  "numeric_rows_crosschecked": 876010,
+  "public_execution_batches": 18253,
+  "schema": 1,
+  "study_head": "f40a2f5d39d6b7e911a731908ba5e8464343e98f",
+  "private_probe_sha256": "30fc3c7d5cfa842046b6d71848c4ed571b5ab687bccc85411bebfbd5c947461b",
+  "probe_log_sha256": "30fc3c7d5cfa842046b6d71848c4ed571b5ab687bccc85411bebfbd5c947461b",
+  "provider_calls": 0
+}
