@@ -1,0 +1,87 @@
+{
+  "repository_head": "1650c0365e7fde1535f5f5213f0d1822ebe1b489",
+  "axes": [
+    "lease_current",
+    "manifest_current",
+    "input_rule_current",
+    "cleanup_confirmed",
+    "verdict_true",
+    "code_hash_correct",
+    "task_digest_correct",
+    "evaluation_digest_correct",
+    "origin_submission_correct",
+    "origin_passed",
+    "all_case_receipts_pass",
+    "case_input_hash_correct"
+  ],
+  "counts": {
+    "enumerated": 4096,
+    "published": 1,
+    "blocked_without_mutation": 4095
+  },
+  "violations": [],
+  "extra_negative_cases": [
+    {
+      "case": "image_mismatch",
+      "accepted": false,
+      "states": {
+        "candidate": 1
+      }
+    },
+    {
+      "case": "missing_case",
+      "accepted": false,
+      "states": {
+        "candidate": 1
+      }
+    },
+    {
+      "case": "passed_count_mismatch",
+      "accepted": false,
+      "states": {
+        "candidate": 1
+      }
+    },
+    {
+      "case": "numeric_verdict",
+      "accepted": false,
+      "states": {
+        "candidate": 1
+      }
+    },
+    {
+      "case": "numeric_cleanup",
+      "accepted": false,
+      "states": {
+        "candidate": 1
+      }
+    },
+    {
+      "case": "numeric_origin_pass",
+      "accepted": false,
+      "states": {
+        "candidate": 1
+      }
+    }
+  ],
+  "pause_layer_observation": {
+    "direct_finish_while_paused_accepted": true,
+    "supported_learner_while_paused": {
+      "generated": 0
+    },
+    "calls": [],
+    "candidate_retained": true
+  },
+  "unknown_recovery": {
+    "unknown_report_accepted": false,
+    "same_code": true,
+    "same_token": true,
+    "same_evaluation_digest": true,
+    "job_generation_advanced": true
+  },
+  "limitations": [
+    "Boolean guard partitions, one scope, one version, one original goal, four trusted cases.",
+    "No arbitrary program inputs, process concurrency, real Docker cleanup, SQLite fault injection or formal refinement proof.",
+    "Pause gate is external to direct publication transaction; this probe does not establish atomic pause/publication ordering."
+  ]
+}

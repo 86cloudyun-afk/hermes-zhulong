@@ -1,0 +1,111 @@
+{
+  "git_base": "1650c0365e7fde1535f5f5213f0d1822ebe1b489",
+  "ledger_fencing": {
+    "old_generation": 1,
+    "new_generation": 2,
+    "old_ledger_write_accepted": false,
+    "new_ledger_write_accepted": true,
+    "unfenced_simulated_effects": 2,
+    "scope": "stale ledger writes are fenced; an uninformed external sink is not"
+  },
+  "verifier": {
+    "cases": [
+      {
+        "case": "duplicate-last-correct",
+        "raw": "{\"sum\":0,\"sum\":6}",
+        "expected": 6,
+        "verdict": true,
+        "reason": "contract_satisfied"
+      },
+      {
+        "case": "duplicate-last-wrong",
+        "raw": "{\"sum\":6,\"sum\":0}",
+        "expected": 6,
+        "verdict": false,
+        "reason": "contract_not_satisfied"
+      },
+      {
+        "case": "nan-in-unchecked-field",
+        "raw": "{\"sum\":6,\"unused\":NaN}",
+        "expected": 6,
+        "verdict": true,
+        "reason": "contract_satisfied"
+      },
+      {
+        "case": "infinity-in-unchecked-field",
+        "raw": "{\"sum\":6,\"unused\":Infinity}",
+        "expected": 6,
+        "verdict": true,
+        "reason": "contract_satisfied"
+      },
+      {
+        "case": "exponent-overflow-in-unchecked-field",
+        "raw": "{\"sum\":6,\"unused\":1e999}",
+        "expected": 6,
+        "verdict": true,
+        "reason": "contract_satisfied"
+      },
+      {
+        "case": "nan-in-checked-field",
+        "raw": "{\"sum\":NaN}",
+        "expected": 6,
+        "verdict": "unknown",
+        "reason": "verification_unavailable"
+      },
+      {
+        "case": "infinity-in-checked-field",
+        "raw": "{\"sum\":Infinity}",
+        "expected": 6,
+        "verdict": "unknown",
+        "reason": "verification_unavailable"
+      },
+      {
+        "case": "boolean-vs-integer",
+        "raw": "{\"sum\":true}",
+        "expected": 1,
+        "verdict": false,
+        "reason": "contract_not_satisfied"
+      },
+      {
+        "case": "integer-vs-boolean",
+        "raw": "{\"sum\":1}",
+        "expected": true,
+        "verdict": false,
+        "reason": "contract_not_satisfied"
+      },
+      {
+        "case": "float-vs-integer",
+        "raw": "{\"sum\":6.0}",
+        "expected": 6,
+        "verdict": false,
+        "reason": "contract_not_satisfied"
+      },
+      {
+        "case": "integer-vs-float",
+        "raw": "{\"sum\":6}",
+        "expected": 6.0,
+        "verdict": false,
+        "reason": "contract_not_satisfied"
+      },
+      {
+        "case": "exact-integer",
+        "raw": "{\"sum\":6}",
+        "expected": 6,
+        "verdict": true,
+        "reason": "contract_satisfied"
+      }
+    ],
+    "nonfinite_contract_values_rejected": [
+      true,
+      true
+    ]
+  },
+  "adapter_illustration": {
+    "stale_request": "stale",
+    "first_result": "1",
+    "lost_reply_replay_result": "1",
+    "same_key_changed_intent": "conflict",
+    "effects": 1,
+    "scope": "standalone SQLite protocol illustration; not a product connector"
+  }
+}

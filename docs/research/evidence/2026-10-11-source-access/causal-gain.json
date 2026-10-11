@@ -1,0 +1,184 @@
+{
+  "schema": 1,
+  "study_date": "2026-10-11",
+  "repository_baseline": "deffc94e0c30ef3b20481ff6aaf9af5687371ef5",
+  "lane": "causal-gain",
+  "read_scope_reference": "../../2026-10-11-causal-gain.md",
+  "note": "Fetch metadata, including failed/excluded attempts; HTTP success alone is not evidence of method reading. See the report for selected sources and actual read sections. Cached full text is not committed.",
+  "records": [
+    {
+      "original_index": "source-index.json",
+      "metadata": {
+        "schema": 1,
+        "study_date": "2026-10-11",
+        "study_kind": "read-only cross-disciplinary methods review",
+        "repository_revision": "deffc94e0c30ef3b20481ff6aaf9af5687371ef5",
+        "network_and_credentials": "Inherited proxy and CA verification; no egress bypass, no credential reads, no paid model calls.",
+        "source_count": 7,
+        "sources": [
+          {
+            "id": "S1",
+            "authors": "Hernán, M. A.; Robins, J. M.",
+            "title": "Causal Inference: What If",
+            "publication": "2020 book; author revision 19 Aug 2026",
+            "primary_url": "https://miguelhernan.org/whatifbook",
+            "requested_full_text_url": "https://miguelhernan.org/s/hernanrobins_WhatIf_19aug26.pdf",
+            "retrieved_full_text_url": "https://static1.squarespace.com/static/675db8b0dd37046447128f5f/t/6a86cf7ecfcb6b4ca8eea5cb/1787219838424/hernanrobins_WhatIf_19aug26.pdf",
+            "http_status": 200,
+            "content_type": "application/pdf",
+            "bytes": 11315465,
+            "sha256": "a1067af923e9156bb95fbe4b0d18699bd0723e9c902bdc74465cf7782820b1b5",
+            "scratch_cache_file": "/workspace/scratch/hermes-deep-research/2026-10-11-causal-gain/hernan_book_full.pdf",
+            "read_sections": [
+              "Chapters 1–3: counterfactual definitions, randomized experiments, observational studies",
+              "Chapter 19: time-varying treatments; sustained strategies"
+            ],
+            "protocol_application": "Define the intervention, target population, endpoint, assignment mechanism, consistency and no-interference assumptions before evaluation.",
+            "transfer_limit": "Medical/statistical methods are transferred as experimental-design principles; no claim that software tasks satisfy assumptions automatically."
+          },
+          {
+            "id": "S2",
+            "authors": "Imbens, G. W.",
+            "title": "Potential Outcome and Directed Acyclic Graph Approaches to Causality: Relevance for Empirical Practice in Economics",
+            "publication": "2019 preprint / 2020 publication",
+            "primary_url": "https://arxiv.org/abs/1907.07271",
+            "requested_full_text_url": "https://arxiv.org/html/1907.07271",
+            "retrieved_full_text_url": "https://arxiv.org/html/1907.07271",
+            "http_status": 200,
+            "content_type": "text/html; charset=utf-8",
+            "bytes": 727927,
+            "sha256": "a994067021b7641bfc675a5c4cc4efe7aba922bafa4657ef7adf06b622055163",
+            "scratch_cache_file": "/workspace/scratch/hermes-deep-research/2026-10-11-causal-gain/imbens_causality.html",
+            "read_sections": [
+              "Potential-outcome components: units, outcomes, assignment mechanism",
+              "Discussion of no interference and individually unobserved counterfactuals"
+            ],
+            "protocol_application": "Version-before/after and naturally selected skill users confound assignment; randomized availability is a tractable intervention.",
+            "transfer_limit": "Population average effects do not identify the cause of an individual failure or a general mechanism."
+          },
+          {
+            "id": "S3",
+            "authors": "Howard, S. R.; Ramdas, A.; McAuliffe, J.; Sekhon, J. S.",
+            "title": "Time-uniform, nonparametric, nonasymptotic confidence sequences",
+            "publication": "2021 Annals of Statistics; arXiv 1810.08240",
+            "primary_url": "https://arxiv.org/abs/1810.08240",
+            "requested_full_text_url": "https://arxiv.org/html/1810.08240",
+            "retrieved_full_text_url": "https://arxiv.org/html/1810.08240",
+            "http_status": 200,
+            "content_type": "text/html; charset=utf-8",
+            "bytes": 1389450,
+            "sha256": "1694bbd95937ac6a192ca1a7eac5ffe84da13c3202c055b4e04e763167df6ae3",
+            "scratch_cache_file": "/workspace/scratch/hermes-deep-research/2026-10-11-causal-gain/howard_confidence_sequences.html",
+            "read_sections": [
+              "Sections 1–2: time-uniform coverage and arbitrary stopping",
+              "Section 4.1: empirical-Bernstein confidence sequence"
+            ],
+            "protocol_application": "Fixed-N intervals cannot be repeatedly inspected as if valid at any stopping time; freeze N or choose a valid sequential design in advance.",
+            "transfer_limit": "An online adaptive agent stream does not automatically meet a confidence sequence’s conditional/martingale assumptions."
+          },
+          {
+            "id": "S4",
+            "authors": "Agarwal, R.; Schwarzer, M.; Castro, P. S.; Courville, A. C.; Bellemare, M. G.",
+            "title": "Deep Reinforcement Learning at the Edge of the Statistical Precipice",
+            "publication": "2021 NeurIPS; arXiv 2108.13264",
+            "primary_url": "https://arxiv.org/abs/2108.13264",
+            "requested_full_text_url": "https://arxiv.org/html/2108.13264",
+            "retrieved_full_text_url": "https://arxiv.org/html/2108.13264",
+            "http_status": 200,
+            "content_type": "text/html; charset=utf-8",
+            "bytes": 348703,
+            "sha256": "56adf6fea9ff896db4736a1ae3c438c67d53c35311d94c2715ae3d09463429ae",
+            "scratch_cache_file": "/workspace/scratch/hermes-deep-research/2026-10-11-causal-gain/statistical_precipice.html",
+            "read_sections": [
+              "Section 4: stratified bootstrap intervals, performance profiles, robust aggregate metrics",
+              "Table 1 and empirical comparisons across tasks and seeds"
+            ],
+            "protocol_application": "Report uncertainty and heterogeneity; preserve task/seed clustering rather than treating repeated runs as independent tasks.",
+            "transfer_limit": "RL score-normalization and IQM are not copied as substitutes for a predefined binary Hermes success endpoint."
+          },
+          {
+            "id": "S5",
+            "authors": "Kapoor, S. et al.",
+            "title": "AI Agents That Matter",
+            "publication": "2024; arXiv 2407.01502",
+            "primary_url": "https://arxiv.org/abs/2407.01502",
+            "requested_full_text_url": "https://arxiv.org/html/2407.01502",
+            "retrieved_full_text_url": "https://arxiv.org/html/2407.01502",
+            "http_status": 200,
+            "content_type": "text/html; charset=utf-8",
+            "bytes": 365653,
+            "sha256": "4f8cd01e973d17101acba0978279747798af59c5dfc9e320e9337a387dca6405",
+            "scratch_cache_file": "/workspace/scratch/hermes-deep-research/2026-10-11-causal-gain/agents_that_matter.html",
+            "read_sections": [
+              "Section 2: cost-controlled evaluation and simple retry baselines",
+              "Section 5: levels of generality and holdout requirements",
+              "Section 6: standardization and reproducibility"
+            ],
+            "protocol_application": "Measure actual spending, preparation costs, time, and cost-adjusted baselines; separate example/generalization/family holdouts.",
+            "transfer_limit": "Complex planning/reflection cannot receive credit for improvements attributable to extra calls or benchmark shortcuts."
+          },
+          {
+            "id": "S6",
+            "authors": "Liu, X. et al.",
+            "title": "AgentBench: Evaluating LLMs as Agents",
+            "publication": "2023 initial; retrieved v3 text states 4 Oct 2025",
+            "primary_url": "https://arxiv.org/abs/2308.03688",
+            "requested_full_text_url": "https://arxiv.org/html/2308.03688",
+            "retrieved_full_text_url": "https://arxiv.org/html/2308.03688",
+            "http_status": 200,
+            "content_type": "text/html; charset=utf-8",
+            "bytes": 2093995,
+            "sha256": "62547d01f668b47067715d349f0a089213a2c76653f807fe5d6a9063d9de2f9e",
+            "scratch_cache_file": "/workspace/scratch/hermes-deep-research/2026-10-11-causal-gain/agentbench.html",
+            "read_sections": [
+              "Task/evaluation construction and Dev/Test splits",
+              "Execution-outcome categories: CLE, IF, IA, TLE",
+              "Appendix J: validity and trajectory analysis"
+            ],
+            "protocol_application": "Separate mechanically observed failure categories, difficulty strata, and multi-step tasks; preserve all allocated failures in the denominator.",
+            "transfer_limit": "Outcome labels and trajectory patterns are not themselves causal root-cause proof."
+          },
+          {
+            "id": "S7",
+            "authors": "Jimenez, C. E. et al.",
+            "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+            "publication": "2023 initial; ICLR 2024",
+            "primary_url": "https://arxiv.org/abs/2310.06770",
+            "requested_full_text_url": "https://arxiv.org/html/2310.06770",
+            "retrieved_full_text_url": "https://arxiv.org/html/2310.06770",
+            "http_status": 200,
+            "content_type": "text/html; charset=utf-8",
+            "bytes": 1276223,
+            "sha256": "510971f727638a4358b3ff53ccf88f2132721e3df1a7a3b0458c4eeed67e2451",
+            "scratch_cache_file": "/workspace/scratch/hermes-deep-research/2026-10-11-causal-gain/swebench.html",
+            "read_sections": [
+              "Dataset construction from issue/PR/repository snapshots",
+              "Fail-to-pass filtering and patch execution evaluation",
+              "Resolved-instance metric and executable tests"
+            ],
+            "protocol_application": "Bind evaluation to frozen repository/environment/task snapshots and independently execute postconditions rather than score self-reports.",
+            "transfer_limit": "Passing repository tests is a bounded benchmark result, not a proof of universal correctness or agent consciousness."
+          }
+        ],
+        "non_sources": [
+          {
+            "name": "old Harvard book URLs",
+            "status": "HTTP 200 redirected to profile/home page, not book PDF; excluded from methods sources"
+          },
+          {
+            "name": "Lakens publisher page",
+            "status": "HTTP 403 challenge; no full-text read and not used as one of the seven substantive sources"
+          },
+          {
+            "name": "Holm JSTOR page",
+            "status": "HTTP 200 client challenge; no full-text read and not used as one of the seven substantive sources"
+          },
+          {
+            "name": "AgentBench and statistical-precipice PDF endpoints",
+            "status": "Exceeded 16 MiB bounded download; actual HTML full texts read instead"
+          }
+        ]
+      }
+    }
+  ]
+}

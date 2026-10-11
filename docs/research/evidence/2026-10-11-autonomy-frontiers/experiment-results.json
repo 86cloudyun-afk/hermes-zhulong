@@ -1,0 +1,769 @@
+{
+  "schema": 1,
+  "seed": 20261011,
+  "trial_count": 36,
+  "repeats_per_cell": 3,
+  "api_calls": 0,
+  "execution": "fresh offline Python -I processes, 2 second timeout, trusted deterministic fixture; no container/sandbox certification",
+  "observations": [
+    {
+      "context": "negative_fault_masked",
+      "repeat": 2,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "92c158cb8fde98b3950c5d37432aee4f540b7b2dccfbea5315d0a5f9e0f7f749",
+      "output_hash": "bd81fec7ee5cf0aefc568bb1d9d398ec532fed1ac7610e7bd670d247b0f14db2",
+      "observed": {
+        "sum": 7
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 0,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "0afcf3354dd5d130b6f9f5057dfd8da32712bfbbbf574c71e4ce899a85978f1f",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 2,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "92c158cb8fde98b3950c5d37432aee4f540b7b2dccfbea5315d0a5f9e0f7f749",
+      "output_hash": "bd81fec7ee5cf0aefc568bb1d9d398ec532fed1ac7610e7bd670d247b0f14db2",
+      "observed": {
+        "sum": 7
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 1,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "0afcf3354dd5d130b6f9f5057dfd8da32712bfbbbf574c71e4ce899a85978f1f",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 2,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "0afcf3354dd5d130b6f9f5057dfd8da32712bfbbbf574c71e4ce899a85978f1f",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 2,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "02a253479297d85065bd2b19ac05e4b4d2c1d5a5e561e6e5103fe00dae71550f",
+      "output_hash": "66805b4f5d12af832e03c298d362e185974e7fa18e82b32fbcca6599ca36baf4",
+      "observed": {
+        "sum": 1
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 2,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "02a253479297d85065bd2b19ac05e4b4d2c1d5a5e561e6e5103fe00dae71550f",
+      "output_hash": "bd81fec7ee5cf0aefc568bb1d9d398ec532fed1ac7610e7bd670d247b0f14db2",
+      "observed": {
+        "sum": 7
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 0,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "0afcf3354dd5d130b6f9f5057dfd8da32712bfbbbf574c71e4ce899a85978f1f",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 1,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "92c158cb8fde98b3950c5d37432aee4f540b7b2dccfbea5315d0a5f9e0f7f749",
+      "output_hash": "bd81fec7ee5cf0aefc568bb1d9d398ec532fed1ac7610e7bd670d247b0f14db2",
+      "observed": {
+        "sum": 7
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 2,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "1aa014ec1bcd7c69cad23e6967f8e5926be5e188a3b41669753d90885db4690c",
+      "output_hash": "66805b4f5d12af832e03c298d362e185974e7fa18e82b32fbcca6599ca36baf4",
+      "observed": {
+        "sum": 1
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 0,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "02a253479297d85065bd2b19ac05e4b4d2c1d5a5e561e6e5103fe00dae71550f",
+      "output_hash": "bd81fec7ee5cf0aefc568bb1d9d398ec532fed1ac7610e7bd670d247b0f14db2",
+      "observed": {
+        "sum": 7
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 2,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "02a253479297d85065bd2b19ac05e4b4d2c1d5a5e561e6e5103fe00dae71550f",
+      "output_hash": "4f21ba6e3bebddf433eb338aeab5d82328bbed782f3f1b4396d29c3442595dac",
+      "observed": {
+        "sum": 5
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 1,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "02a253479297d85065bd2b19ac05e4b4d2c1d5a5e561e6e5103fe00dae71550f",
+      "output_hash": "bd81fec7ee5cf0aefc568bb1d9d398ec532fed1ac7610e7bd670d247b0f14db2",
+      "observed": {
+        "sum": 7
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 0,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "1aa014ec1bcd7c69cad23e6967f8e5926be5e188a3b41669753d90885db4690c",
+      "output_hash": "66805b4f5d12af832e03c298d362e185974e7fa18e82b32fbcca6599ca36baf4",
+      "observed": {
+        "sum": 1
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 0,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "92c158cb8fde98b3950c5d37432aee4f540b7b2dccfbea5315d0a5f9e0f7f749",
+      "output_hash": "bd81fec7ee5cf0aefc568bb1d9d398ec532fed1ac7610e7bd670d247b0f14db2",
+      "observed": {
+        "sum": 7
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 0,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "02a253479297d85065bd2b19ac05e4b4d2c1d5a5e561e6e5103fe00dae71550f",
+      "output_hash": "66805b4f5d12af832e03c298d362e185974e7fa18e82b32fbcca6599ca36baf4",
+      "observed": {
+        "sum": 1
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 0,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "1aa014ec1bcd7c69cad23e6967f8e5926be5e188a3b41669753d90885db4690c",
+      "output_hash": "66805b4f5d12af832e03c298d362e185974e7fa18e82b32fbcca6599ca36baf4",
+      "observed": {
+        "sum": 1
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 1,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "1aa014ec1bcd7c69cad23e6967f8e5926be5e188a3b41669753d90885db4690c",
+      "output_hash": "66805b4f5d12af832e03c298d362e185974e7fa18e82b32fbcca6599ca36baf4",
+      "observed": {
+        "sum": 1
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 1,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "1aa014ec1bcd7c69cad23e6967f8e5926be5e188a3b41669753d90885db4690c",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 1,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "92c158cb8fde98b3950c5d37432aee4f540b7b2dccfbea5315d0a5f9e0f7f749",
+      "output_hash": "bd81fec7ee5cf0aefc568bb1d9d398ec532fed1ac7610e7bd670d247b0f14db2",
+      "observed": {
+        "sum": 7
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 0,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "92c158cb8fde98b3950c5d37432aee4f540b7b2dccfbea5315d0a5f9e0f7f749",
+      "output_hash": "bd81fec7ee5cf0aefc568bb1d9d398ec532fed1ac7610e7bd670d247b0f14db2",
+      "observed": {
+        "sum": 7
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 1,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "1aa014ec1bcd7c69cad23e6967f8e5926be5e188a3b41669753d90885db4690c",
+      "output_hash": "66805b4f5d12af832e03c298d362e185974e7fa18e82b32fbcca6599ca36baf4",
+      "observed": {
+        "sum": 1
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 2,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "92c158cb8fde98b3950c5d37432aee4f540b7b2dccfbea5315d0a5f9e0f7f749",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 1,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "02a253479297d85065bd2b19ac05e4b4d2c1d5a5e561e6e5103fe00dae71550f",
+      "output_hash": "66805b4f5d12af832e03c298d362e185974e7fa18e82b32fbcca6599ca36baf4",
+      "observed": {
+        "sum": 1
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 0,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "02a253479297d85065bd2b19ac05e4b4d2c1d5a5e561e6e5103fe00dae71550f",
+      "output_hash": "4f21ba6e3bebddf433eb338aeab5d82328bbed782f3f1b4396d29c3442595dac",
+      "observed": {
+        "sum": 5
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 1,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "0afcf3354dd5d130b6f9f5057dfd8da32712bfbbbf574c71e4ce899a85978f1f",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 2,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "1aa014ec1bcd7c69cad23e6967f8e5926be5e188a3b41669753d90885db4690c",
+      "output_hash": "66805b4f5d12af832e03c298d362e185974e7fa18e82b32fbcca6599ca36baf4",
+      "observed": {
+        "sum": 1
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 0,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "1aa014ec1bcd7c69cad23e6967f8e5926be5e188a3b41669753d90885db4690c",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 2,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "0afcf3354dd5d130b6f9f5057dfd8da32712bfbbbf574c71e4ce899a85978f1f",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 0,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "92c158cb8fde98b3950c5d37432aee4f540b7b2dccfbea5315d0a5f9e0f7f749",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "both_faults_visible",
+      "repeat": 1,
+      "input_hash": "712bc4b1471bc0321ba55eda4be79b4fa2bfdaf663a780ea374659beac57f82e",
+      "code_hash": "02a253479297d85065bd2b19ac05e4b4d2c1d5a5e561e6e5103fe00dae71550f",
+      "output_hash": "4f21ba6e3bebddf433eb338aeab5d82328bbed782f3f1b4396d29c3442595dac",
+      "observed": {
+        "sum": 5
+      },
+      "expected": {
+        "sum": 5
+      },
+      "failure": false,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": false
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 2,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "1aa014ec1bcd7c69cad23e6967f8e5926be5e188a3b41669753d90885db4690c",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": false,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 0,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "0afcf3354dd5d130b6f9f5057dfd8da32712bfbbbf574c71e4ce899a85978f1f",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 2,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "0afcf3354dd5d130b6f9f5057dfd8da32712bfbbbf574c71e4ce899a85978f1f",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "negative_fault_masked",
+      "repeat": 1,
+      "input_hash": "e3e0b01b43d266852722a01bd031c33af6cefbbfee0e027c5a1918ce855332fd",
+      "code_hash": "0afcf3354dd5d130b6f9f5057dfd8da32712bfbbbf574c71e4ce899a85978f1f",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 7
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": true
+      }
+    },
+    {
+      "context": "last_fault_masked",
+      "repeat": 1,
+      "input_hash": "3a5c7592b2eeaa91be73893f6c47fef1b981859507c84685ee2d72c085920ccc",
+      "code_hash": "92c158cb8fde98b3950c5d37432aee4f540b7b2dccfbea5315d0a5f9e0f7f749",
+      "output_hash": "73b368436c9d7a4a42e5e0c819ef848a32ba16a2eec049bcb231cf5e484f0dc0",
+      "observed": {
+        "sum": 3
+      },
+      "expected": {
+        "sum": 1
+      },
+      "failure": true,
+      "faults": {
+        "drop_negative": true,
+        "drop_last": false
+      }
+    }
+  ],
+  "minimization": {
+    "both_faults": {
+      "original": [
+        3,
+        -2,
+        4
+      ],
+      "reduced": [
+        4
+      ],
+      "trace": [
+        {
+          "candidate": [
+            -2,
+            4
+          ],
+          "failure": true
+        },
+        {
+          "candidate": [
+            4
+          ],
+          "failure": true
+        }
+      ],
+      "single_deletion_checks": [
+        {
+          "removed": 0,
+          "remaining": [],
+          "failure": false
+        }
+      ],
+      "one_minimal": true,
+      "claim": "1-minimal for this deterministic predicate; not a globally smallest or unique root cause"
+    },
+    "negative_only": {
+      "original": [
+        3,
+        -2,
+        4
+      ],
+      "reduced": [
+        -2
+      ],
+      "trace": [
+        {
+          "candidate": [
+            -2,
+            4
+          ],
+          "failure": true
+        },
+        {
+          "candidate": [
+            4
+          ],
+          "failure": false
+        },
+        {
+          "candidate": [
+            -2
+          ],
+          "failure": true
+        }
+      ],
+      "single_deletion_checks": [
+        {
+          "removed": 0,
+          "remaining": [],
+          "failure": false
+        }
+      ],
+      "one_minimal": true,
+      "claim": "1-minimal for this deterministic predicate; not a globally smallest or unique root cause"
+    },
+    "last_only": {
+      "original": [
+        3,
+        -2,
+        4
+      ],
+      "reduced": [
+        4
+      ],
+      "trace": [
+        {
+          "candidate": [
+            -2,
+            4
+          ],
+          "failure": true
+        },
+        {
+          "candidate": [
+            4
+          ],
+          "failure": true
+        }
+      ],
+      "single_deletion_checks": [
+        {
+          "removed": 0,
+          "remaining": [],
+          "failure": false
+        }
+      ],
+      "one_minimal": true,
+      "claim": "1-minimal for this deterministic predicate; not a globally smallest or unique root cause"
+    }
+  },
+  "scope": "Known injected program mutations and these contexts only; not live Hermes root-cause diagnosis"
+}

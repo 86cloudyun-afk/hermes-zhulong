@@ -1,0 +1,150 @@
+{
+  "schema": 1,
+  "study_date": "2026-10-11",
+  "repository_baseline": "deffc94e0c30ef3b20481ff6aaf9af5687371ef5",
+  "lane": "consciousness",
+  "read_scope_reference": "../../2026-10-11-consciousness.md",
+  "note": "Fetch metadata, including failed/excluded attempts; HTTP success alone is not evidence of method reading. See the report for selected sources and actual read sections. Cached full text is not committed.",
+  "records": [
+    {
+      "original_index": "sources.json",
+      "metadata": {
+        "schema": 1,
+        "date_utc": "2026-10-11",
+        "repo_head": "deffc94e0c30ef3b20481ff6aaf9af5687371ef5",
+        "papers": [
+          {
+            "title": "Butlin et al. 2023 v3",
+            "source_url": "https://arxiv.org/pdf/2308.08708v3",
+            "file": "butlin-2023.download",
+            "sha256": "88a9d5635b274b7d7c8c55dfeea45be3018054be01da83cd2f8d1fe53d668ab8",
+            "bytes": 1763829,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments."
+          },
+          {
+            "title": "Dehaene, Lau, Kouider 2017",
+            "source_url": "https://www.unicog.org/publications/Dehaene%20Lau%20Kouider%20What%20is%20consciousness%20and%20could%20machines%20have%20it%20Science%202017%20with%20discussion%20items",
+            "file": "dehaene-2017-index.download",
+            "sha256": "71835b258d5e7a879f7e6dc277d695d1ffe5c2355ee8d39fbacd3ac08cad8245",
+            "bytes": 1246753,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments."
+          },
+          {
+            "title": "Mashour et al. 2020",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8770991/",
+            "file": "gnw-2020.download",
+            "sha256": "ee5d18d08dea8010ac5c02c855e37c7e4adc8e4e35ae697e79a62030c47392ce",
+            "bytes": 465655,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments."
+          },
+          {
+            "title": "Lau, Passingham 2006",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1693736/",
+            "file": "higher-order-empirical-2006.download",
+            "sha256": "23a6a3de80ca58106430e0e585060f72e2192accb0bd17b08447aaea872567d3",
+            "bytes": 156131,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments."
+          },
+          {
+            "title": "Lamme 2020",
+            "source_url": "https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2020.00083/full",
+            "file": "lamme-2020.download",
+            "sha256": "1fd1327dae783a20c3baed61f9e45b9c9cc589991790ffdd0844725ac1ee0932",
+            "bytes": 721360,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments."
+          },
+          {
+            "title": "Albantakis et al. 2023 IIT 4.0",
+            "source_url": "https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011465",
+            "file": "iit4-2023.download",
+            "sha256": "c5fca965dccd3f22e447001d3eedc0675a753f9321feb18a58691c889cbb6c5a",
+            "bytes": 419199,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments."
+          },
+          {
+            "title": "Graziano, Webb 2015",
+            "source_url": "https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2015.00500/full",
+            "file": "attention-schema-2015.download",
+            "sha256": "8780037fd9667daf6b541f987ed299580553a1398224f3261c6ef1d32b2da4a3",
+            "bytes": 876097,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments."
+          },
+          {
+            "title": "Fleming, Daw 2017",
+            "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC5178868/",
+            "file": "fleming-daw-2017.download",
+            "sha256": "40199d7834e1513df77d620caa99293fd31bfe49f56eee6063b29f329fd9633e",
+            "bytes": 431788,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments."
+          },
+          {
+            "title": "Fleming, Lau 2014",
+            "source_url": "https://www.frontiersin.org/journals/human-neuroscience/articles/10.3389/fnhum.2014.00443/full",
+            "file": "metacognition-2014.download",
+            "sha256": "dad5d7a6a6d7571fdc58d59f0e2a917db9bb17f4c7e12b2cd29d9ef8a6566f1e",
+            "bytes": 818046,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments."
+          },
+          {
+            "title": "COGITATE Consortium et al. 2025",
+            "source_url": "https://www.nature.com/articles/s41586-025-08888-1",
+            "file": "cogitate-2025.download",
+            "sha256": "c33d60ba83e965ce09e48984f62f6a8a42d706a692c0cbbcdaca81c48873032b",
+            "bytes": 854591,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments."
+          },
+          {
+            "title": "Carter et al. 2018, Conscious machines: Defining questions",
+            "source_url": "https://doi.org/10.1126/science.aar4163",
+            "file": "dehaene-2017-index.download",
+            "sha256": "71835b258d5e7a879f7e6dc277d695d1ffe5c2355ee8d39fbacd3ac08cad8245",
+            "bytes": 1246753,
+            "http_status": 200,
+            "content_scope": "Full original-author/journal text; selected relevant methods/theory/limitations read, not exhaustive review of cited experiments.",
+            "retrieved_text_url": "https://www.unicog.org/publications/Dehaene%20Lau%20Kouider%20What%20is%20consciousness%20and%20could%20machines%20have%20it%20Science%202017%20with%20discussion%20items",
+            "source_scope": "Formal Science letter included after the 2017 article in the original-author composite PDF; title/DOI independently checked via Crossref."
+          }
+        ],
+        "retrieval_failures": [
+          {
+            "url": "https://www.sciencedirect.com/science/article/pii/S1364661319301615",
+            "outcome": "CONNECT 403, destination policy refusal; no bypass; only Crossref/Europe PMC metadata used"
+          },
+          {
+            "url": "https://www.sciencedirect.com/science/article/pii/S1364661311001057",
+            "outcome": "CONNECT 403, destination policy refusal; no bypass; only Crossref/Europe PMC metadata used"
+          },
+          {
+            "url": "https://www.cs.uvm.edu/~jbongard/papers/2006_Science.pdf",
+            "outcome": "CONNECT 403, destination policy refusal; not part of text corpus"
+          },
+          {
+            "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8770991/fullTextXML",
+            "outcome": "HTTP 500 server error; public PMC source available"
+          },
+          {
+            "url": "https://www.unicog.org/publications/DehaeneLauKouider_WhatIsConsciousness_Science2017.pdf",
+            "outcome": "HTTP 404 guessed path; original-author bibliography identified actual PDF URL"
+          }
+        ],
+        "network": "Inherited proxy and CA; TLS verified; no denied-destination bypass",
+        "paid_calls": 0,
+        "notes": [
+          "10 distinct full-text downloads cover 11 papers because the original-author composite PDF includes the formal 2018 Science letter.",
+          "Fleming-Daw normalized text used previously cached complete text, with a new original PMC full-text download to retain source provenance.",
+          "All result observations in metacognition_probe.json are synthetic, not actual provider outputs."
+        ]
+      }
+    }
+  ]
+}

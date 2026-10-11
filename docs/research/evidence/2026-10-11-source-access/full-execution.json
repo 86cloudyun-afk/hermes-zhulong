@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "study_date": "2026-10-11",
+  "repository_baseline": "deffc94e0c30ef3b20481ff6aaf9af5687371ef5",
+  "lane": "full-execution",
+  "read_scope_reference": "../../2026-10-11-full-execution.md",
+  "note": "Fetch metadata, including failed/excluded attempts; HTTP success alone is not evidence of method reading. See the report for selected sources and actual read sections. Cached full text is not committed.",
+  "records": [
+    {
+      "original_index": "source-status.json",
+      "metadata": [
+        {
+          "name": "temporal",
+          "requested_url": "https://docs.temporal.io/workflow-execution/durable-execution",
+          "status": 404,
+          "error_type": "HTTPError"
+        },
+        {
+          "name": "temporal-activities",
+          "requested_url": "https://docs.temporal.io/activities",
+          "status": 200,
+          "final_url": "https://docs.temporal.io/activities",
+          "mime": "text/html",
+          "bytes": 52184,
+          "sha256": "f0b29576759d570bba9359d25de63519ac5e1e64a668a4bd618469a4374a5e46",
+          "file": "temporal-activities.html"
+        },
+        {
+          "name": "aws-idempotency",
+          "requested_url": "https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/",
+          "status": 200,
+          "final_url": "https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/",
+          "mime": "text/html",
+          "bytes": 455581,
+          "sha256": "e2640315deae79e285cf036727da56f4a64c816f48be3b70c6ae24c602669522",
+          "file": "aws-idempotency.html"
+        },
+        {
+          "name": "sagas",
+          "requested_url": "https://www.cs.cornell.edu/andru/cs711/2002fa/reading/sagas.pdf",
+          "status": 421,
+          "error_type": "HTTPError"
+        },
+        {
+          "name": "shop2",
+          "requested_url": "https://arxiv.org/pdf/1106.4869",
+          "status": 200,
+          "final_url": "https://arxiv.org/pdf/1106.4869",
+          "mime": "application/pdf",
+          "bytes": 215456,
+          "sha256": "d0c25cef1fb3ec1a47317f9a55a6a5b55ff6cd20af81cdfcd0686aaeed5759dd",
+          "file": "shop2.pdf"
+        },
+        {
+          "name": "react",
+          "requested_url": "https://arxiv.org/pdf/2210.03629",
+          "status": 200,
+          "final_url": "https://arxiv.org/pdf/2210.03629",
+          "mime": "application/pdf",
+          "bytes": 633805,
+          "sha256": "f285b0971ae4a790e402fb93966bed3adde2cf0a04977d08b2b40d6ab0cace69",
+          "file": "react.pdf"
+        },
+        {
+          "name": "agentbench",
+          "requested_url": "https://arxiv.org/pdf/2308.03688",
+          "status": "unavailable",
+          "error_type": "ValueError"
+        },
+        {
+          "name": "workarena-plus",
+          "requested_url": "https://arxiv.org/pdf/2407.05291",
+          "status": "unavailable",
+          "error_type": "ValueError"
+        },
+        {
+          "name": "temporal-workflow",
+          "requested_url": "https://docs.temporal.io/workflow-execution",
+          "status": 200,
+          "final_url": "https://docs.temporal.io/workflow-execution",
+          "mime": "text/html",
+          "bytes": 70588,
+          "sha256": "a0495f9358796c6edaab8ae6a00ff75ff7ff26a3519887b8b0e667522c995ab7",
+          "file": "temporal-workflow.html"
+        },
+        {
+          "name": "agentbench",
+          "requested_url": "https://arxiv.org/pdf/2308.03688",
+          "status": 200,
+          "final_url": "https://arxiv.org/pdf/2308.03688",
+          "mime": "application/pdf",
+          "bytes": 23017024,
+          "sha256": "9c780e35fc0b2de6c2e21e0572f6aaaadcf7ecdd56d63cfaae2b415bc0dc83c3",
+          "file": "agentbench.pdf"
+        },
+        {
+          "name": "workarena-plus",
+          "requested_url": "https://arxiv.org/pdf/2407.05291",
+          "status": 200,
+          "final_url": "https://arxiv.org/pdf/2407.05291",
+          "mime": "application/pdf",
+          "bytes": 24628627,
+          "sha256": "9a3f424bfcdb2e5b2098c9fa00269a4dac371c11dada4bd4eec436bb2b61d479",
+          "file": "workarena-plus.pdf"
+        },
+        {
+          "name": "aws-saga",
+          "requested_url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/saga-orchestration.html",
+          "status": 200,
+          "final_url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/saga-orchestration.html",
+          "mime": "text/html",
+          "bytes": 27940,
+          "sha256": "7a8d42fc0e4bdd26ea4d0ab2bc23874c6f7de07e8a98fb22884d9108abc954da",
+          "file": "aws-saga.html"
+        }
+      ]
+    }
+  ]
+}

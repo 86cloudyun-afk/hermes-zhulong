@@ -1,0 +1,246 @@
+{
+  "schema": 1,
+  "study_date": "2026-10-11",
+  "repository_baseline": "deffc94e0c30ef3b20481ff6aaf9af5687371ef5",
+  "lane": "root-cause",
+  "read_scope_reference": "../../2026-10-11-root-cause.md",
+  "note": "Fetch metadata, including failed/excluded attempts; HTTP success alone is not evidence of method reading. See the report for selected sources and actual read sections. Cached full text is not committed.",
+  "records": [
+    {
+      "original_index": "probe.json",
+      "metadata": [
+        {
+          "name": "halpern-pearl-2005",
+          "url": "https://arxiv.org/pdf/1301.2275",
+          "final_url": "https://arxiv.org/pdf/1301.2275",
+          "status": 200,
+          "bytes": 1014848,
+          "type": "application/pdf",
+          "sha256": "91e60f22ce673c97cf523dda9fa480bfac3b440b33309fb666c6704900a89e92",
+          "file": "halpern-pearl-2005.pdf"
+        },
+        {
+          "name": "halpern-modified-2015",
+          "url": "https://arxiv.org/pdf/1505.00162",
+          "final_url": "https://arxiv.org/pdf/1505.00162",
+          "status": 200,
+          "bytes": 218891,
+          "type": "application/pdf",
+          "sha256": "82f5b40e3692a2c9e4e0cf13aed763e7382402ad40fed213cb8a3db7002f0e59",
+          "file": "halpern-modified-2015.pdf"
+        },
+        {
+          "name": "zeller-dd-2002",
+          "url": "https://www.st.cs.uni-saarland.de/papers/tse2002/tse2002.pdf",
+          "error_type": "HTTPError",
+          "error": "HTTP Error 503: Service Unavailable"
+        },
+        {
+          "name": "weiser-1984",
+          "url": "https://doi.org/10.1109/TSE.1984.5010248",
+          "final_url": "https://ieeexplore.ieee.org/document/5010248/",
+          "status": 202,
+          "bytes": 0,
+          "type": "text/html; charset=UTF-8",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "file": "weiser-1984.html"
+        },
+        {
+          "name": "jones-2002",
+          "url": "https://www.cc.gatech.edu/~harrold/papers/icse02.pdf",
+          "error_type": "HTTPError",
+          "error": "HTTP Error 404: Not Found"
+        },
+        {
+          "name": "abreu-2007",
+          "url": "https://doi.org/10.1109/TAIC.PART.2007.13",
+          "final_url": "https://ieeexplore.ieee.org/document/4344104/",
+          "status": 202,
+          "bytes": 0,
+          "type": "text/html; charset=UTF-8",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "file": "abreu-2007.html"
+        },
+        {
+          "name": "fault-injection-1997",
+          "url": "https://doi.org/10.1109/2.585157",
+          "final_url": "https://ieeexplore.ieee.org/document/585157/",
+          "status": 202,
+          "bytes": 0,
+          "type": "text/html; charset=UTF-8",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "file": "fault-injection-1997.html"
+        },
+        {
+          "name": "reflexion-2023",
+          "url": "https://arxiv.org/pdf/2303.11366",
+          "final_url": "https://arxiv.org/pdf/2303.11366",
+          "status": 200,
+          "bytes": 591097,
+          "type": "application/pdf",
+          "sha256": "6059b6f89fea9959bd3dab553fbb97756a3dfb1b15e3cbab2fbf3ab6664333bd",
+          "file": "reflexion-2023.pdf"
+        },
+        {
+          "name": "avizienis-2004",
+          "url": "https://doi.org/10.1109/TDSC.2004.2",
+          "final_url": "https://ieeexplore.ieee.org/document/1335465/",
+          "status": 202,
+          "bytes": 0,
+          "type": "text/html; charset=UTF-8",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "file": "avizienis-2004.html"
+        }
+      ]
+    },
+    {
+      "original_index": "probe-extra.json",
+      "metadata": [
+        {
+          "name": "zeller-debuggingbook",
+          "url": "https://www.debuggingbook.org/html/DeltaDebugger.html",
+          "final_url": "https://www.debuggingbook.org/html/DeltaDebugger.html",
+          "status": 200,
+          "bytes": 795519,
+          "type": "text/html; charset=utf-8",
+          "sha256": "e0657160065a2c22319428f1a36b4bc01bcea6e82f5cba431d615c10bd77e21f",
+          "file": "zeller-debuggingbook.html"
+        },
+        {
+          "name": "zeller-dd-author-alt",
+          "url": "https://www.st.cs.uni-saarland.de/publications/files/zeller-tse-2002.pdf",
+          "error_type": "HTTPError",
+          "error": "HTTP Error 503: Service Unavailable"
+        },
+        {
+          "name": "weiser-thesis",
+          "url": "https://research.cs.wisc.edu/wpis/papers/weiser-thesis.pdf",
+          "error_type": "HTTPError",
+          "error": "HTTP Error 404: Not Found"
+        },
+        {
+          "name": "weiser-1984-utah",
+          "url": "https://users.cs.utah.edu/~regehr/papers/Weiser.pdf",
+          "error_type": "HTTPError",
+          "error": "HTTP Error 404: Not Found"
+        },
+        {
+          "name": "avizienis-ut-austin",
+          "url": "https://www.cs.utexas.edu/~lorenzo/corsi/cs380d/papers/Avizienis.pdf",
+          "error_type": "HTTPError",
+          "error": "HTTP Error 404: Not Found"
+        },
+        {
+          "name": "avizienis-newcastle",
+          "url": "https://homepages.cs.ncl.ac.uk/brian.randell/Papers/2004/Basic-Concepts.pdf",
+          "error_type": "HTTPError",
+          "error": "HTTP Error 503: Service Unavailable"
+        },
+        {
+          "name": "abreu-author",
+          "url": "https://paginas.fe.up.pt/~rui/publications/taicpart07.pdf",
+          "error_type": "HTTPError",
+          "error": "HTTP Error 500: Internal Server Error"
+        },
+        {
+          "name": "fault-injection-illinois",
+          "url": "https://www.crhc.illinois.edu/DEPEND/pubs/faultinjection.pdf",
+          "error_type": "URLError",
+          "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+        },
+        {
+          "name": "jones-author-alt",
+          "url": "https://www.cc.gatech.edu/~harrold/papers/icse2002.pdf",
+          "error_type": "HTTPError",
+          "error": "HTTP Error 404: Not Found"
+        }
+      ]
+    },
+    {
+      "original_index": "probe-final.json",
+      "metadata": [
+        {
+          "name": "slicing-author-method",
+          "url": "https://www.debuggingbook.org/html/Slicer.html",
+          "final_url": "https://www.debuggingbook.org/html/Slicer.html",
+          "status": 200,
+          "bytes": 1147064,
+          "type": "text/html; charset=utf-8",
+          "sha256": "f8fdab5a295386d0f197483110a4b6376978dce125e55e71f623ac02a19a6771",
+          "file": "slicing-author-method.html"
+        },
+        {
+          "name": "spectrum-author-method",
+          "url": "https://www.debuggingbook.org/html/StatisticalDebugger.html",
+          "final_url": "https://www.debuggingbook.org/html/StatisticalDebugger.html",
+          "status": 200,
+          "bytes": 671974,
+          "type": "text/html; charset=utf-8",
+          "sha256": "3259e5ab1e35f08d114ce586cf9fa25c75f7f7d637ccc7bb8b1e489b77a97bfd",
+          "file": "spectrum-author-method.html"
+        },
+        {
+          "name": "chaos-official-principles",
+          "url": "https://principlesofchaos.org/",
+          "final_url": "https://principlesofchaos.org/",
+          "status": 200,
+          "bytes": 8281,
+          "type": "text/html; charset=utf-8",
+          "sha256": "06bb2df5d5da7442473850d74d911458dba77e0a289b4ebac73c55c4ded1229b",
+          "file": "chaos-official-principles.html"
+        },
+        {
+          "name": "unfaithful-cot-2023",
+          "url": "https://arxiv.org/pdf/2305.04388",
+          "final_url": "https://arxiv.org/pdf/2305.04388",
+          "status": 200,
+          "bytes": 836076,
+          "type": "application/pdf",
+          "sha256": "f68cfafe59e7acef0f03ec0bdcfe34fb64154db8c354e17b0ee11e0c2c4bb708",
+          "file": "unfaithful-cot-2023.pdf"
+        },
+        {
+          "name": "crossref-zeller",
+          "url": "https://api.crossref.org/works/10.1109/32.988498",
+          "final_url": "https://api.crossref.org/works/10.1109/32.988498",
+          "status": 200,
+          "bytes": 4108,
+          "type": "application/json",
+          "sha256": "f66acf982d8a488996cbe069b3af090b74d138e2362de1dcb0c034c67c1f3d05",
+          "file": "crossref-zeller.json"
+        },
+        {
+          "name": "crossref-weiser",
+          "url": "https://api.crossref.org/works/10.1109/TSE.1984.5010248",
+          "final_url": "https://api.crossref.org/works/10.1109/TSE.1984.5010248",
+          "status": 200,
+          "bytes": 4892,
+          "type": "application/json",
+          "sha256": "dd16ca72ee30faffad672450bdcb1e1b68e173ebc0832f77e81fb21c5abbfed3",
+          "file": "crossref-weiser.json"
+        },
+        {
+          "name": "crossref-abreu",
+          "url": "https://api.crossref.org/works/10.1109/TAIC.PART.2007.13",
+          "final_url": "https://api.crossref.org/works/10.1109/TAIC.PART.2007.13",
+          "status": 200,
+          "bytes": 5350,
+          "type": "application/json",
+          "sha256": "f4751ed21af828447ade97cd50371eb439b7719892725b7a8b84976fcd47c935",
+          "file": "crossref-abreu.json"
+        },
+        {
+          "name": "crossref-chaos",
+          "url": "https://api.crossref.org/works/10.1109/MS.2016.60",
+          "final_url": "https://api.crossref.org/works/10.1109/MS.2016.60",
+          "status": 200,
+          "bytes": 4460,
+          "type": "application/json",
+          "sha256": "0c3fcdc14c0f871ce75f491cc2b84dc6a50491862dbe87e9855b7a74ad4b1c29",
+          "file": "crossref-chaos.json"
+        }
+      ]
+    }
+  ],
+  "bibliographic_correction": "arXiv 1301.2275 is UAI 2001 Part I, not the 2005 BJPS revision; initial fetch labels remain audit records."
+}

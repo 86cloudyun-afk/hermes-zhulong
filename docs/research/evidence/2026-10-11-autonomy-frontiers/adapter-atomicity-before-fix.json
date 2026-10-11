@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "source_bytes_sha256": "e024401d92244d497312af1fc814cc7de9759d472dff6dd300bdd40e4a92d83f",
+  "extracted_function": "idempotent_adapter_illustration.apply",
+  "first_read_observation": {
+    "fence_read": 2,
+    "read_in_transaction": false,
+    "peer_commit_before_effect": true,
+    "peer_blocked": false
+  },
+  "first_call_sql_trace": [
+    "SELECT token FROM fence WHERE resource='counter'",
+    "SELECT payload_hash,result FROM operations WHERE key='step-atomic'",
+    "BEGIN ",
+    "UPDATE effect SET value=value+1",
+    "SELECT value FROM effect",
+    "INSERT INTO operations VALUES('step-atomic','2c5f28bf1e8d3e071e067f175a8b6f728081245b9b8313a9cce44a5aeff3f246','1')",
+    "COMMIT",
+    "SELECT value FROM effect"
+  ],
+  "first_result": "1",
+  "effects_after_first": 1,
+  "peer_commit_after_first": true,
+  "late_old_token_result": "stale",
+  "final_effects": 1,
+  "passed": false,
+  "scope": "One controlled second-connection update after the real function reads its fence; no model, product connector, arbitrary concurrency or remote service proof."
+}
