@@ -1,0 +1,245 @@
+{
+  "schema": 1,
+  "study_date": "2026-10-11",
+  "repository_baseline": "deffc94e0c30ef3b20481ff6aaf9af5687371ef5",
+  "lane": "correctness",
+  "read_scope_reference": "../../2026-10-11-correctness.md",
+  "note": "Fetch metadata, including failed/excluded attempts; HTTP success alone is not evidence of method reading. See the report for selected sources and actual read sections. Cached full text is not committed.",
+  "records": [
+    {
+      "original_index": "access-index.json",
+      "metadata": {
+        "checked_date_utc": "2026-10-11",
+        "network": "继承会话 HTTPS 代理与 CA；TLS 验证开启；无代理绕行、无凭据读取、无付费 API 调用。",
+        "selected_sources_read": 8,
+        "entries": [
+          {
+            "name": "hoare1969",
+            "url": "https://www.cs.cmu.edu/~crary/819-f09/Hoare69.pdf",
+            "status": "fetch_error",
+            "error": "URLError: <urlopen error Tunnel connection failed: 403 Forbidden>",
+            "selected": false,
+            "access_limit": "明确 403；未重试该被拒绝目的地址或绕过代理。"
+          },
+          {
+            "name": "turing1936",
+            "url": "https://www.cs.virginia.edu/~robins/Turing_Paper_1936.pdf",
+            "final_url": "https://www.cs.virginia.edu/~robins/Turing_Paper_1936.pdf",
+            "http_status": 200,
+            "content_type": "application/pdf",
+            "bytes": 2198146,
+            "sha256": "a126650c315e998ba96ea8248a60bde0afe60fec3e810acfc2b6c70d3b0e9f36",
+            "status": "downloaded",
+            "cached_filename": "turing1936.pdf",
+            "selected": true,
+            "read_scope": "原论文 §8、§11 关于通用判定不可实现的论证；未把原文 circle-free 表述误记成现代停机措辞。"
+          },
+          {
+            "name": "rice1953",
+            "url": "https://www.ams.org/journals/tran/1953-074-02/S0002-9947-1953-0053041-6/S0002-9947-1953-0053041-6.pdf",
+            "http_status": 403,
+            "status": "http_error",
+            "selected": false,
+            "access_limit": "明确 403；未重试该被拒绝目的地址或绕过代理。"
+          },
+          {
+            "name": "tla-book",
+            "url": "https://lamport.azurewebsites.net/tla/book-21-07-04.pdf",
+            "final_url": "https://lamport.azurewebsites.net/tla/book-21-07-04.pdf",
+            "http_status": 200,
+            "content_type": "application/pdf",
+            "bytes": 1787495,
+            "sha256": "34883e30182414d08923852c129fd530e889a3f819ad05ebfebde4aefe3d661d",
+            "status": "downloaded",
+            "cached_filename": "tla-book.pdf",
+            "selected": true,
+            "read_scope": "作者专著 refinement/step simulation、fairness、TLC 状态枚举与有界实例章节。"
+          },
+          {
+            "name": "hypothesis-stateful",
+            "url": "https://raw.githubusercontent.com/HypothesisWorks/hypothesis/master/hypothesis-python/docs/stateful.rst",
+            "http_status": 404,
+            "status": "http_error",
+            "selected": false,
+            "access_limit": "路径不存在；不声称读过正文。"
+          },
+          {
+            "name": "dafny-guide",
+            "url": "https://dafny.org/dafny/OnlineTutorial/guide",
+            "final_url": "https://dafny.org/dafny/OnlineTutorial/guide",
+            "http_status": 200,
+            "content_type": "text/html; charset=utf-8",
+            "bytes": 171658,
+            "sha256": "91cd9b63f9c8cb9698624c9c31f6bc336fbdbe8ba551f91efc8d448e6c470d7f",
+            "status": "downloaded",
+            "cached_filename": "dafny-guide.txt",
+            "selected": true,
+            "read_scope": "官方教程 requires/ensures、loop invariant、decreases、证明作用于所给注解。"
+          },
+          {
+            "name": "proof-carrying-code",
+            "url": "https://people.eecs.berkeley.edu/~necula/Papers/popl97.pdf",
+            "http_status": 404,
+            "status": "http_error",
+            "selected": false,
+            "access_limit": "路径不存在；不声称读过正文。"
+          },
+          {
+            "name": "openjml-runtime",
+            "url": "https://www.openjml.org/tutorial/RACCompilation",
+            "final_url": "https://www.openjml.org/tutorial/RACCompilation",
+            "http_status": 200,
+            "content_type": "text/html; charset=utf-8",
+            "bytes": 10491,
+            "sha256": "8f24f95c8fa0656fe59ea7dd08007b9453b2751242154e8f538d171a451f694a",
+            "status": "downloaded",
+            "cached_filename": "openjml-runtime.txt",
+            "selected": true,
+            "read_scope": "官方 Runtime Assertion Checking 文档：只检查当前运行的实际值、部分构造不可执行。"
+          },
+          {
+            "name": "sf-hoare",
+            "url": "https://softwarefoundations.cis.upenn.edu/plf-current/Hoare.html",
+            "final_url": "https://softwarefoundations.cis.upenn.edu/plf-current/Hoare.html",
+            "http_status": 200,
+            "content_type": "text/html",
+            "bytes": 866711,
+            "sha256": "85def11c2da67a78e163549b26dcc054857edeaddbdd12cc015ba83760f6864d",
+            "status": "downloaded",
+            "cached_filename": "sf-hoare.txt",
+            "selected": true,
+            "read_scope": "官方教材 Hoare triple 语义、while 规则、partial/total correctness 区别及 never-terminating 例子。"
+          },
+          {
+            "name": "necula-publications",
+            "url": "https://people.eecs.berkeley.edu/~necula/publications.html",
+            "http_status": 404,
+            "status": "http_error",
+            "selected": false,
+            "access_limit": "路径不存在；不声称读过正文。"
+          },
+          {
+            "name": "hypothesis-tree",
+            "url": "https://api.github.com/repos/HypothesisWorks/hypothesis/git/trees/master?recursive=1",
+            "final_url": "https://api.github.com/repos/HypothesisWorks/hypothesis/git/trees/master?recursive=1",
+            "http_status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "bytes": 205822,
+            "sha256": "467259cefef4f1f669c055e3cb84f5375351d073847a8b84cc9f8e8156e24d55",
+            "status": "downloaded",
+            "cached_filename": "hypothesis-tree.txt",
+            "selected": false
+          },
+          {
+            "name": "yale-computability",
+            "url": "https://www.cs.yale.edu/homes/aspnes/pinewiki/Computability.html",
+            "http_status": 404,
+            "status": "http_error",
+            "selected": false,
+            "access_limit": "路径不存在；不声称读过正文。"
+          },
+          {
+            "name": "tla-diehard",
+            "url": "https://raw.githubusercontent.com/tlaplus/Examples/master/specifications/DieHard/DieHard.tla",
+            "final_url": "https://raw.githubusercontent.com/tlaplus/Examples/master/specifications/DieHard/DieHard.tla",
+            "http_status": 200,
+            "content_type": "text/plain; charset=utf-8",
+            "bytes": 8160,
+            "sha256": "295495de6509d86a82b88757835b95e3f91fad8691d764ece4d98886dcf42b66",
+            "status": "downloaded",
+            "cached_filename": "tla-diehard.txt",
+            "selected": false
+          },
+          {
+            "name": "rta-introduction",
+            "url": "https://arxiv.org/abs/2110.03506",
+            "final_url": "https://arxiv.org/abs/2110.03506",
+            "http_status": 200,
+            "content_type": "text/html; charset=utf-8",
+            "bytes": 43697,
+            "sha256": "b2767fe28a7a94d4e2340bbcf2bbba8b8bb56afa74a8f32c0fc332130fa6fc96",
+            "status": "downloaded",
+            "cached_filename": "rta-introduction.txt",
+            "selected": false
+          },
+          {
+            "name": "hypothesis-stateful-correct",
+            "url": "https://raw.githubusercontent.com/HypothesisWorks/hypothesis/master/hypothesis/docs/stateful.rst",
+            "final_url": "https://raw.githubusercontent.com/HypothesisWorks/hypothesis/master/hypothesis/docs/stateful.rst",
+            "http_status": 200,
+            "content_type": "text/plain; charset=utf-8",
+            "bytes": 12906,
+            "sha256": "44b72e8c3fe67644fb13aa01839e5d1c149fad42a61091d8f189dc55eb3c1e78",
+            "status": "downloaded",
+            "cached_filename": "hypothesis-stateful-correct.txt",
+            "selected": true,
+            "read_scope": "官方 stateful 测试文档：规则序列、实现/模型比较、precondition、每步 invariant。"
+          },
+          {
+            "name": "proof-carrying-code-lower",
+            "url": "https://people.eecs.berkeley.edu/~necula/Papers/pcc.pdf",
+            "http_status": 404,
+            "status": "http_error",
+            "selected": false,
+            "access_limit": "路径不存在；不声称读过正文。"
+          },
+          {
+            "name": "stanford-rice",
+            "url": "https://web.stanford.edu/class/cs103/notes/Guide%20to%20Rice%27s%20Theorem.pdf",
+            "http_status": 404,
+            "status": "http_error",
+            "selected": false,
+            "access_limit": "路径不存在；不声称读过正文。"
+          },
+          {
+            "name": "rta-paper",
+            "url": "https://arxiv.org/pdf/2110.03506",
+            "status": "size_limit",
+            "selected": false,
+            "access_limit": "首次 6 MiB 本地下载上限；RTA 后续以 25 MiB 上限正常获取，并非访问拒绝。"
+          },
+          {
+            "name": "lean-kernel",
+            "url": "https://lean-lang.org/doc/reference/latest/Kernel/",
+            "http_status": 404,
+            "status": "http_error",
+            "selected": false,
+            "access_limit": "路径不存在；不声称读过正文。"
+          },
+          {
+            "name": "proof-carrying-code-publisher",
+            "url": "https://dl.acm.org/doi/10.1145/263699.263712",
+            "http_status": 403,
+            "status": "http_error",
+            "selected": false,
+            "access_limit": "明确 403；未重试该被拒绝目的地址或绕过代理。"
+          },
+          {
+            "name": "rta-full-paper",
+            "url": "https://arxiv.org/pdf/2110.03506",
+            "status": "downloaded",
+            "http_status": 200,
+            "bytes": 14017701,
+            "sha256": "2c3adf7c46e6e8ad4c4ad8a2ab47c4c0b137a8df9818999ba962f82653ef098d",
+            "cached_filename": "rta-full-paper.pdf",
+            "selected": true,
+            "read_scope": "原论文模型假设/偏差、forward invariance、安全过滤器与 backup controller；不是软件代理证明。"
+          },
+          {
+            "name": "lean-proof-kernel",
+            "url": "https://lean-lang.org/theorem_proving_in_lean4/introduction.html",
+            "final_url": "https://lean-lang.org/theorem_proving_in_lean4/Introduction/",
+            "http_status": 200,
+            "content_type": "text/html; charset=UTF-8",
+            "bytes": 59134,
+            "sha256": "829985fee7b0490728f027ca0c5238de1dd6f4980d4c99043735e64c79710469",
+            "status": "downloaded",
+            "cached_filename": "lean-proof-kernel.txt",
+            "selected": true,
+            "read_scope": "官方 Theorem Proving in Lean 4 Introduction：axiomatic foundations、proof objects、独立检查。"
+          }
+        ]
+      }
+    }
+  ]
+}

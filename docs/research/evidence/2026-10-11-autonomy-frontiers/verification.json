@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "study_date": "2026-10-11",
+  "repository_baseline": "deffc94e0c30ef3b20481ff6aaf9af5687371ef5",
+  "host_pin": "73162b00eefde3794bed0afb53d84a19c0eed230",
+  "provider_calls": 0,
+  "baseline_suite": {
+    "command": "HERMES_AGENT_ROOT=/workspace/.cloud-onboarding/dependencies/hermes-agent ZHULONG_SKILL_DOCKER_TESTS=1 zhulong-python -m unittest discover -s tests -v",
+    "tests": 235,
+    "passed": 235,
+    "skipped": 0,
+    "exit_code": 0,
+    "elapsed_seconds": 77.075,
+    "log_sha256": "56641ddf2ad28bb330d4929f9f838fb8bf71fd6708bcbeffdb6e5875ce5f3360"
+  },
+  "reproduced_probes": [
+    {
+      "script": "execution_probe.py",
+      "exit_code": 0
+    },
+    {
+      "script": "root_cause_probe.py",
+      "exit_code": 0
+    },
+    {
+      "script": "causal_gain_demo.py",
+      "exit_code": 0
+    },
+    {
+      "script": "metacognition_probe.py",
+      "exit_code": 0
+    },
+    {
+      "script": "publication_probe.py",
+      "exit_code": 0
+    }
+  ],
+  "product_python_sha256": {
+    "__init__.py": "40ba80718ffa3e49bb37ea866b9bfc7c7701bcc365ef0bbab327544a3089bc7e",
+    "autonomy.py": "e403f20a77b8696008d79a5c6eb97837414ae5c554e8d6ef174626b54ac11091",
+    "autonomy_checks.py": "49180c6058cd0162a6d316039e4c63014801be02ab7b6f80536356cc2af4bf31",
+    "autonomy_store.py": "4dd5d119486383b664a0614dcf35341bdbaca965263615459bb01805efa3cb04",
+    "calibrate.py": "5441d007f4781d3d97453de9d63069fa69df16714bc1a7dc33ebd8693724de07",
+    "commands.py": "686e38a90e59a1bbce1b859877a1a562630d7b9139bd7fdb36a5a3220e12c11e",
+    "experience.py": "18b6e741d549c25aeb2f19418c073a9a5d89461e4532dbe9b68eff48fb20ebe7",
+    "experience_store.py": "024cc054f484d9009d25ef301ad60bdcd39553b3a5177a57ff4f5f8a0baf146c",
+    "hermes_runs.py": "f29cf922fd9431a40a8de1912d317becfc085e54cb8d5d5384ead9b00f71e8be",
+    "probes.py": "794cc083c95e20020052f8e36c4d8e26ea6aa215b6431aaae76312dbd115d984",
+    "reflect.py": "19f032f7e5fa2cf21c4ff8201110f3181ef322b0c8e20ff3a3e9080a67c5f9b5",
+    "runtime_channel.py": "0a8457d88be6f3a05a7c59c47fa7659cac098d6e3f5a0a9a91c15e4970ddaef4",
+    "runtime_policy.py": "ede5469a426ec41291a358160090adb4f66ad6b5755f7a337ec9d4fa73c57354",
+    "runtime_supervisor.py": "e425240e831fdd349fbcf87d2a208e678ba1ed164b6775463aa004e09ad74d8a",
+    "self_model.py": "4ec42e6f768aa1eb895f1729ff47b2a6a8047d184a3ca7bf2559b100d28ba218",
+    "sensor.py": "b6720e6e0fc68fa1b25d533b477b66dad7d1ee736e48e7b1e82ce3b7acd53958",
+    "skill_evaluator.py": "3f2f6e7cf29cddf0b4c486f7e2024d7f8817093c0e6569015141b0f6002657f7",
+    "skill_learning.py": "bca9ceac5187ada06f795dbe93d7bbf7528f39821a3cf4a76c86974ce6753d13",
+    "skill_replay.py": "f33e746d110980a6e7afaa798b4eb7bfcd7b00e4c710f311d14229cec575a9bf",
+    "skill_store.py": "380e8f16108f9764d55bce5d5ce73972592a3b6ba38f4c37cf018109cb45a29d",
+    "storage.py": "ca3819e4bba387ea350c804b37f22157d7a6ce77d6a98567358c945b2bd4eb1e",
+    "task_inputs.py": "a1ef8f2ed4e7f146aa357ae2f3fed7c60010f8d8d04035c124cccb79cc2fd736"
+  },
+  "research_script_sha256": {
+    "causal_gain_demo.py": "1b78ab401df6c1a4e037288aa51e58fa23d3d2fb8a04f942dcfa84303d2be4ff",
+    "execution_probe.py": "e024401d92244d497312af1fc814cc7de9759d472dff6dd300bdd40e4a92d83f",
+    "metacognition_probe.py": "e8e5bf293b63b34b076d1f4358b69a0d636f150ae07ace45ffdc9a9075cb2001",
+    "publication_probe.py": "626afe07bc174723f58390babe0618e1a6edcc29cc8fb5e86d6284b04df3dc69",
+    "root_cause_probe.py": "4cd2ee99052b456630cee740a755608fd8f3dffea951907a8a83766416a142b4"
+  },
+  "output_bytes_sha256": {
+    "probe-results.json": "5c6408fda971eaa0da64d957497f820005cdf0d6b20f7e26c345a2fe28d6a10f",
+    "experiment-results.json": "15b65f22acddfc615149ad24804f3a52898f6cef4bf0c0cb114361b7e69c32ca",
+    "offline-protocol.json": "3a0bef5edf07e1bdcf866070f18df076ddfbb96c52cef14f1bafc3825ddf19bd",
+    "offline-analysis.json": "af193c3c8db592bf8d644d51f521639074ed0815b0e50342485e5a50647f30bd",
+    "metacognition_probe.json": "9dc6600ead91fe623b5742c2e589194c9dee889e53a9ee06494d1e4a9094b4a4",
+    "publication-probe.json": "856daf9639ffacf1bb2b51d5bc6ac7a1b57a7072842d4e6df2bee84bb0daa0b2"
+  },
+  "limitations": [
+    "Only research assets and README changed; product version remains 0.8.",
+    "Synthetic effects and paired outcomes are demonstrations, not native/model gains.",
+    "Publication enumeration uses actual SQLite with a substituted case runner/cleanup, not a formal proof."
+  ]
+}

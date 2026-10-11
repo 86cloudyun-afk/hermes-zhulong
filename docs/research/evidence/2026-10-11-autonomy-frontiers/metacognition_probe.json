@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "repo_head": "deffc94e0c30ef3b20481ff6aaf9af5687371ef5",
+  "source": "self_model._metrics",
+  "scope": "Four synthetic observations per group; no provider calls, human subjects, consciousness test, or performance intervention.",
+  "finding": "error_discrimination is an availability flag; it has the same value under opposite confidence rankings.",
+  "research_only_metrics_not_product_features": true,
+  "groups": {
+    "correct_order": {
+      "synthetic_samples": [
+        {
+          "forecast": 0.8,
+          "truth": true
+        },
+        {
+          "forecast": 0.9,
+          "truth": true
+        },
+        {
+          "forecast": 0.2,
+          "truth": false
+        },
+        {
+          "forecast": 0.1,
+          "truth": false
+        }
+      ],
+      "actual_repository_metrics": {
+        "forecast_samples": 4,
+        "brier": 0.024999999999999994,
+        "ece": 0.14999999999999997,
+        "mean_confidence": 0.5,
+        "confidence_on_correct": 0.8500000000000001,
+        "confidence_on_error": 0.15000000000000002,
+        "error_discrimination": "available"
+      },
+      "research_only_pairwise_auroc2": 1.0,
+      "research_only_correct_minus_error_confidence": 0.7000000000000001
+    },
+    "reversed_order": {
+      "synthetic_samples": [
+        {
+          "forecast": 0.2,
+          "truth": true
+        },
+        {
+          "forecast": 0.1,
+          "truth": true
+        },
+        {
+          "forecast": 0.8,
+          "truth": false
+        },
+        {
+          "forecast": 0.9,
+          "truth": false
+        }
+      ],
+      "actual_repository_metrics": {
+        "forecast_samples": 4,
+        "brier": 0.7250000000000001,
+        "ece": 0.8500000000000001,
+        "mean_confidence": 0.5,
+        "confidence_on_correct": 0.15000000000000002,
+        "confidence_on_error": 0.8500000000000001,
+        "error_discrimination": "available"
+      },
+      "research_only_pairwise_auroc2": 0.0,
+      "research_only_correct_minus_error_confidence": -0.7000000000000001
+    },
+    "constant_prior": {
+      "synthetic_samples": [
+        {
+          "forecast": 0.5,
+          "truth": true
+        },
+        {
+          "forecast": 0.5,
+          "truth": true
+        },
+        {
+          "forecast": 0.5,
+          "truth": false
+        },
+        {
+          "forecast": 0.5,
+          "truth": false
+        }
+      ],
+      "actual_repository_metrics": {
+        "forecast_samples": 4,
+        "brier": 0.25,
+        "ece": 0.0,
+        "mean_confidence": 0.5,
+        "confidence_on_correct": 0.5,
+        "confidence_on_error": 0.5,
+        "error_discrimination": "available"
+      },
+      "research_only_pairwise_auroc2": 0.5,
+      "research_only_correct_minus_error_confidence": 0.0
+    }
+  }
+}

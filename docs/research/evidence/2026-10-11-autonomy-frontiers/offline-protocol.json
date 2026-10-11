@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "experiment_kind": "synthetic-analysis-demonstration",
+  "provider_calls_allowed": 0,
+  "unit": "independent synthetic task pair",
+  "pairs": 384,
+  "strata": [
+    "code/easy",
+    "code/hard",
+    "data/easy",
+    "data/hard",
+    "recovery/easy",
+    "recovery/hard"
+  ],
+  "pairs_per_stratum": 64,
+  "primary": "paired difference in deadline-and-cleanup-verified success probability",
+  "secondary": [
+    "total tokens per allocated run",
+    "tokens per verified success"
+  ],
+  "alpha": 0.05,
+  "fixed_sample": true,
+  "bootstrap_draws": 2000,
+  "data_seed": 20261011,
+  "allocation_seed": 912640,
+  "analysis_seed": 829001,
+  "synthetic_beneficial_discordance_probability": 0.18,
+  "synthetic_harmful_discordance_probability": 0.06,
+  "claim_ceiling": "pipeline demonstration; no actual agent causal inference"
+}

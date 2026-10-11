@@ -1,0 +1,38 @@
+{
+  "evidence_grade": "E0_simulated_pipeline",
+  "experiment_kind": "synthetic-analysis-demonstration",
+  "provider_calls": 0,
+  "preregistration_hash": "22846bdd83935a5a59517f50143c241aae2e718421da4d6a1ebd593e8c22c631",
+  "outcomes_hash": "20c2249d096542addcce40ec977014bb777f0ecabec17dc772fa8c8df2d44fa4",
+  "pairs": 384,
+  "baseline_successes": 218,
+  "treatment_successes": 268,
+  "absolute_gain_percentage_points": 13.0208,
+  "beneficial_discordant_pairs": 67,
+  "harmful_discordant_pairs": 17,
+  "paired_exact_null_p_value": 3.495893514797303e-08,
+  "approximate_stratified_percentile_bootstrap_95_interval_pp": [
+    8.59375,
+    17.708333333333336
+  ],
+  "conservative_fixed_N_hoeffding_95_interval_pp": [
+    -0.8402322186038924,
+    26.881898885270562
+  ],
+  "simulated_tokens_per_allocated_run": {
+    "baseline": 4101.359375,
+    "treatment": 3749.546875
+  },
+  "simulated_tokens_per_verified_success": {
+    "baseline": 7224.412844036698,
+    "treatment": 5372.485074626866
+  },
+  "claim_allowed": "Deterministic offline preregistration and analysis pipeline works on declared synthetic data.",
+  "claim_forbidden": "This provides no evidence that Hermes, its skills, experience, self-model or consciousness improved.",
+  "negative_fixture_checks_passed": [
+    "missing_pair",
+    "duplicate_pair",
+    "protocol_substitution",
+    "input_substitution"
+  ]
+}
