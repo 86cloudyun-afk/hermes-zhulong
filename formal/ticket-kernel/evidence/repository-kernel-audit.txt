@@ -1,0 +1,101 @@
+HermesTicket.rowCertificateSound (p : HermesTicket.Program) (cells : List HermesTicket.Cell)
+  (hcheck : HermesTicket.checkTyped p cells = true) (r : HermesTicket.Row) (hr : HermesTicket.validRow r) :
+  HermesTicket.evalScore p r = HermesTicket.specScore r ∧
+    HermesTicket.evalRowPriority p r = HermesTicket.businessPriority (HermesTicket.specScore r)
+HermesTicket.accepted_coverage_unique (p : HermesTicket.Program) (cells : List HermesTicket.Cell)
+  (hcheck : HermesTicket.checkTyped p cells = true) (r : HermesTicket.Row) (hr : HermesTicket.validRow r) :
+  ∃ i, HermesTicket.occurrenceAt cells r i ∧ ∀ (j : Nat), HermesTicket.occurrenceAt cells r j → j = i
+HermesTicket.accepted_resources (p : HermesTicket.Program) (cells : List HermesTicket.Cell)
+  (hcheck : HermesTicket.checkTyped p cells = true) :
+  HermesTicket.wfProgram p = true ∧ cells.length ≤ 512 ∧ cells.all HermesTicket.validCell = true
+HermesTicket.accepted_score_businessPriority (p : HermesTicket.Program) (cells : List HermesTicket.Cell)
+  (hcheck : HermesTicket.checkTyped p cells = true) (r : HermesTicket.Row) (hr : HermesTicket.validRow r) :
+  HermesTicket.evalRowPriority p r = HermesTicket.businessPriority (HermesTicket.evalScore p r)
+HermesTicket.sampleAccepted : HermesTicket.checkTyped HermesTicket.sampleProgram HermesTicket.sampleCells = true
+HermesTicket.alternateAccepted : HermesTicket.checkTyped HermesTicket.alternateProgram HermesTicket.sampleCells = true
+HermesTicket.sampleUnsortedAccepted :
+  HermesTicket.checkTyped HermesTicket.sampleProgram HermesTicket.sampleCells.reverse = true
+HermesTicket.alternateProgramDifferent : HermesTicket.sampleProgram ≠ HermesTicket.alternateProgram
+'HermesTicket.evalTerms_eq_operand_sum' depends on axioms: [propext]
+'HermesTicket.nodesTerms_cons' does not depend on any axioms
+'HermesTicket.limitsTerms_cons' does not depend on any axioms
+'HermesTicket.literal_depth_24' does not depend on any axioms
+'HermesTicket.literal_depth_25' does not depend on any axioms
+'HermesTicket.scalar_lower_bound' does not depend on any axioms
+'HermesTicket.scalar_below_bound' does not depend on any axioms
+'HermesTicket.combined_nodes_256_accept' does not depend on any axioms
+'HermesTicket.combined_nodes_257_reject' does not depend on any axioms
+'HermesTicket.root_depth_24_accept' does not depend on any axioms
+'HermesTicket.root_depth_25_reject' does not depend on any axioms
+'HermesTicket.unselected_branch_bounds_reject' does not depend on any axioms
+'HermesTicket.affine_add_value' depends on axioms: [propext, Quot.sound]
+'HermesTicket.affine_scale_value' depends on axioms: [propext]
+'HermesTicket.affine_sub_value' depends on axioms: [propext, Quot.sound]
+'HermesTicket.affine_bounds' depends on axioms: [propext, Quot.sound]
+'HermesTicket.equalOnCell_sound' depends on axioms: [propext, Quot.sound]
+'HermesTicket.referenceAffine_sound' depends on axioms: [propext, Quot.sound]
+'HermesTicket.priorityRelation_sound' depends on axioms: [propext, Quot.sound]
+'HermesTicket.deriveI_sound' depends on axioms: [propext, Quot.sound]
+'HermesTicket.deriveB_sound' depends on axioms: [propext, Quot.sound]
+'HermesTicket.deriveTerms_sound' depends on axioms: [propext, Quot.sound]
+'HermesTicket.deriveP_sound' depends on axioms: [propext, Quot.sound]
+'HermesTicket.derive_sound' depends on axioms: [propext, Quot.sound]
+'HermesTicket.negative_slope_ge_false' does not depend on any axioms
+'HermesTicket.negative_slope_min_left' does not depend on any axioms
+'HermesTicket.crossing_ge_reject' does not depend on any axioms
+'HermesTicket.before_boundary_ge_false' does not depend on any axioms
+'HermesTicket.singleton_boundary_ge_true' does not depend on any axioms
+'HermesTicket.min_singleton_tie_left' does not depend on any axioms
+'HermesTicket.nary_derive_every_operand' does not depend on any axioms
+'HermesTicket.nary_eval_every_operand' does not depend on any axioms
+'HermesTicket.cached_score_priority' does not depend on any axioms
+'HermesTicket.insertCell_perm' does not depend on any axioms
+'HermesTicket.sortCells_perm' does not depend on any axioms
+'HermesTicket.validCell_interval' depends on axioms: [propext]
+'HermesTicket.checkChain_lower' depends on axioms: [propext, Quot.sound]
+'HermesTicket.checkChain_count' depends on axioms: [propext, Classical.choice, Quot.sound]
+'HermesTicket.validRow_group' depends on axioms: [propext, Quot.sound]
+'HermesTicket.coverage_count' depends on axioms: [propext, Classical.choice, Quot.sound]
+'HermesTicket.coverage_unique' depends on axioms: [propext, Classical.choice, Quot.sound]
+'HermesTicket.coverage_exists' depends on axioms: [propext, Classical.choice, Quot.sound]
+'HermesTicket.checkCell_sound' depends on axioms: [propext, Quot.sound]
+'HermesTicket.rowCertificateSound' depends on axioms: [propext, Classical.choice, Quot.sound]
+'HermesTicket.accepted_coverage_unique' depends on axioms: [propext, Classical.choice, Quot.sound]
+'HermesTicket.accepted_resources' depends on axioms: [propext]
+'HermesTicket.accepted_score_businessPriority' depends on axioms: [propext, Classical.choice, Quot.sound]
+'HermesTicket.sampleCellCount' does not depend on any axioms
+'HermesTicket.sampleAccepted' does not depend on any axioms
+'HermesTicket.alternateAccepted' does not depend on any axioms
+'HermesTicket.sampleUnsortedAccepted' does not depend on any axioms
+'HermesTicket.alternateProgramDifferent' does not depend on any axioms
+'HermesTicket.crossingReferenceCover' does not depend on any axioms
+'HermesTicket.crossingReferenceRejected' does not depend on any axioms
+'HermesTicket.forgedScoreCover' does not depend on any axioms
+'HermesTicket.forgedScoreRejected' does not depend on any axioms
+'HermesTicket.forgedPriorityRejected' does not depend on any axioms
+'HermesTicket.nonuniformPriorityCover' does not depend on any axioms
+'HermesTicket.nonuniformPriorityRejected' does not depend on any axioms
+'HermesTicket.thresholdFalseCellAccepted' does not depend on any axioms
+'HermesTicket.thresholdTrueCellAccepted' does not depend on any axioms
+'HermesTicket.urgentThresholdFalseCellAccepted' does not depend on any axioms
+'HermesTicket.urgentThresholdTrueCellAccepted' does not depend on any axioms
+'HermesTicket.singletonWitnessAccepted' does not depend on any axioms
+'HermesTicket.singletonWitnessDifferent' does not depend on any axioms
+'HermesTicket.singletonWitnessCellAccepted' does not depend on any axioms
+'HermesTicket.emptyRejected' does not depend on any axioms
+'HermesTicket.missingGroupRejected' does not depend on any axioms
+'HermesTicket.gapCellsSemanticallyValid' does not depend on any axioms
+'HermesTicket.gapRejected' does not depend on any axioms
+'HermesTicket.overlapCellsSemanticallyValid' does not depend on any axioms
+'HermesTicket.overlapRejected' does not depend on any axioms
+'HermesTicket.duplicateCellsSemanticallyValid' does not depend on any axioms
+'HermesTicket.duplicateRejected' does not depend on any axioms
+'HermesTicket.invalidSeverityCover' does not depend on any axioms
+'HermesTicket.invalidSeverityRejected' does not depend on any axioms
+'HermesTicket.fullCheckerRejectsMalformed' depends on axioms: [propext]
+'HermesTicket.combinedNodesViolationRejected' depends on axioms: [propext]
+'HermesTicket.depth25ViolationRejected' depends on axioms: [propext]
+'HermesTicket.unselectedLiteralViolationRejected' depends on axioms: [propext]
+'HermesTicket.unselectedDepthViolationRejected' depends on axioms: [propext]
+'HermesTicket.scalarMagnitudeViolationRejected' depends on axioms: [propext]
+'HermesTicket.tooManyCellsRejected' depends on axioms: [propext]

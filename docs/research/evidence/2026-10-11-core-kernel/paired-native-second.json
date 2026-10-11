@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "study": "second_distinct_native_paired_N3_stopped",
+  "accepted_source_head": "c04b8d7df4e08056e7e218ca9bb5eaf7b93c0994",
+  "frozen_source_files": 103,
+  "protocol_canonical_sha256": "cf09c127146c0d7b73b2ca0fd72c7ab9badc2de62a9e9c37aba4cdedc50035ad",
+  "protocol_file_sha256": "ccfefd9b4d19368e7ead9e70db19d92a711532fa487c21af47f07400c06f639e",
+  "raw_final_summary_sha256": "be2c6588cf64a45c87d918395b3a8e77abef8528c47b5b30933766ab58c58750",
+  "source_checkpoint_before_sha256": "e8d42de04c5348b43c0dafc2bdf58f76a3d30e5a633a4fb7c5970a4b8952ac3a",
+  "source_checkpoint_after_sha256": "3be7b9bdb16a49e4ed82de38829c7eff72691c9c7578c16c1c9ffb62868ea5c8",
+  "summary": {
+    "allocated": 6,
+    "succeeded": 0,
+    "failed": 0,
+    "unknown": 1,
+    "unrun": 5
+  },
+  "protocol_stopped": true,
+  "stop_reason": "arm_qualification_unconfirmed",
+  "allocations": [
+    {
+      "ordinal": 0,
+      "arm": "planner_masked",
+      "input_id": "workload",
+      "input_hash": "298ee97c56b82ff81c674e5aa6f9f92af223c7d070e4d5a15bbde7bd3d73e951",
+      "receipt": {
+        "outcome": "unknown",
+        "business": null,
+        "native": null,
+        "settled": true,
+        "cleanup": true,
+        "paired_qualified": false,
+        "paired_qualification": "missing_proof",
+        "qualifiers": [
+          "business_artifact_unavailable",
+          "actual_worker_unobserved"
+        ],
+        "configured_model": "deepseek-flash",
+        "observed_model": "deepseek-flash",
+        "underlying_model_version": "unknown",
+        "main_usage": {
+          "input_tokens": 118905,
+          "output_tokens": 6131,
+          "total_tokens": 125036
+        },
+        "auxiliary_calls": null,
+        "endpoint_sha256": "30c7d0904392aa86bc358130ec2f8e4d25da7fdad1357fb682623f20b6be5ea7"
+      }
+    },
+    {
+      "ordinal": 1,
+      "arm": "planner_masked",
+      "input_id": "source-index",
+      "input_hash": "6aaa611a7624914c68ba1fc2f657090ccf9c13ac46f301e1c213034a89fe2b6c",
+      "receipt": null
+    },
+    {
+      "ordinal": 2,
+      "arm": "planner_visible",
+      "input_id": "workload",
+      "input_hash": "298ee97c56b82ff81c674e5aa6f9f92af223c7d070e4d5a15bbde7bd3d73e951",
+      "receipt": null
+    },
+    {
+      "ordinal": 3,
+      "arm": "planner_visible",
+      "input_id": "source-index",
+      "input_hash": "6aaa611a7624914c68ba1fc2f657090ccf9c13ac46f301e1c213034a89fe2b6c",
+      "receipt": null
+    },
+    {
+      "ordinal": 4,
+      "arm": "planner_masked",
+      "input_id": "ticket-queue",
+      "input_hash": "025e9691d9346b9c11f8957af27bd63bfb30fef5cb8bd5462d914a56925be7a8",
+      "receipt": null
+    },
+    {
+      "ordinal": 5,
+      "arm": "planner_visible",
+      "input_id": "ticket-queue",
+      "input_hash": "025e9691d9346b9c11f8957af27bd63bfb30fef5cb8bd5462d914a56925be7a8",
+      "receipt": null
+    }
+  ],
+  "paired_analysis": {
+    "alpha": 0.05,
+    "causal_gain_supported": false,
+    "complete_pairs": 0,
+    "control_only": 0,
+    "discordant_pairs": 0,
+    "disqualifications": [
+      "incomplete",
+      "unqualified",
+      "small_n",
+      "protocol_stopped"
+    ],
+    "endpoint": "qualified_success_by_deadline_v1",
+    "exact_mcnemar_p": 1.0,
+    "hoeffding_interval": [
+      -1.0,
+      1.0
+    ],
+    "inference_qualified": false,
+    "paired_effect": 0.0,
+    "pairs": 3,
+    "qualified_pairs": 0,
+    "scope": "Frozen endpoint and identity/mechanism scope only; conditional on trusted receipts and independent pairs; no cost-effectiveness assertion",
+    "ties": 3,
+    "treatment_only": 0
+  },
+  "deadline_seconds": 180,
+  "cleanup_grace_seconds": 120,
+  "independent_cleanup": {
+    "captured_utc": "2026-10-11T10:07:37.723691+00:00",
+    "scope": "Independent read-only owned process identities, runtime/evaluator labels and bound loopback listener",
+    "service_state": "stopped",
+    "processes_absent": true,
+    "owned_runtime_count": 0,
+    "owned_evaluator_count": 0,
+    "api_listener_absent": true,
+    "status_sha256": "ab93b7c241be402f1c6e3dc21b0a26a20018e2c9bf74edb8fec959db11f8825f",
+    "confirmed": true
+  },
+  "independent_cleanup_status_hash_encoding": "SHA-256 of raw status file bytes",
+  "retained_observation": {
+    "durable_worker_launch_records": 8,
+    "validated_worker_captures": 0
+  },
+  "diagnosis": "Exact suppressed observer exception remains unknown. Source/predicate reproduction identifies two incompatibilities: fixed prompt-backend-probe task identity is rejected by session-only capture, and gateway startup seeds bundled skills before the required empty-skills mount check.",
+  "diagnosis_report_sha256": "ab3bce5bddd08eaaf9c3bf1c0b64ac707780c97a198e8fbb88a22bb4cc936584",
+  "root_provider_free_predicate_reproduction_log_sha256": "4bae60a5f6781b586e789d0e38fbf74208bf4bfd883d85dd542d3f12302743db",
+  "root_predicate_reproduction_is_actual_daemon_inspect": false,
+  "original_trial_retained_separately": true,
+  "pooled_with_original": false,
+  "outcomes_preserved": true,
+  "late_backfill": false,
+  "causal_gain_supported": false,
+  "full_billing": null,
+  "analysis_interpretation": "No complete or qualified pairs. Retained effect=0, ties=3 and p=1 are incomplete-batch algorithm placeholders, not observed matched ties or an effect estimate.",
+  "prospective_fix": "Separately reviewed bootstrap/probe amendment and distinct preregistered batch; never refill or pool either stopped batch.",
+  "scope": "Actual pinned Hermes/DeepSeek integration failure and owned cleanup only. No subjective experience, arbitrary-task correctness, causal benefit or continuous-liveness claim."
+}

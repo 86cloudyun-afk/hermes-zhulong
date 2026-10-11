@@ -183,7 +183,8 @@ class CognitionTests(unittest.TestCase):
             with self.assertRaises(sqlite3.IntegrityError):db.execute('INSERT OR REPLACE INTO cognition_receipts VALUES('+','.join('?' for _ in row)+')',tuple(row))
 
     def test_strict_config_and_disabled_baseline(self):
-        m=self.module();self.assertEqual(m.validate_cognition(None),{'enabled':False,'capacity':3,'ttl_seconds':120,'mask_consumer':None,'selection_mode':'adaptive'})
+        m=self.module();self.assertEqual(m.validate_cognition(None),{'enabled':False,'capacity':3,'ttl_seconds':120,'mask_consumer':None,'selection_mode':'adaptive',
+            'attention_mode':'off','attention_constant_probability':0.5,'attention_max_wait':8,'attention_switch_penalty':0.0})
         for raw in ({'wat':1},{'enabled':1},{'capacity':True},{'capacity':9},{'ttl_seconds':float('nan')},
                     {'mask_consumer':[]},{'selection_mode':{}},[],False):
             with self.subTest(raw=raw),self.assertRaises(ValueError):m.validate_cognition(raw)

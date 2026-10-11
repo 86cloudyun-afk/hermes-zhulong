@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "milestone": "computed_typed_checker_general_row_soundness",
+  "theorem": "HermesTicket.rowCertificateSound",
+  "premises": [
+    "checkTyped program cells = true",
+    "validRow row"
+  ],
+  "conclusion": "evalScore program row = specScore row and evalRowPriority program row = businessPriority (specScore row)",
+  "scope": "formal_typed_post_decoder_checker_model_only",
+  "python_checker_sha256": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+  "frozen_source_files": 14,
+  "frozen_source_manifest_sha256": "cd3fa704215fa48dec4215fa0ffd57b6ff4bf5994becddf06a21bdefd0b15f69",
+  "implementation_report_sha256": "7e0a6f0172838c88956db53390d8cb4db839926c3fe391257bb326344b6fbe6f",
+  "author_clean_replay_result_sha256": "2eec2f047cf31cc792c85f4fdb8b2b8704db852034489761d0b642781aa386e4",
+  "independent_review_report_sha256": "6da1577a6c64095dfaedf3410904fcfcf5c6983aeb29dc9713970e293dfd29e4",
+  "independent_replay_result_sha256": "474b6fbcce5f7d593b845dbf67bdd0b813ae8f60dfba79f8f4e9b4220e108946",
+  "independent_replay_commands_exit": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "public_theorems": 83,
+  "dependency_counts": {
+    "propext": 11,
+    "none": 51,
+    "Quot.sound,propext": 14,
+    "Classical.choice,Quot.sound,propext": 7
+  },
+  "allowed_foundations": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ],
+  "general_theorem_dependencies": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ],
+  "positive_acceptance_proofs": [
+    "sampleAccepted",
+    "alternateAccepted",
+    "sampleUnsortedAccepted"
+  ],
+  "positive_acceptance_axioms": [],
+  "sample_cells_match_actual_bundle": true,
+  "source_unchanged": true,
+  "toolchain_unchanged": true,
+  "spec_review": "PASS",
+  "quality_review": "PASS",
+  "runtime_correspondence_proved": false,
+  "subjective_consciousness_established": false,
+  "arbitrary_program_correctness_proved": false,
+  "long_term_benefit_established": false,
+  "integration_status": "Source-preserving repository/CI entry committed; independent packaging review and root actual clean entry replay passed; first remote GitHub formal CI succeeded at c04. Prospective later runtime-fix HEAD CI remains separate.",
+  "repository_packaging_commit": "5036c20edb6860074558549bfdf22a1778992eff",
+  "root_repository_entry_verification_result_sha256": "25e41941b5e74bb0f996b9c049b4ffe1ef990e22ed5adeeee299b4b734f44026",
+  "root_repository_entry_clean_replay_result_sha256": "23083795d6d805309b2649ff42f58d0fbfdafe3c11fd6ff63f4012d08e6e3fa7",
+  "root_repository_entry_commands_exit": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "independent_packaging_spec_review": "PASS",
+  "independent_packaging_quality_review": "PASS",
+  "independent_packaging_review_report_sha256": "c3d8f1a567d3a81efea4a2ea586562964881b11145c3b7814670785b187d15a3",
+  "first_remote_ci": {
+    "id": 38130659034,
+    "name": "typed ticket proof",
+    "head_sha": "c04b8d7df4e08056e7e218ca9bb5eaf7b93c0994",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/86cloudyun-afk/hermes-zhulong/actions/runs/38130659034",
+    "updated_at": "2026-10-11T10:05:34Z",
+    "log_zip_sha256": "fc4a1e0ac4fb89fb100eb0e1e56f2d3459a4a5398d8875f5620ee0469358c7e3",
+    "checked_theorem_closures": 83,
+    "boundary_tests_run": 10,
+    "boundary_tests_skipped": 0,
+    "artifact": {
+      "artifact_id": 11698849126,
+      "artifact_zip_sha256": "593e30832532d8d83a79ae9cfa268368279e8f3f11f4964157802aec6f2c9fcd",
+      "github_api_digest_verified": true,
+      "entry_result_sha256": "ae17d19a7f85c102f212e64167412ee2b7f92d234e91dce9ce9bd838fe63ae76",
+      "clean_replay_result_sha256": "eb12937c50782b96df033b0dbcb62c85d36e6933c4b7cfc0ed758617802ea0c6",
+      "commands_exit": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "source_manifest_sha256": "cd3fa704215fa48dec4215fa0ffd57b6ff4bf5994becddf06a21bdefd0b15f69",
+      "source_bytes_unchanged": true,
+      "toolchain_bytes_unchanged": true,
+      "local_proof_objects_reused": false,
+      "theorem_dependency_counts": {
+        "propext": 11,
+        "none": 51,
+        "Quot.sound,propext": 14,
+        "Classical.choice,Quot.sound,propext": 7
+      }
+    }
+  }
+}

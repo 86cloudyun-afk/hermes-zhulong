@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "retained_failed_checkpoint": {
+    "head_sha": "7bb6e586e0bc44d22f7f1cb9b96e80cd20e2fd6f",
+    "run_id": 38133161650,
+    "conclusion": "failure",
+    "matrix": [
+      {
+        "version": "3.11",
+        "run": 582,
+        "passed": 557,
+        "errors": 1,
+        "failures": 0,
+        "skipped": 24,
+        "duration_seconds": 71.025
+      },
+      {
+        "version": "3.12",
+        "run": 582,
+        "passed": 557,
+        "errors": 1,
+        "failures": 0,
+        "skipped": 24,
+        "duration_seconds": 80.536
+      },
+      {
+        "version": "3.14",
+        "run": 582,
+        "passed": 557,
+        "errors": 1,
+        "failures": 0,
+        "skipped": 24,
+        "duration_seconds": 83.271
+      }
+    ],
+    "log_zip_sha256": "fec8df68cecbaf6c7b224eb0ad9c07a09597dcc81eba00c8430790cdd9fdea99",
+    "independent_diagnosis_sha256": "d2c54759bb0f4f96a47483aa27a7fdede5322a5b5282d21445aa08d3bb8ae015",
+    "cause": "The expired-cleanup fixture derived a negative monotonic origin on a short-uptime runner. Production clock validity correctly rejected it. Only the test clock was repaired."
+  },
+  "successful_checkpoint": {
+    "id": 38133642756,
+    "name": "tests",
+    "head_sha": "6c0b93a7784d3da2c2f3ccebd65728436d948b87",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/86cloudyun-afk/hermes-zhulong/actions/runs/38133642756",
+    "updated_at": "2026-10-11T10:56:10Z"
+  },
+  "successful_matrix": [
+    {
+      "log": "unittest (3.11)/4_Run python -m unittest discover -s tests -v.txt",
+      "tests_run": 582,
+      "duration_seconds": 68.044,
+      "skipped": 24,
+      "passed": 558,
+      "status": "OK"
+    },
+    {
+      "log": "unittest (3.12)/4_Run python -m unittest discover -s tests -v.txt",
+      "tests_run": 582,
+      "duration_seconds": 65.801,
+      "skipped": 24,
+      "passed": 558,
+      "status": "OK"
+    },
+    {
+      "log": "unittest (3.14)/4_Run python -m unittest discover -s tests -v.txt",
+      "tests_run": 582,
+      "duration_seconds": 76.828,
+      "skipped": 24,
+      "passed": 558,
+      "status": "OK"
+    }
+  ],
+  "successful_log_zip_sha256": "2a5827070e376659b521a388463b18662cde2012fa61a6dab2a33f07e0d4639a",
+  "remote_skips": {
+    "cached_local_docker": 2,
+    "local_docker": 16,
+    "actual_docker_creation": 1,
+    "absent_host_integration": 1,
+    "unavailable_pinned_native_host": 2,
+    "pinned_sdk_source_probes": 2,
+    "total": 24
+  },
+  "scope": "Exact checkpoint Python matrix. Initial formal success and initial Python failures are retained separately; final PR/main CI require their own exact-head readback."
+}

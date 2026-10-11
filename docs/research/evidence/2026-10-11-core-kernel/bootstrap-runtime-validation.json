@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "accepted_source_head": "6c0b93a7784d3da2c2f3ccebd65728436d948b87",
+  "source_files": 104,
+  "source_unchanged": true,
+  "source_before_sha256": "4161a3ce12e353068f0d9475e9ec32c0e2e2ee3d1094969ba0fd10d82d4d0e03",
+  "source_after_tests_sha256": "d9340f9f685ce250436a860b6398de845dd6074f2c47c119ba14ac4ff051e5f2",
+  "source_after_smoke_sha256": "40922f418db32e9630d9ad8cec74a3552b8ddaea67f35bd12639154f175ec377",
+  "source_after_third_sha256": "022b5f7fdb6ada0a4607d4effd048c3cd6d56b5eac375b8aa784a21097d33749",
+  "actual_suite": {
+    "run": 582,
+    "passed": 582,
+    "skipped": 0,
+    "errors": 0,
+    "failures": 0,
+    "duration_seconds": 166.601,
+    "exit_code": 0,
+    "log_sha256": "018649a937292a80c0980fb01ca23f1348610df30f16e9160e8b9e5f6c6d0bfd",
+    "resource_warning_emissions": 29
+  },
+  "host_smoke": {
+    "plugin": "zhulong",
+    "version": "0.11.0",
+    "hooks": 11,
+    "tools": 4,
+    "commands": 1,
+    "journal": "passed",
+    "privacy": "passed",
+    "calibration": "passed",
+    "digest": "passed",
+    "sqlite_integrity": "ok",
+    "external_llm_calls": 0
+  },
+  "supervised_unpaid_smoke": {
+    "scenario": "finite-native-supervised-runtime",
+    "paid": false,
+    "provider_validation": "not_called",
+    "code_revision": "6c0b93a7784d3da2c2f3ccebd65728436d948b87",
+    "code_dirty": false,
+    "learning": false,
+    "skills": false,
+    "replay_origin": false,
+    "standalone_check_passed": true,
+    "boundary": {
+      "denied_action_checks": {
+        "capabilities_zero": true,
+        "control_absent": true,
+        "control_api_unreachable": true,
+        "docker_socket_absent": true,
+        "facts_hardlink_denied": true,
+        "facts_readonly": true,
+        "facts_rename_denied": true,
+        "no_external_interface": true,
+        "provider_key_absent": true,
+        "root_readonly": true,
+        "work_writable": true
+      },
+      "docker": {
+        "bind_disk_quota": "not_enforced",
+        "bind_mounts": 15,
+        "cpu": 1,
+        "memory_bytes": 536870912,
+        "memory_plus_swap_bytes": 536870912,
+        "network": "none",
+        "pids": 128,
+        "readonly_root": true,
+        "shm_bytes": 67108864,
+        "tmpfs_checked": true,
+        "uid": 1000
+      },
+      "external_llm_calls": 0,
+      "model_tools": [
+        "process_manage",
+        "terminal"
+      ],
+      "native_revision": "73162b00eefde3794bed0afb53d84a19c0eed230",
+      "ok": true,
+      "source_topology": "direct_regular_single_link"
+    },
+    "readiness": {
+      "matching_boot": true,
+      "controller_live": true,
+      "paused": true
+    },
+    "duplicate_launch_blocked": true,
+    "auxiliary_budget_calls": 0,
+    "shutdown": {
+      "admission_acknowledged": true,
+      "forced_shutdown": false,
+      "launches": 1,
+      "reason": null,
+      "removed_workers": 0,
+      "state": "stopped"
+    },
+    "supervisor_exit_code": 0
+  },
+  "supervised_log_sha256": "a647cac19d9b52b2e739107785e4f900d79544d1d1375d1f74a5e4d8aaa70083",
+  "actual_fixture_scope": "Actual pinned gateway startup skill-sync, exact prompt probe, two session workers, actual daemon/backend/runner and unpatched production child audit. Ledger/Run/session setup is explicitly synthetic; no paid API run is claimed by the fixture.",
+  "implementation_review_sha256": "4baba76ab172d370db049bb198cace5e79aff10bfd9aa9d7138341258cf54080",
+  "clock_review_sha256": "466fff13c0efbad38538a1a58cf31ed0d3bb7e885ee8ce4b241a0f465686fe32",
+  "actual_ci_review_sha256": "21d5f18e46b55abaca60f92ba8e9bcb8352cf5f836e919cab465b550b3271583",
+  "scope": "Integration and regression evidence; no subjective experience, arbitrary-task correctness or causal-benefit theorem."
+}

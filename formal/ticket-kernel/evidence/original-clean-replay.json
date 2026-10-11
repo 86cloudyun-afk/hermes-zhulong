@@ -1,0 +1,244 @@
+{
+  "status": "pass",
+  "proof_scope": "typed_checker_model_only",
+  "sources_sha256": "cd3fa704215fa48dec4215fa0ffd57b6ff4bf5994becddf06a21bdefd0b15f69",
+  "toolchain_tree_sha256": "7c890479b405c695b835d0d7d81affad13c082975bde6ead33e608a57d9f12e2",
+  "allowed_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ],
+  "actual_dependencies": {
+    "HermesTicket.evalTerms_eq_operand_sum": [
+      "propext"
+    ],
+    "HermesTicket.nodesTerms_cons": [],
+    "HermesTicket.limitsTerms_cons": [],
+    "HermesTicket.literal_depth_24": [],
+    "HermesTicket.literal_depth_25": [],
+    "HermesTicket.scalar_lower_bound": [],
+    "HermesTicket.scalar_below_bound": [],
+    "HermesTicket.combined_nodes_256_accept": [],
+    "HermesTicket.combined_nodes_257_reject": [],
+    "HermesTicket.root_depth_24_accept": [],
+    "HermesTicket.root_depth_25_reject": [],
+    "HermesTicket.unselected_branch_bounds_reject": [],
+    "HermesTicket.affine_add_value": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.affine_scale_value": [
+      "propext"
+    ],
+    "HermesTicket.affine_sub_value": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.affine_bounds": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.equalOnCell_sound": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.referenceAffine_sound": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.priorityRelation_sound": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.deriveI_sound": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.deriveB_sound": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.deriveTerms_sound": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.deriveP_sound": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.derive_sound": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.negative_slope_ge_false": [],
+    "HermesTicket.negative_slope_min_left": [],
+    "HermesTicket.crossing_ge_reject": [],
+    "HermesTicket.before_boundary_ge_false": [],
+    "HermesTicket.singleton_boundary_ge_true": [],
+    "HermesTicket.min_singleton_tie_left": [],
+    "HermesTicket.nary_derive_every_operand": [],
+    "HermesTicket.nary_eval_every_operand": [],
+    "HermesTicket.cached_score_priority": [],
+    "HermesTicket.insertCell_perm": [],
+    "HermesTicket.sortCells_perm": [],
+    "HermesTicket.validCell_interval": [
+      "propext"
+    ],
+    "HermesTicket.checkChain_lower": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.checkChain_count": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.validRow_group": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.coverage_count": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.coverage_unique": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.coverage_exists": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.checkCell_sound": [
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.rowCertificateSound": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.accepted_coverage_unique": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.accepted_resources": [
+      "propext"
+    ],
+    "HermesTicket.accepted_score_businessPriority": [
+      "Classical.choice",
+      "Quot.sound",
+      "propext"
+    ],
+    "HermesTicket.sampleCellCount": [],
+    "HermesTicket.sampleAccepted": [],
+    "HermesTicket.alternateAccepted": [],
+    "HermesTicket.sampleUnsortedAccepted": [],
+    "HermesTicket.alternateProgramDifferent": [],
+    "HermesTicket.crossingReferenceCover": [],
+    "HermesTicket.crossingReferenceRejected": [],
+    "HermesTicket.forgedScoreCover": [],
+    "HermesTicket.forgedScoreRejected": [],
+    "HermesTicket.forgedPriorityRejected": [],
+    "HermesTicket.nonuniformPriorityCover": [],
+    "HermesTicket.nonuniformPriorityRejected": [],
+    "HermesTicket.thresholdFalseCellAccepted": [],
+    "HermesTicket.thresholdTrueCellAccepted": [],
+    "HermesTicket.urgentThresholdFalseCellAccepted": [],
+    "HermesTicket.urgentThresholdTrueCellAccepted": [],
+    "HermesTicket.singletonWitnessAccepted": [],
+    "HermesTicket.singletonWitnessDifferent": [],
+    "HermesTicket.singletonWitnessCellAccepted": [],
+    "HermesTicket.emptyRejected": [],
+    "HermesTicket.missingGroupRejected": [],
+    "HermesTicket.gapCellsSemanticallyValid": [],
+    "HermesTicket.gapRejected": [],
+    "HermesTicket.overlapCellsSemanticallyValid": [],
+    "HermesTicket.overlapRejected": [],
+    "HermesTicket.duplicateCellsSemanticallyValid": [],
+    "HermesTicket.duplicateRejected": [],
+    "HermesTicket.invalidSeverityCover": [],
+    "HermesTicket.invalidSeverityRejected": [],
+    "HermesTicket.fullCheckerRejectsMalformed": [
+      "propext"
+    ],
+    "HermesTicket.combinedNodesViolationRejected": [
+      "propext"
+    ],
+    "HermesTicket.depth25ViolationRejected": [
+      "propext"
+    ],
+    "HermesTicket.unselectedLiteralViolationRejected": [
+      "propext"
+    ],
+    "HermesTicket.unselectedDepthViolationRejected": [
+      "propext"
+    ],
+    "HermesTicket.scalarMagnitudeViolationRejected": [
+      "propext"
+    ],
+    "HermesTicket.tooManyCellsRejected": [
+      "propext"
+    ]
+  },
+  "source_bytes_unchanged": true,
+  "toolchain_bytes_unchanged": true,
+  "local_build_artifacts_reused": false,
+  "commands": [
+    {
+      "argv": [
+        "/workspace/scratch/hermes-core-v11/formal-proof-v1/toolchain/bin/lean",
+        "--version"
+      ],
+      "cwd": "/workspace/scratch/hermes-core-v11/formal-proof-replay-1",
+      "started_utc": "2026-10-11T09:32:32.171590+00:00",
+      "finished_utc": "2026-10-11T09:32:32.200437+00:00",
+      "exit_status": 0,
+      "stdout_sha256": "5362a246ce2545424db10a77de8fd4694f4cf8b0170dfd43fa727acf7f7f259b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/hermes-core-v11/formal-proof-v1/toolchain/bin/lake",
+        "--version"
+      ],
+      "cwd": "/workspace/scratch/hermes-core-v11/formal-proof-replay-1",
+      "started_utc": "2026-10-11T09:32:32.200642+00:00",
+      "finished_utc": "2026-10-11T09:32:32.230995+00:00",
+      "exit_status": 0,
+      "stdout_sha256": "dc1f8f58960933047871f7df82c5de73ea0f705617e101b7dd9413a418a2195d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/hermes-core-v11/formal-proof-v1/toolchain/bin/lake",
+        "build",
+        "HermesTicket"
+      ],
+      "cwd": "/workspace/scratch/hermes-core-v11/formal-proof-replay-1",
+      "started_utc": "2026-10-11T09:32:32.231160+00:00",
+      "finished_utc": "2026-10-11T09:32:38.887781+00:00",
+      "exit_status": 0,
+      "stdout_sha256": "2661e20b5abd7156cbc6b20aaaa9d23d9c13fe33559b64d5b898c44f3a7c408e",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/workspace/scratch/hermes-core-v11/formal-proof-v1/toolchain/bin/lake",
+        "env",
+        "/workspace/scratch/hermes-core-v11/formal-proof-v1/toolchain/bin/lean",
+        "HermesTicket/KernelAudit.lean"
+      ],
+      "cwd": "/workspace/scratch/hermes-core-v11/formal-proof-replay-1",
+      "started_utc": "2026-10-11T09:32:38.887973+00:00",
+      "finished_utc": "2026-10-11T09:32:39.600503+00:00",
+      "exit_status": 0,
+      "stdout_sha256": "e5413e51118543a44fb3700d07b9e54cd53f71f8cc910437a460bfedbbc8b9da",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

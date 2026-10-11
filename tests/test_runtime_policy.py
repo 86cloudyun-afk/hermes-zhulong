@@ -57,6 +57,60 @@ class PolicyTests(unittest.TestCase):
         self.assertFalse(config['platforms'].get('telegram',{}).get('enabled',True))
         self.assertNotIn('private-key',json.dumps(config))
 
+    @unittest.skipUnless(os.environ.get('HERMES_AGENT_ROOT'),'explicit pinned host source contract')
+    def test_protected_config_does_not_overwrite_dynamic_boot_at_pinned_gateway_bridge(self):
+        import ast,types
+        from native_trial_fixture import configured_host
+        host=configured_host()
+        tree=ast.parse((host/'gateway/run.py').read_text())
+        fn=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=='_bridge_terminal_config_to_env')
+        self.assertTrue(hasattr(self.m,'protected_native_config'),'static config projection missing')
+        config=self.m.protected_native_config(self.manifest,self.policy)
+        self.assertNotIn('docker_extra_args',config['terminal'])
+        env=self.m.child_environment(self.manifest,'actual-boot',{},api_key='test-only')
+        expected=json.loads(env['TERMINAL_DOCKER_EXTRA_ARGS'])
+        scope={'os':types.SimpleNamespace(environ=env,path=os.path),'json':json}
+        config_tree=ast.parse((host/'hermes_cli/config.py').read_text())
+        helper=next(node for node in config_tree.body if isinstance(node,ast.FunctionDef) and node.name=='_is_ssh_remote_tilde_cwd')
+        exec(compile(ast.Module(body=[helper,fn],type_ignores=[]),'pinned-gateway-bridge','exec'),scope)
+        scope['_bridge_terminal_config_to_env'](config['terminal'])
+        self.assertEqual(json.loads(env['TERMINAL_DOCKER_EXTRA_ARGS']),expected)
+        self.assertIn('zhulong.boot=actual-boot',expected)
+        for value in ('--read-only','--cpus','--memory','--memory-swap','--pids-limit','--tmpfs'):
+            self.assertIn(value,expected)
+        # Empty means explicitly owned and would erase the protected args.
+        scope['_bridge_terminal_config_to_env']({'docker_extra_args':[]})
+        self.assertEqual(json.loads(env['TERMINAL_DOCKER_EXTRA_ARGS']),[])
+
+    @unittest.skipUnless(os.environ.get('HERMES_AGENT_ROOT'),'explicit pinned host SDK contract')
+    def test_pinned_default_loader_keeps_omitted_launch_args_inherited(self):
+        import subprocess,sys
+        from native_trial_fixture import configured_host
+        host=configured_host()
+        profile=Path(self.manifest['root'])/'profile';profile.mkdir(parents=True)
+        (profile/'config.yaml').write_text(json.dumps(self.m.protected_native_config(self.manifest,self.policy)))
+        env=self.m.child_environment(self.manifest,'actual-boot',api_key='test-only')
+        script="""import json,os,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from hermes_cli.config import apply_terminal_config_to_env,load_config_readonly
+from hermes_cli.config_effective import load_user_config_effective
+expected=os.environ['TERMINAL_DOCKER_EXTRA_ARGS']
+assert load_config_readonly()['terminal']['docker_extra_args']==[]
+assert 'docker_extra_args' not in load_user_config_effective(Path(os.environ['HERMES_HOME'])/'config.yaml')['terminal']
+apply_terminal_config_to_env()
+assert os.environ['TERMINAL_DOCKER_EXTRA_ARGS']==expected
+assert 'zhulong.boot=actual-boot' in json.loads(expected)
+apply_terminal_config_to_env(config={'terminal':{'docker_extra_args':[]}})
+assert json.loads(os.environ['TERMINAL_DOCKER_EXTRA_ARGS'])==[]
+"""
+        result=subprocess.run([sys.executable,'-c',script,str(host)],env=env,capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stderr)
+
+    def test_inherited_docker_binary_cannot_replace_protected_runtime(self):
+        env=self.m.child_environment(self.manifest,'boot',{'HERMES_DOCKER_BINARY':'/untrusted/docker'},api_key='test-only')
+        self.assertNotIn('HERMES_DOCKER_BINARY',env)
+
     def test_workspace_tmpfs_is_explicit_even_for_workspace_prefixed_bind(self):
         manifest={**self.manifest,'work':'/workspace/authorized-work'}
         policy={**self.policy,'workspace_roots':[manifest['work']],

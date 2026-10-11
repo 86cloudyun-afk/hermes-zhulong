@@ -14,7 +14,9 @@ try:
 except ImportError:
     from autonomy_store import canonical, digest
 
-DEFAULTS={'enabled':False,'capacity':3,'ttl_seconds':120,'mask_consumer':None,'selection_mode':'adaptive'}
+DEFAULTS={'enabled':False,'capacity':3,'ttl_seconds':120,'mask_consumer':None,'selection_mode':'adaptive',
+          'attention_mode':'off','attention_constant_probability':0.5,
+          'attention_max_wait':8,'attention_switch_penalty':0.0}
 MECHANISM={'schema':1,'selection':'least_recent_source_then_stable_id','constant':'stable_id_prefix',
            'evidence':'delivered_context_only','hidden_activations':'unavailable','subjective_experience':'unidentified'}
 
@@ -30,10 +32,22 @@ def validate_cognition(raw):
         raise ValueError('invalid_cognition_mask')
     if not isinstance(result['selection_mode'],str) or result['selection_mode'] not in ('adaptive','constant'):
         raise ValueError('invalid_cognition_selection')
+    if not isinstance(result['attention_mode'],str) or result['attention_mode'] not in ('off','adaptive','constant','permuted'):
+        raise ValueError('invalid_attention_mode')
+    if type(result['attention_max_wait']) is not int or not 1<=result['attention_max_wait']<=1024:
+        raise ValueError('invalid_attention_max_wait')
+    for key in ('attention_constant_probability','attention_switch_penalty'):
+        if type(result[key]) not in (int,float) or not math.isfinite(result[key]) or not 0<=result[key]<=1:
+            raise ValueError('invalid_'+key)
     return result
 
 
 def initialize(c):
+    try:
+        from . import attention
+    except ImportError:
+        import attention
+    attention.initialize(c)
     definitions={
         'cognition_frames':('seq INTEGER PRIMARY KEY AUTOINCREMENT, frame_id TEXT NOT NULL UNIQUE, frame TEXT NOT NULL, frame_hash TEXT NOT NULL',
                             'seq=NEW.seq OR frame_id=NEW.frame_id'),
@@ -142,13 +156,52 @@ def prepared(c,goal_id,submission_id,request,now):
 class Workspace:
     def __init__(self,ledger,policy,identity):
         self.ledger=ledger
-        self.policy=validate_cognition(policy.get('cognition') if isinstance(policy,dict) and 'cognition' in policy else policy)
+        full_policy=isinstance(policy,dict) and any(key in policy for key in ('cognition','sources','workspace_roots','base'))
+        self.source_configuration=policy.get('sources') if full_policy else None
+        self.policy=validate_cognition(policy.get('cognition') if full_policy else policy)
         self.identity_hash=digest(identity)
         self.receipt_unavailable=False
 
+    def observe_disabled_selection(self,selected_ids,now):
+        """Record actual legacy selection, without creating a workspace binding.
+
+        If the inactive journal fails, an immutable unavailable frame preserves
+        the interruption cursor for restart. It asserts neither a focus nor a
+        forecast and cannot bind a goal because its entries are empty.
+        """
+        now=_time(now)
+        if self.policy['enabled']:raise ValueError('cognition_disabled_observation_required')
+        try:
+            from . import attention
+        except ImportError:
+            import attention
+        try:
+            with self.ledger._connection(True) as c:
+                if c.execute('SELECT 1 FROM cognition_forecasts LIMIT 1').fetchone() is None:return True
+                if attention.observe_off(c,selected_ids,None,now,self.policy,self.identity_hash,self.source_configuration,
+                                         reason='cognition_disabled_observation'):return True
+                self.receipt_unavailable=True
+                frame={'schema':1,'frame_id':uuid.uuid4().hex,'identity_hash':self.identity_hash,
+                       'policy':dict(self.policy),'policy_hash':digest(self.policy),'mechanism_hash':digest(MECHANISM),
+                       'captured_at':now,'expires_at':now+self.policy['ttl_seconds'],'entries':[],
+                       'forecast':{'source_ids':[],'origin':'inactive_observation_journal_unavailable'},
+                       'inactive_observation_reason':'cognition_disabled_observation_journal_unavailable'}
+                c.execute('INSERT INTO cognition_frames(frame_id,frame,frame_hash) VALUES(?,?,?)',
+                          (frame['frame_id'],canonical(frame),digest(frame)))
+        except (sqlite3.DatabaseError,ValueError):
+            # Legacy planning stays usable if its evidence journal is unavailable.
+            self.receipt_unavailable=True
+        return False
+
     def select(self,observations,now,*,source_owner=None,lease_seconds=120,max_attempts=3):
         now=_time(now)
-        if not self.policy['enabled']:return None
+        if not self.policy['enabled']:
+            self.observe_disabled_selection([],now)
+            return None
+        try:
+            from . import attention
+        except ImportError:
+            import attention
         with self.ledger._connection(True) as c:
             eligible=[]
             for o in observations:
@@ -167,13 +220,21 @@ class Workspace:
             history={}
             for row in c.execute('SELECT seq,frame FROM cognition_frames ORDER BY seq'):
                 for e in json.loads(row['frame'])['entries']:history[e['source_id']]=row['seq']
-            ordered=sorted(eligible,key=lambda o:((history.get(o['id'],0) if self.policy['selection_mode']=='adaptive' else 0),o['id']))
+            attention_capture=None
+            if self.policy['attention_mode']!='off':
+                attention_capture=attention.prepare(c,observations,eligible,now,self.policy,self.identity_hash,self.source_configuration,_entry)
+                ordered=attention.rank(eligible,attention_capture,self.policy)
+            else:
+                ordered=sorted(eligible,key=lambda o:((history.get(o['id'],0) if self.policy['selection_mode']=='adaptive' else 0),o['id']))
             # Forecast uses the old persisted history and full eligible source set.
             forecast={'source_ids':[o['id'] for o in ordered[:self.policy['capacity']]],
                       'prior_history_hash':digest(history),'eligible_hash':digest([_entry(o) for o in sorted(eligible,key=lambda o:o['id'])]),
                       'origin':'deterministic_schedule_before_selection'}
             selected=ordered[:self.policy['capacity']]
-            if not selected:return None
+            if not selected:
+                if attention_capture is not None:attention.finish(c,attention_capture,[],None,now,self.policy)
+                else:attention.observe_off(c,[],None,now,self.policy,self.identity_hash,self.source_configuration)
+                return None
             if source_owner is not None:
                 for o in selected:
                     if not self.ledger._claim_source(c,o['id'],o['revision'],source_owner,now,lease_seconds,max_attempts):
@@ -182,6 +243,10 @@ class Workspace:
                    'policy':dict(self.policy),'policy_hash':digest(self.policy),'mechanism_hash':digest(MECHANISM),
                    'captured_at':now,'expires_at':now+self.policy['ttl_seconds'],
                    'entries':[_entry(o) for o in selected],'forecast':forecast}
+            if attention_capture is not None:
+                frame['attention']=attention.finish(c,attention_capture,[o['id'] for o in selected],frame['frame_id'],now,self.policy)
+            else:
+                attention.observe_off(c,[o['id'] for o in selected],frame['frame_id'],now,self.policy,self.identity_hash,self.source_configuration)
             c.execute('INSERT INTO cognition_frames(frame_id,frame,frame_hash) VALUES(?,?,?)',(frame['frame_id'],canonical(frame),digest(frame)))
             return frame
 
@@ -233,9 +298,14 @@ class Workspace:
                 self.receipt_unavailable=True
                 return {'visibility':'unavailable','reason':'receipt_journal_unavailable','remote_receipt':'unknown'}
 
-    def summary(self):
+    def summary(self,now=None):
         with self.ledger._connection() as c:
             result={'schema':1,'enabled':self.policy['enabled'],'policy':dict(self.policy),'limitations':dict(MECHANISM)}
+            try:
+                from . import attention
+            except ImportError:
+                import attention
+            result['attention']=attention.summary(c,now)
             result['frames']=c.execute('SELECT COUNT(*) FROM cognition_frames').fetchone()[0]
             result['bindings']=c.execute('SELECT COUNT(*) FROM cognition_bindings').fetchone()[0]
             result['consumer_receipts']={}

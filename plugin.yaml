@@ -1,7 +1,7 @@
 name: zhulong
 label: 烛龙 Zhulong — Hermes 观测、校准与自主核心
 kind: standalone
-version: 0.10.0
+version: 0.11.0
 author: YG + LCS
-description: "开眼即观测。烛龙 v0.10：可选限容量认知工作空间、独立 SQLite 状态对应审计与同事务准入/发布门槛；保留 Hermes 自主工作的机械验收和恢复。"
+description: "开眼即观测。烛龙 v0.11：前瞻注意力控制、限定语言证书与原子准入、受保护原生执行及可核验研究记录；保留 Hermes 自主工作的机械验收和恢复。"
 provides_hooks: [post_tool_call, post_llm_call, on_session_start, on_session_end, on_session_finalize, on_session_reset, on_skill_lifecycle, subagent_stop, api_request_error, agent_loop_stopped, pre_command]

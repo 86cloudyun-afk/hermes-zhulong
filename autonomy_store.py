@@ -263,6 +263,12 @@ class Ledger:
             if not valid_binding(c,self._goal(c,goal),request):
                 return {'admitted':False,'reason':'input_snapshot_no_longer_applicable'}
             try:
+                from .certified_bindings import valid_program_binding
+            except ImportError:
+                from certified_bindings import valid_program_binding
+            if not valid_program_binding(c,self._goal(c,goal),json.loads(identity),json.loads(body)):
+                return {'admitted':False,'reason':'certified_program_no_longer_applicable'}
+            try:
                 from .experience_store import valid_bindings
             except ImportError:
                 from experience_store import valid_bindings

@@ -1,0 +1,26 @@
+{
+  "checked_at_utc": "2026-10-11T09:32:44.303926+00:00",
+  "sources": {
+    "pure_bundle": {
+      "path": "/workspace/scratch/hermes-core-v11/final-ticket-bundle.json",
+      "sha256": "ed8a5cb1cfab83387504035d68acd298fa229e753ec4706a2974ccc0f50762c0"
+    },
+    "research_program": {
+      "path": "/workspace/scratch/hermes-core-v11/correctness/sample-program.json",
+      "sha256": "644a01c037031c45c3adcc7b1e81a4e92f5189357f0f765aaa4d6f3c26363f8c"
+    },
+    "research_cells": {
+      "path": "/workspace/scratch/hermes-core-v11/correctness/sample-certificate.json",
+      "sha256": "346b64b10c737565658b3d1d4b10b450a999d1b2a5cfdeeb171958853eecc8eb"
+    }
+  },
+  "sample_score_equal": true,
+  "sample_priority_equal": true,
+  "all26cells_equal_in_order": true,
+  "program_schema": 1,
+  "program_reference": "ticket_priority_v1",
+  "certificate_schema": 1,
+  "certificate_reference": "ticket_priority_v1",
+  "cells": 26,
+  "scope": "data equality/source fixture correspondence only; not Python refinement theorem"
+}

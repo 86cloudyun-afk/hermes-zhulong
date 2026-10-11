@@ -1,0 +1,21 @@
+{
+  "started_utc": "2026-10-11T09:17:19.842358+00:00",
+  "finished_utc": "2026-10-11T09:17:25.803684+00:00",
+  "source_url": "https://github.com/leanprover/lean4/releases/download/v4.19.0/lean-4.19.0-linux.tar.zst",
+  "source_commit": "6caaee842e9495688c1567e78c0e68dbb96942aa",
+  "official_asset_id": 250981932,
+  "expected_metadata_bytes": 343842845,
+  "publisher_digest": null,
+  "independent_checksum_verified": false,
+  "distribution_trust": "official_GitHub_release_via_verified_TLS",
+  "curl_exit": 0,
+  "http_status": "200",
+  "ssl_verify_result": "0",
+  "effective_url_without_query": "https://release-assets.githubusercontent.com/github-production-release-asset/129571436/0df8e5ce-e37f-4080-9cb4-06b96422022d",
+  "redirect_count": "1",
+  "bytes_downloaded": 343842845,
+  "stderr": "",
+  "inherited_proxy": true,
+  "tls_verification_disabled": false,
+  "local_archive_sha256": "6fe3ce97a58f44e2b3567d455b994eacec5bfe9ae7774f2a573444480ba813fe"
+}

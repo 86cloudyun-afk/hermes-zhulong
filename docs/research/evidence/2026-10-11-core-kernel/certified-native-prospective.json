@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "study": "distinct_prospective_certified_ticket_native_N1",
+  "accepted_source_head": "c04b8d7df4e08056e7e218ca9bb5eaf7b93c0994",
+  "frozen_source_files": 103,
+  "reviewed_harness_sha256": "4e188f79e2d16d5141b3a91a8080353f4a87fbd39a0a96a8ba51d2fe89052901",
+  "summary": {
+    "allocated": 1,
+    "axes": {
+      "business": true,
+      "cleanup": true,
+      "independent_business": true,
+      "native": true,
+      "settled": true
+    },
+    "failed": 0,
+    "full_billing": null,
+    "outcome": "succeeded",
+    "paid": true,
+    "protocol_sha256": "e4219c64220168189e64d5247591a7001e4bbe11a758ffc51f420c2d353b9bce",
+    "raw_receipt_sha256": "749e758d22bc80582c08800f18b15301b4f63398e8bb02f8b8a279c787f721a2",
+    "succeeded": 1,
+    "timing_scope": "legacy_separate_phases_no_shared_180_second_endpoint",
+    "unknown": 0,
+    "unrun": 0
+  },
+  "attempts": 1,
+  "main_usage": {
+    "input_tokens": 28531,
+    "output_tokens": 1343,
+    "total_tokens": 29874
+  },
+  "auxiliary_calls": 1,
+  "native_binding": {
+    "admitted_request_binding_verified": true,
+    "execution_command_observed": true,
+    "execution_result_successful": true,
+    "bundle_hash": "ed8a5cb1cfab83387504035d68acd298fa229e753ec4706a2974ccc0f50762c0",
+    "execution_identity_hash": "5b739915af39f6687a9b9e453428e5bf09c624ba64fce639f70f18c2ee01befa",
+    "input_hash": "025e9691d9346b9c11f8957af27bd63bfb30fef5cb8bd5462d914a56925be7a8",
+    "invocation_hash": "a38e9605aad608cda9ff4f3fd0347ba2e5c8f767629d56bd4f9b707c8a279807",
+    "kernel_hash": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+    "output_hash": "a55c30be2bb83463920d563191bfd89e6ab2299655a3020e4e804dfd4809d285",
+    "request_hash": "881e427773ea6730ba5463db52cd4c219719b63e8e9775c8c3b2a8cfec6d4e45",
+    "runner_hash": "1b81ce061eebbab08e400cab19cbd4ea5ed66b60cc4162c8f879b5191bf5c853"
+  },
+  "independent_cleanup": {
+    "captured_utc": "2026-10-11T10:04:51.866072+00:00",
+    "scope": "Independent read-only owned process identities, runtime/evaluator labels and bound loopback listener",
+    "service_state": "stopped",
+    "processes_absent": true,
+    "owned_runtime_count": 0,
+    "owned_evaluator_count": 0,
+    "api_listener_absent": true,
+    "status_sha256": "c1e7c366955ae50c3d268d989ac20b1b96a1dfd7947b994fc85b5fb81838ac68",
+    "confirmed": true
+  },
+  "protocol_file_sha256": "e4219c64220168189e64d5247591a7001e4bbe11a758ffc51f420c2d353b9bce",
+  "source_checkpoint_before_sha256": "e8d42de04c5348b43c0dafc2bdf58f76a3d30e5a633a4fb7c5970a4b8952ac3a",
+  "oracle_file_sha256": "1a0c840d95602865a695410d26827eb43c792b5790e573c95ca75cf45e72dbdf",
+  "provider": "deepseek",
+  "configured_alias": "deepseek-flash",
+  "underlying_model_version": "unverified",
+  "full_billing": null,
+  "original_trial_retained_separately": true,
+  "pooled_with_original": false,
+  "scope": "One new certified execution after the prospective native configuration repair; unchanged legacy separate-phase budgets, not paired shared-180 endpoint. Independent business result and actual admitted request/bundle/kernel/foreground/output binding. No Python/Lean correspondence, arbitrary-program correctness, subjective experience or causal-benefit claim."
+}

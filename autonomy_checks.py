@@ -57,7 +57,7 @@ def contract_policy(raw,policy):
     if not isinstance(raw,dict):raise ValueError('invalid_contract')
     kind=raw.get('type')
     fields={'file_contains':{'path','text'},'json_equals':{'path','field','value'},
-            'json_reference':{'path','reference_id','reference_version'},'argv':{'argv','cwd','timeout_seconds'}}
+            'json_reference':{'path','reference_id','reference_version','program_bundle'},'argv':{'argv','cwd','timeout_seconds'}}
     if kind not in fields or set(raw)-fields[kind]-{'type','require_change','safe_retry'}:raise ValueError('invalid_contract_fields')
     out=dict(raw)
     for flag in ('require_change','safe_retry'):
@@ -77,6 +77,12 @@ def contract_policy(raw,policy):
                 from work_reference import REFERENCE_IDS
             if out.get('reference_id') not in REFERENCE_IDS:raise ValueError('unknown_reference')
             if type(out.get('reference_version')) is not int or out['reference_version']!=1:raise ValueError('unknown_reference_version')
+            if 'program_bundle' in out:
+                try:
+                    from .certified_bindings import normalize_program_bundle
+                except ImportError:
+                    from certified_bindings import normalize_program_bundle
+                out['program_bundle']=normalize_program_bundle(out['program_bundle'],contract=out)
     else:
         argv=out.get('argv')
         if not isinstance(argv,list) or not 1<=len(argv)<=32 or any(not isinstance(a,str) or not a or len(a)>4096 or '\x00' in a for a in argv):raise ValueError('invalid_argv')
@@ -130,6 +136,11 @@ def validate_config(raw,base):
         contracts=source.get('contracts')
         if not isinstance(contracts,dict) or not contracts or len(contracts)>16:raise ValueError('missing_contracts')
         source['contracts']={bounded_text(k,'contract_id',100):contract_policy(v,policy) for k,v in contracts.items()}
+        try:
+            from .certified_bindings import validate_source
+        except ImportError:
+            from certified_bindings import validate_source
+        validate_source(source)
         for contract in source['contracts'].values():
             if contract.get('path')==source['path'] and not source.get('input_fields'):raise ValueError('source_output_feedback')
         normalized.append(source)

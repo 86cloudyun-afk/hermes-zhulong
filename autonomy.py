@@ -11,13 +11,13 @@ try:
     from .autonomy_checks import observe_sources,validate_candidates
     from .autonomy_store import canonical
     from .hermes_runs import RunsError
-    from . import task_inputs
+    from . import task_inputs,certified_bindings
     from . import workflow,metacognition,cognition
 except ImportError:
     from autonomy_checks import observe_sources,validate_candidates
     from autonomy_store import canonical
     from hermes_runs import RunsError
-    import task_inputs
+    import task_inputs,certified_bindings
     import workflow,metacognition,cognition
 
 
@@ -71,7 +71,8 @@ class Controller:
         self.skills=skills
         self.execution_identity={'api_url':policy.get('api_url'),'credential_env':policy.get('api_key_env','API_SERVER_KEY'),
                                  'identity_version':policy.get('api_identity_version'),'profile':policy.get('api_profile','default')}
-        self.workspace=cognition.Workspace(ledger,policy.get('cognition'),self.execution_identity)
+        certified_bindings.configure(ledger,policy.get('sources',[]),self.execution_identity)
+        self.workspace=cognition.Workspace(ledger,policy,self.execution_identity)
         self._tick_lock=threading.Lock();self._lifecycle_lock=threading.Lock();self._stop=threading.Event();self._thread=None;self._recovery_cursor=0;self._ready_cursor=0
         self.admission_gate=None
         self.workflows=workflow.WorkflowStore(ledger,policy.get('workflows',[]))
@@ -147,7 +148,7 @@ class Controller:
         owner=uuid.uuid4().hex;selected=[];frame=None
         if self.workspace.policy['enabled']:
             eligible=[o for o in observations if o['available'] and task_inputs.available(self.ledger,o.get('task_input'))]
-            frame=self.workspace.select(eligible,self.clock(),source_owner=owner,
+            frame=self.workspace.select(observations,self.clock(),source_owner=owner,
                 lease_seconds=self.policy['lease_seconds'],max_attempts=self.policy['max_attempts'])
             if frame:
                 selected=[next(o for o in eligible if o['id']==e['source_id']) for e in frame['entries']]
@@ -157,6 +158,7 @@ class Controller:
                 if not task_inputs.available(self.ledger,observation.get('task_input')):continue
                 if len(selected)>=self.policy['max_candidates']:break
                 if self.ledger.claim_source(observation['id'],observation['revision'],owner,self.clock(),self.policy['lease_seconds'],self.policy['max_attempts']):selected.append(observation)
+            self.workspace.observe_disabled_selection([o['id'] for o in selected],self.clock())
         if not selected:return 0
         success=False;accepted=0;deferred=None
         try:
@@ -221,6 +223,8 @@ class Controller:
             except ImportError:
                 from work_reference import reference_instructions
             intent['business_rules']=reference_instructions(goal['contract']['reference_id'])
+        binding=certified_bindings.program_binding(goal,self.execution_identity)
+        if binding is not None:intent['program_binding']=binding
         if goal.get('workflow') is not None:
             intent['workflow_step']=goal['workflow']
             intent['operation_id']=goal['operation_id']

@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "scope": "read-only research: no provider, Docker, tests, product edits or installation",
+  "verified_at": "2026-10-11T06:13:47.628269+00:00",
+  "reused": [
+    {
+      "id": "S1",
+      "authors": "Hernán, M. A.; Robins, J. M.",
+      "title": "Causal Inference: What If",
+      "publication": "2020 book; author revision 19 Aug 2026",
+      "primary_url": "https://miguelhernan.org/whatifbook",
+      "requested_full_text_url": "https://miguelhernan.org/s/hernanrobins_WhatIf_19aug26.pdf",
+      "retrieved_full_text_url": "https://static1.squarespace.com/static/675db8b0dd37046447128f5f/t/6a86cf7ecfcb6b4ca8eea5cb/1787219838424/hernanrobins_WhatIf_19aug26.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 11315465,
+      "sha256": "a1067af923e9156bb95fbe4b0d18699bd0723e9c902bdc74465cf7782820b1b5",
+      "scratch_cache_file": "private-evidence/scratch/hermes-deep-research/2026-10-11-causal-gain/hernan_book_full.pdf",
+      "read_sections": [
+        "Chapters 1–3: counterfactual definitions, randomized experiments, observational studies",
+        "Chapter 19: time-varying treatments; sustained strategies"
+      ],
+      "protocol_application": "Define the intervention, target population, endpoint, assignment mechanism, consistency and no-interference assumptions before evaluation.",
+      "transfer_limit": "Medical/statistical methods are transferred as experimental-design principles; no claim that software tasks satisfy assumptions automatically.",
+      "retained_original_path": "private-evidence/scratch/hermes-deep-research/2026-10-11-causal-gain/hernan_book_full.pdf",
+      "verified_sha256": "a1067af923e9156bb95fbe4b0d18699bd0723e9c902bdc74465cf7782820b1b5",
+      "local_path": "private-evidence/scratch/hermes-core-v11/benefit/sources/hernan_book_full.pdf",
+      "access": "reused previously retrieved primary source, hash verified 2026-10-11"
+    },
+    {
+      "id": "S3",
+      "authors": "Howard, S. R.; Ramdas, A.; McAuliffe, J.; Sekhon, J. S.",
+      "title": "Time-uniform, nonparametric, nonasymptotic confidence sequences",
+      "publication": "2021 Annals of Statistics; arXiv 1810.08240",
+      "primary_url": "https://arxiv.org/abs/1810.08240",
+      "requested_full_text_url": "https://arxiv.org/html/1810.08240",
+      "retrieved_full_text_url": "https://arxiv.org/html/1810.08240",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 1389450,
+      "sha256": "1694bbd95937ac6a192ca1a7eac5ffe84da13c3202c055b4e04e763167df6ae3",
+      "scratch_cache_file": "private-evidence/scratch/hermes-deep-research/2026-10-11-causal-gain/howard_confidence_sequences.html",
+      "read_sections": [
+        "Sections 1–2: time-uniform coverage and arbitrary stopping",
+        "Section 4.1: empirical-Bernstein confidence sequence"
+      ],
+      "protocol_application": "Fixed-N intervals cannot be repeatedly inspected as if valid at any stopping time; freeze N or choose a valid sequential design in advance.",
+      "transfer_limit": "An online adaptive agent stream does not automatically meet a confidence sequence’s conditional/martingale assumptions.",
+      "retained_original_path": "private-evidence/scratch/hermes-deep-research/2026-10-11-causal-gain/howard_confidence_sequences.html",
+      "verified_sha256": "1694bbd95937ac6a192ca1a7eac5ffe84da13c3202c055b4e04e763167df6ae3",
+      "local_path": "private-evidence/scratch/hermes-core-v11/benefit/sources/howard_confidence_sequences.html",
+      "access": "reused previously retrieved primary source, hash verified 2026-10-11"
+    },
+    {
+      "id": "S5",
+      "authors": "Kapoor, S. et al.",
+      "title": "AI Agents That Matter",
+      "publication": "2024; arXiv 2407.01502",
+      "primary_url": "https://arxiv.org/abs/2407.01502",
+      "requested_full_text_url": "https://arxiv.org/html/2407.01502",
+      "retrieved_full_text_url": "https://arxiv.org/html/2407.01502",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 365653,
+      "sha256": "4f8cd01e973d17101acba0978279747798af59c5dfc9e320e9337a387dca6405",
+      "scratch_cache_file": "private-evidence/scratch/hermes-deep-research/2026-10-11-causal-gain/agents_that_matter.html",
+      "read_sections": [
+        "Section 2: cost-controlled evaluation and simple retry baselines",
+        "Section 5: levels of generality and holdout requirements",
+        "Section 6: standardization and reproducibility"
+      ],
+      "protocol_application": "Measure actual spending, preparation costs, time, and cost-adjusted baselines; separate example/generalization/family holdouts.",
+      "transfer_limit": "Complex planning/reflection cannot receive credit for improvements attributable to extra calls or benchmark shortcuts.",
+      "retained_original_path": "private-evidence/scratch/hermes-deep-research/2026-10-11-causal-gain/agents_that_matter.html",
+      "verified_sha256": "4f8cd01e973d17101acba0978279747798af59c5dfc9e320e9337a387dca6405",
+      "local_path": "private-evidence/scratch/hermes-core-v11/benefit/sources/agents_that_matter.html",
+      "access": "reused previously retrieved primary source, hash verified 2026-10-11"
+    },
+    {
+      "id": "S6",
+      "authors": "Liu, X. et al.",
+      "title": "AgentBench: Evaluating LLMs as Agents",
+      "publication": "2023 initial; retrieved v3 text states 4 Oct 2025",
+      "primary_url": "https://arxiv.org/abs/2308.03688",
+      "requested_full_text_url": "https://arxiv.org/html/2308.03688",
+      "retrieved_full_text_url": "https://arxiv.org/html/2308.03688",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 2093995,
+      "sha256": "62547d01f668b47067715d349f0a089213a2c76653f807fe5d6a9063d9de2f9e",
+      "scratch_cache_file": "private-evidence/scratch/hermes-deep-research/2026-10-11-causal-gain/agentbench.html",
+      "read_sections": [
+        "Task/evaluation construction and Dev/Test splits",
+        "Execution-outcome categories: CLE, IF, IA, TLE",
+        "Appendix J: validity and trajectory analysis"
+      ],
+      "protocol_application": "Separate mechanically observed failure categories, difficulty strata, and multi-step tasks; preserve all allocated failures in the denominator.",
+      "transfer_limit": "Outcome labels and trajectory patterns are not themselves causal root-cause proof.",
+      "retained_original_path": "private-evidence/scratch/hermes-deep-research/2026-10-11-causal-gain/agentbench.html",
+      "verified_sha256": "62547d01f668b47067715d349f0a089213a2c76653f807fe5d6a9063d9de2f9e",
+      "local_path": "private-evidence/scratch/hermes-core-v11/benefit/sources/agentbench.html",
+      "access": "reused previously retrieved primary source, hash verified 2026-10-11"
+    },
+    {
+      "id": "S7",
+      "authors": "Jimenez, C. E. et al.",
+      "title": "SWE-bench: Can Language Models Resolve Real-World GitHub Issues?",
+      "publication": "2023 initial; ICLR 2024",
+      "primary_url": "https://arxiv.org/abs/2310.06770",
+      "requested_full_text_url": "https://arxiv.org/html/2310.06770",
+      "retrieved_full_text_url": "https://arxiv.org/html/2310.06770",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 1276223,
+      "sha256": "510971f727638a4358b3ff53ccf88f2132721e3df1a7a3b0458c4eeed67e2451",
+      "scratch_cache_file": "private-evidence/scratch/hermes-deep-research/2026-10-11-causal-gain/swebench.html",
+      "read_sections": [
+        "Dataset construction from issue/PR/repository snapshots",
+        "Fail-to-pass filtering and patch execution evaluation",
+        "Resolved-instance metric and executable tests"
+      ],
+      "protocol_application": "Bind evaluation to frozen repository/environment/task snapshots and independently execute postconditions rather than score self-reports.",
+      "transfer_limit": "Passing repository tests is a bounded benchmark result, not a proof of universal correctness or agent consciousness.",
+      "retained_original_path": "private-evidence/scratch/hermes-deep-research/2026-10-11-causal-gain/swebench.html",
+      "verified_sha256": "510971f727638a4358b3ff53ccf88f2132721e3df1a7a3b0458c4eeed67e2451",
+      "local_path": "private-evidence/scratch/hermes-core-v11/benefit/sources/swebench.html",
+      "access": "reused previously retrieved primary source, hash verified 2026-10-11"
+    }
+  ],
+  "fresh": [
+    {
+      "id": "consort_crossover",
+      "requested_url": "https://www.bmj.com/content/366/bmj.l4378",
+      "retrieved_at": "2026-10-11T06:12:54.077142+00:00",
+      "method": "inherited proxy and CA; TLS verification enabled",
+      "status": 200,
+      "resolved_url": "https://www.bmj.com/content/366/bmj.l4378",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 347835,
+      "sha256": "6b4ba244de0ad3831f682e4a0afe1d0a35788f61fd1f5c38cdb0653dc5ec1f9c",
+      "path": "private-evidence/scratch/hermes-core-v11/benefit/sources/consort_crossover.html"
+    },
+    {
+      "id": "longitudinal_gee",
+      "requested_url": "https://academic.oup.com/biomet/article/73/1/13/246001",
+      "retrieved_at": "2026-10-11T06:12:54.077732+00:00",
+      "method": "inherited proxy and CA; TLS verification enabled",
+      "status": 403,
+      "error": "HTTPError",
+      "response_bytes": 4096,
+      "response_sha256": "a00b2da48fd5c7c5ead6832b7df93d8d7bc142217720f630592e725c599b9c84",
+      "path": "private-evidence/scratch/hermes-core-v11/benefit/sources/longitudinal_gee-error.html"
+    }
+  ]
+}

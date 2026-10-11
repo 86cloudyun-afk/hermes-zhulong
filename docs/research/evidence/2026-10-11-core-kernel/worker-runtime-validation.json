@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "accepted_runtime_source_head": "6c0ffabe64edd857f04c8574245baca82ae6d256",
+  "reviewed_runtime_product_head": "0625aad86982fb7f003f3c826a003681d4befd5a",
+  "tests": 575,
+  "passed": 575,
+  "skipped": 0,
+  "failures": 0,
+  "errors": 0,
+  "seconds": 219.767,
+  "suite_exit_code": 0,
+  "suite_log_sha256": "749ea65809fc0bc8fa973f12baedc7f47857967f19dd489b3d7daac85a7e3d40",
+  "source_files": 98,
+  "source_unchanged": true,
+  "source_before_sha256": "b47a2df2fab0d31c9cb0d1981d587b215148b0aa4f25fc5799414e6c707f311a",
+  "source_after_sha256": "3f1446aea70373cdceca7d28458652275d69e9158db4aece8be28e57e64c23c9",
+  "host_smoke": {
+    "plugin": "zhulong",
+    "version": "0.11.0",
+    "hooks": 11,
+    "tools": 4,
+    "commands": 1,
+    "journal": "passed",
+    "privacy": "passed",
+    "calibration": "passed",
+    "digest": "passed",
+    "sqlite_integrity": "ok",
+    "external_llm_calls": 0
+  },
+  "host_smoke_log_sha256": "2be4dc5ff5f2eba0f26db2149b1f322592a334eb50523ad03fa955eec84a62f3",
+  "unpaid_gateway": {
+    "paid": false,
+    "standalone_check_passed": true,
+    "boundary_ok": true,
+    "external_llm_calls": 0,
+    "native_revision": "73162b00eefde3794bed0afb53d84a19c0eed230",
+    "readiness": {
+      "matching_boot": true,
+      "controller_live": true,
+      "paused": true
+    },
+    "duplicate_launch_blocked": true,
+    "auxiliary_budget_calls": 0,
+    "shutdown": {
+      "admission_acknowledged": true,
+      "forced_shutdown": false,
+      "launches": 1,
+      "reason": null,
+      "removed_workers": 0,
+      "state": "stopped"
+    },
+    "supervisor_exit_code": 0,
+    "raw_report_sha256": "8158eae104ac72b45bdd6ff3a3a976070256d41c5ba303cf61bbdabe4d8cbbb8"
+  },
+  "scope": "Root actual provider-free verification after prospective worker fix; actual worker integration fixture uses labeled local Runs/session records, not a paid API run. Later pure formal-source/CI packaging is separately checked for unchanged runtime identities."
+}

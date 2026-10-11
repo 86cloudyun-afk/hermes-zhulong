@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "name": "attention-controller-disturbance-v1",
+  "frozen_date": "2026-10-11",
+  "arms": ["adaptive", "constant", "permuted"],
+  "sequences": [0, 1, 2, 3, 4],
+  "warmup_ticks": 8,
+  "evaluation_ticks": 16,
+  "capacity": 1,
+  "ttl_seconds": 4,
+  "attention_max_wait": 3,
+  "attention_switch_penalty": 0.0,
+  "attention_constant_probability": 0.5,
+  "evaluation_learning": "continues_identically_in_all_arms",
+  "training_checkpoint": "All-source outcomes train under matched metadata. Only source-0 is eligible during warmup, producing equal counts and prior focus/wait states across arms; checkpoint equality is checked. Settings never change across warmup/evaluation.",
+  "eligibility": "Independent fixture resets processed markers each tick to model repeated sampling opportunities. Warmup leases exclude sources 1-4. Evaluation lease exclusion at offset 3, empty eligibility at offset 5. Product eligibility is not bypassed by attention.",
+  "disturbance": "source-0 stable; other source facts change on (tick+seed+source_index)%3 != 0. Held-out source-4 loss at offsets 2 and 3, restoration at 4. At offset 6, source-0 changes after selection immediately before the real Controller refresh: a filesystem disturbance at the declared observation boundary independent of selection and arm. New source-5 configuration arrival at 10 causes explicit scope mismatch. Restart at 7, horizon expiration at 8 (clock advances ttl+1). Disturbances do not depend on selected IDs or arm.",
+  "planner": "Deterministic empty candidate list, real Controller _synthesize and real planner_method receipts. Accepted goals are accounted as zero by design; this exposure/freshness experiment does not measure business task benefit. Runs stub rejects every provider boundary.",
+  "endpoints": ["held_out_brier", "scored_and_excluded_cells", "forecast_event_partition", "source_content_partition", "actual_planner_delivery_count", "actual_planner_source_ids", "next_observation_freshness_of_selected_sources", "scope_mismatch", "overdue", "missing_observations", "schedule_exact_set_hits", "coverage", "maximum_eligible_wait_ticks", "accepted_goals", "drift_delivery_failures", "provider_calls"],
+  "fairness": "Fixed N continuously eligible, K fixed capacity, W threshold: selection gap <= W+ceil(N/K)-1 observation ticks. Churn, eligibility interruption and horizon time are outside this bound.",
+  "interpretation": "Deterministic provider-free software falsification protocol. No promised benefit, subjective awareness, hidden activations, complete AST or GWT. Evaluation section is temporally held out but the declared model keeps learning. Full five-sequence panel is run after final product stability; unit tests run only one-sequence smoke."
+}
