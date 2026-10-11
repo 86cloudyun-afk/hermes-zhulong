@@ -398,4 +398,78 @@ class RefinementTests(unittest.TestCase):
         self.assertEqual(self.audit()['status'],'unavailable')
 
 
+    def test_insert_or_replace_cannot_rewrite_journal_checkpoint_or_marker(self):
+        self.ledger.set_pause(True)
+        with self.ledger._connection(True) as c:
+            self.assertEqual(c.execute('PRAGMA recursive_triggers').fetchone()[0],0)
+            event=c.execute("SELECT * FROM refinement_journal WHERE action='pause'").fetchone()
+            checkpoint=c.execute('SELECT * FROM refinement_journal WHERE seq=1').fetchone()
+            marker=c.execute('SELECT * FROM refinement_marker').fetchone()
+            attempts=[('event','INSERT OR REPLACE INTO refinement_journal VALUES(?,?,?,?,?)',
+                       (event['seq'],event['schema'],event['action'],canonical({'paused':False}),event['now'])),
+                      ('checkpoint','INSERT OR REPLACE INTO refinement_journal VALUES(?,?,?,?,?)',
+                       (checkpoint['seq'],checkpoint['schema'],checkpoint['action'],canonical({'page':0,'items':[['paused','value',True]]}),checkpoint['now'])),
+                      ('marker','INSERT OR REPLACE INTO refinement_marker VALUES(?,?,?,?,?)',
+                       (marker['id'],marker['schema'],marker['page_count'],marker['item_count'],'rewritten'))]
+            for name,sql,args in attempts:
+                with self.subTest(table=name):
+                    c.execute('SAVEPOINT replace_fault')
+                    try:
+                        with self.assertRaisesRegex(sqlite3.IntegrityError,'immutable_refinement'):c.execute(sql,args)
+                    finally:
+                        c.execute('ROLLBACK TO replace_fault');c.execute('RELEASE replace_fault')
+            # A separately corrupted actual row remains divergent: a failed
+            # replacement cannot rewrite expected history to bless it.
+            c.execute("UPDATE settings SET value='false' WHERE key='paused'")
+            divergent=self.r.audit(c)
+            self.assertEqual(divergent['status'],'counterexample')
+            self.assertEqual(divergent['difference']['field'],'paused.value')
+            c.execute("UPDATE settings SET value='true' WHERE key='paused'")
+        self.assertTrue(self.ledger.paused());before=self.valid()['through_seq']
+        self.ledger.set_pause(False)
+        self.assertEqual(self.valid()['through_seq'],before+1)
+
+    def test_existing_marker_gains_insert_guards_without_recheckpoint(self):
+        make_goal(self.ledger)
+        with self.ledger._connection(True) as c:
+            checkpoint=tuple(c.execute('SELECT * FROM refinement_journal WHERE seq=1').fetchone())
+            marker=tuple(c.execute('SELECT * FROM refinement_marker').fetchone())
+            for table in ('refinement_journal','refinement_marker'):
+                c.execute('DROP TRIGGER IF EXISTS frozen_'+table+'_insert')
+        self.ledger=Ledger(self.path)
+        with self.ledger._connection(True) as c:
+            self.assertEqual(tuple(c.execute('SELECT * FROM refinement_journal WHERE seq=1').fetchone()),checkpoint)
+            self.assertEqual(tuple(c.execute('SELECT * FROM refinement_marker').fetchone()),marker)
+            with self.assertRaisesRegex(sqlite3.IntegrityError,'immutable_refinement'):
+                c.execute('INSERT OR REPLACE INTO refinement_marker VALUES(?,?,?,?,?)',marker)
+            with self.assertRaisesRegex(sqlite3.IntegrityError,'immutable_refinement'):
+                c.execute('INSERT OR REPLACE INTO refinement_journal VALUES(?,?,?,?,?)',checkpoint)
+        self.valid()
+
+    def test_unwritable_publication_diagnostic_preserves_negative_retirement(self):
+        f=self.skill_fixture();_,_,first=f.publish('first');_,_,second=f.publish('second',now=1020)
+        f.attempt('bound-failure',bindings=[second],now=1040)
+        with f.ledger._connection(True) as c:
+            c.execute('DROP TABLE refinement_journal')
+            c.execute("CREATE TRIGGER no_blocked_status BEFORE INSERT ON settings WHEN NEW.key='refinement_last_blocked' BEGIN SELECT RAISE(ABORT,'status_unavailable'); END")
+        f.store.sync(1042)
+        with f.ledger._connection() as c:
+            retired=c.execute('SELECT state,reason FROM skill_versions WHERE id=?',(second['id'],)).fetchone()
+            fallback=c.execute('SELECT state,reason FROM skill_versions WHERE id=?',(first['id'],)).fetchone()
+            self.assertEqual(tuple(retired),('retired','verified_bound_goal_failure'))
+            self.assertEqual(tuple(fallback),('standby','refinement_blocked'))
+            self.assertEqual(self.r.audit(c)['status'],'unavailable')
+
+
+    def test_large_private_mapping_key_is_hashed_in_public_difference(self):
+        key='PRIVATE_'+'X'*100000
+        with self.ledger._connection(True) as c:c.execute('INSERT INTO run_budget VALUES(?,1)',(key,))
+        report=self.audit();self.assertEqual(report['status'],'counterexample')
+        self.assertIn('run_budget',report['difference']['field'])
+        self.assertIn('sha256',report['difference']['field'])
+        self.assertIn('100008',report['difference']['field'])
+        self.assertNotIn('PRIVATE_',canonical(report))
+        self.assertLess(len(canonical(report)),10000)
+
+
 if __name__=='__main__':unittest.main()

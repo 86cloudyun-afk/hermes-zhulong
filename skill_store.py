@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 import uuid
 from datetime import datetime, timezone
 
@@ -281,7 +282,8 @@ class SkillStore:
     def _refinement_allowed(c):
         report=refinement.audit(c)
         if report['status']=='valid_within_scope':return True
-        c.execute("INSERT OR REPLACE INTO settings VALUES('refinement_last_blocked',?)",(canonical(report),))
+        try:c.execute("INSERT OR REPLACE INTO settings VALUES('refinement_last_blocked',?)",(canonical(report),))
+        except sqlite3.Error:pass  # Keep negative retirement even if diagnostics fail.
         return False
 
     @staticmethod

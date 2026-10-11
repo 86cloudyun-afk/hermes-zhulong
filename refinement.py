@@ -172,7 +172,13 @@ def _raw_bytes(c):
 
 def initialize(c):
     """One atomic bounded migration, only when no durable marker exists."""
-    if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='refinement_marker'").fetchone(): return
+    if c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='refinement_marker'").fetchone():
+        # Add collision guards to retained pre-fix ledgers without observing a
+        # new checkpoint. Missing/corrupt journals remain unavailable.
+        try:_schema(c)
+        except (sqlite3.Error,_Unavailable):return
+        _insert_guards(c)
+        return
     if (c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='refinement_journal'").fetchone()
         or c.execute("SELECT 1 FROM settings WHERE key='refinement_journal_fault'").fetchone()):
         c.execute("INSERT OR REPLACE INTO settings VALUES('refinement_journal_fault','marker_missing')")
@@ -196,6 +202,16 @@ def initialize(c):
     for table in ('refinement_marker','refinement_journal'):
         for operation in ('update','delete'):
             c.execute(f"CREATE TRIGGER frozen_{table}_{operation} BEFORE {operation.upper()} ON {table} BEGIN SELECT RAISE(ABORT,'immutable_refinement'); END")
+    _insert_guards(c)
+
+
+def _insert_guards(c):
+    # SQLite REPLACE does not fire DELETE triggers with recursive_triggers=0.
+    # Reject collisions before conflict resolution, including REPLACE/UPSERT.
+    for table,key in (('refinement_marker','id'),('refinement_journal','seq')):
+        c.execute(f"CREATE TRIGGER IF NOT EXISTS frozen_{table}_insert BEFORE INSERT ON {table} "
+                  f"WHEN EXISTS(SELECT 1 FROM {table} WHERE {key}=NEW.{key}) "
+                  "BEGIN SELECT RAISE(ABORT,'immutable_refinement'); END")
 
 
 def _schema(c):
@@ -361,10 +377,16 @@ def _brief(value):
     return value if len(body)<=1024 else {'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body)}
 
 
+def _field_key(key):
+    value=str(key);body=value.encode()
+    if len(body)<=128:return value
+    return '[key_sha256='+hashlib.sha256(body).hexdigest()+',bytes='+str(len(body))+']'
+
+
 def _difference(expected,actual,path=''):
     if isinstance(expected,dict) and isinstance(actual,dict):
         for key in sorted(set(expected)|set(actual)):
-            field=(path+'.' if path else '')+str(key)
+            field=(path+'.' if path else '')+_field_key(key)
             if key not in expected or key not in actual:return {'field':field,'expected':_brief(expected.get(key)),'actual':_brief(actual.get(key))}
             difference=_difference(expected[key],actual[key],field)
             if difference:return difference
