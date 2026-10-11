@@ -165,6 +165,10 @@ class Workspace:
     def select(self,observations,now,*,source_owner=None,lease_seconds=120,max_attempts=3):
         now=_time(now)
         if not self.policy['enabled']:return None
+        try:
+            from . import attention
+        except ImportError:
+            import attention
         with self.ledger._connection(True) as c:
             eligible=[]
             for o in observations:
@@ -185,10 +189,6 @@ class Workspace:
                 for e in json.loads(row['frame'])['entries']:history[e['source_id']]=row['seq']
             attention_capture=None
             if self.policy['attention_mode']!='off':
-                try:
-                    from . import attention
-                except ImportError:
-                    import attention
                 attention_capture=attention.prepare(c,observations,eligible,now,self.policy,self.identity_hash,self.source_configuration,_entry)
                 ordered=attention.rank(eligible,attention_capture,self.policy)
             else:
@@ -200,6 +200,7 @@ class Workspace:
             selected=ordered[:self.policy['capacity']]
             if not selected:
                 if attention_capture is not None:attention.finish(c,attention_capture,[],None,now,self.policy)
+                else:attention.observe_off(c,[],None,now,self.policy,self.identity_hash,self.source_configuration)
                 return None
             if source_owner is not None:
                 for o in selected:
@@ -211,6 +212,8 @@ class Workspace:
                    'entries':[_entry(o) for o in selected],'forecast':forecast}
             if attention_capture is not None:
                 frame['attention']=attention.finish(c,attention_capture,[o['id'] for o in selected],frame['frame_id'],now,self.policy)
+            else:
+                attention.observe_off(c,[o['id'] for o in selected],frame['frame_id'],now,self.policy,self.identity_hash,self.source_configuration)
             c.execute('INSERT INTO cognition_frames(frame_id,frame,frame_hash) VALUES(?,?,?)',(frame['frame_id'],canonical(frame),digest(frame)))
             return frame
 

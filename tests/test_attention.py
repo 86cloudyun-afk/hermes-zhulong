@@ -172,6 +172,104 @@ class AttentionTests(unittest.TestCase):
         self.workspace(changed).select(obs[:-1],self.now+2)
         self.assertEqual(self.outcomes()[-1]['status'],'scope_mismatch')
 
+    def test_returned_scope_uses_immediately_preceding_focus_wait_and_prior_scoped_counts(self):
+        policy=fixtures.CognitionTests.policy(self,capacity=1,attention_mode='constant',
+                                             attention_max_wait=100,attention_switch_penalty=1)
+        obs=observe_sources(policy); a=self.workspace(policy)
+        first=a.select(obs,self.now); a.select(obs,self.now+1)
+        bpolicy=copy.deepcopy(policy); bpolicy['cognition']['attention_switch_penalty']=0
+        b=self.workspace(bpolicy); excluded=copy.deepcopy(obs); excluded[0]['available']=False
+        b.select(excluded,self.now+2); previous=b.select(excluded,self.now+3)
+        self.assertEqual(previous['attention']['state_after']['focus_ids'],['source-2'])
+        self.ledger=Ledger(self.ledger.path)
+        resumed=self.workspace(policy).select(obs,self.now+4)
+        f=resumed['attention']
+        self.assertEqual(f['scope_hash'],first['attention']['scope_hash'])
+        self.assertEqual(f['focus_state'],previous['attention']['state_after'])
+        self.assertEqual([e['source_id'] for e in resumed['entries']],['source-2'])
+        self.assertEqual(f['focus_state_provenance']['forecast_id'],previous['attention']['forecast_id'])
+        self.assertEqual(f['model']['counts']['source-0'],{'fresh':1,'not_fresh':0})
+        self.assertEqual(len(f['prior_outcome_ids']),2)  # A's fresh and intervening scope-mismatch settlements.
+
+    def test_return_after_off_uses_real_off_frame_focus_and_resets_unknown_wait_history(self):
+        policy=fixtures.CognitionTests.policy(self,capacity=1,attention_mode='constant',
+                                             attention_max_wait=100,attention_switch_penalty=1)
+        obs=observe_sources(policy); a=self.workspace(policy)
+        a.select(obs,self.now); a.select(obs,self.now+1)
+        offpolicy=copy.deepcopy(policy); offpolicy['cognition']['attention_mode']='off'
+        off=self.workspace(offpolicy).select(obs,self.now+2)
+        self.assertEqual([e['source_id'] for e in off['entries']],['source-1'])
+        self.ledger=Ledger(self.ledger.path)
+        resumed=self.workspace(policy).select(obs,self.now+3); f=resumed['attention']
+        self.assertEqual(f['focus_state']['focus_ids'],['source-1'])
+        self.assertEqual(f['focus_state']['wait_ticks'],{})
+        self.assertEqual(f['focus_state_provenance']['origin'],'off_observation_wait_reset')
+        self.assertEqual(f['focus_state_provenance']['frame_id'],off['frame_id'])
+        self.assertEqual([e['source_id'] for e in resumed['entries']],['source-1'])
+        self.assertEqual(f['model']['counts']['source-0'],{'fresh':1,'not_fresh':0})
+        self.assertEqual(self.outcomes()[-1]['status'],'scope_mismatch')
+        self.assertEqual(self.outcomes()[-1]['scope_mismatch_reason'],'attention_off_observation')
+
+    def test_off_frame_after_empty_forecast_at_same_clock_has_ordered_provenance(self):
+        policy=fixtures.CognitionTests.policy(self,capacity=1,attention_mode='constant',
+                                             attention_max_wait=100,attention_switch_penalty=1)
+        obs=observe_sources(policy); a=self.workspace(policy)
+        self.assertIsNone(a.select([],self.now))
+        offpolicy=copy.deepcopy(policy); offpolicy['cognition']['attention_mode']='off'
+        off=self.workspace(offpolicy).select(obs,self.now)
+        self.ledger=Ledger(self.ledger.path)
+        resumed=self.workspace(policy).select(obs,self.now)
+        self.assertEqual(resumed['attention']['focus_state']['focus_ids'],['source-0'])
+        self.assertEqual(resumed['attention']['focus_state_provenance']['frame_id'],off['frame_id'])
+        self.assertEqual(self.outcomes()[-1]['status'],'scope_mismatch')
+
+    def test_empty_off_observation_settles_pending_and_records_actual_empty_focus(self):
+        policy=fixtures.CognitionTests.policy(self,capacity=1,attention_mode='constant',
+                                             attention_max_wait=100,attention_switch_penalty=1)
+        obs=observe_sources(policy); a=self.workspace(policy)
+        a.select(obs,self.now); a.select(obs,self.now+1)
+        offpolicy=copy.deepcopy(policy); offpolicy['cognition']['attention_mode']='off'
+        off=self.workspace(offpolicy)
+        self.assertIsNone(off.select([],self.now+2))
+        self.assertEqual(len(self.forecasts()),2)
+        outcome=self.outcomes()[-1]
+        self.assertEqual(outcome['status'],'scope_mismatch')
+        self.assertEqual(outcome['observed_at'],self.now+2)
+        self.assertTrue(all(p['fresh'] is None for p in outcome['sources']))
+        self.ledger=Ledger(self.ledger.path)
+        resumed=self.workspace(policy).select(obs,self.now+3)
+        self.assertEqual(resumed['attention']['focus_state']['focus_ids'],[])
+        self.assertEqual(resumed['attention']['focus_state_provenance']['origin'],'off_observation_wait_reset')
+        self.assertEqual(resumed['attention']['model']['counts']['source-0'],{'fresh':1,'not_fresh':0})
+        self.assertEqual(len(self.outcomes()),2)
+
+    def test_repeated_off_observations_track_last_empty_selection_and_are_inert_without_attention_history(self):
+        policy=fixtures.CognitionTests.policy(self,capacity=1,attention_mode='constant',attention_switch_penalty=1)
+        obs=observe_sources(policy); offpolicy=copy.deepcopy(policy); offpolicy['cognition']['attention_mode']='off'
+        off=self.workspace(offpolicy)
+        off.select(obs,self.now)
+        with self.ledger._connection() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM cognition_attention_off_observations').fetchone()[0],0)
+        self.workspace(policy).select(obs,self.now+1)
+        off.select(obs,self.now+2); off.select([],self.now+3)
+        self.ledger=Ledger(self.ledger.path)
+        resumed=self.workspace(policy).select(obs,self.now+4)
+        self.assertEqual(resumed['attention']['focus_state']['focus_ids'],[])
+        self.assertEqual(resumed['attention']['focus_state_provenance']['observed_at'],self.now+3)
+        with self.ledger._connection(True) as db:
+            row=db.execute('SELECT * FROM cognition_attention_off_observations LIMIT 1').fetchone()
+            with self.assertRaises(sqlite3.IntegrityError):
+                db.execute('INSERT OR REPLACE INTO cognition_attention_off_observations VALUES('+','.join('?' for _ in row)+')',tuple(row))
+
+    def test_off_state_instrumentation_missing_table_does_not_disable_legacy_selection(self):
+        policy=fixtures.CognitionTests.policy(self,capacity=1,attention_mode='constant')
+        obs=observe_sources(policy); self.workspace(policy).select(obs,self.now)
+        offpolicy=copy.deepcopy(policy); offpolicy['cognition']['attention_mode']='off'
+        with self.ledger._connection(True) as db:db.execute('DROP TABLE cognition_attention_off_observations')
+        frame=self.workspace(offpolicy).select(obs,self.now+1)
+        self.assertIsNotNone(frame)
+        self.assertNotIn('attention',frame)
+
     def test_immutable_collision_update_delete_and_missing_journal(self):
         policy=self.policy(); w=self.workspace(policy); obs=observe_sources(policy)
         w.select(obs,self.now); w.select(obs,self.now+1)
@@ -207,7 +305,10 @@ class AttentionTests(unittest.TestCase):
                 for tick in range(1,35):
                     if tick==10:w=self.workspace(policy)
                     frame=w.select(obs,self.now+tick)
-                    for e in frame['entries']:last[e['source_id']]=tick
+                    for e in frame['entries']:
+                        sid=e['source_id']
+                        self.assertLessEqual(tick-last[sid],bound,(capacity,mode,tick,sid,last[sid]))
+                        last[sid]=tick
                     self.assertTrue(all(tick-t<=bound for t in last.values()),(capacity,mode,tick,last))
 
     def test_switch_penalty_changes_actual_focus_with_matched_constant_probability(self):

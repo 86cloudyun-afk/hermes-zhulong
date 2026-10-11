@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import math
+import sqlite3
 import time
 import uuid
 
@@ -51,7 +52,11 @@ def initialize(c):
             'seq INTEGER PRIMARY KEY AUTOINCREMENT, forecast_id TEXT UNIQUE NOT NULL '
             'REFERENCES cognition_forecasts(forecast_id), observed_at REAL NOT NULL, '
             'outcome TEXT NOT NULL, outcome_hash TEXT NOT NULL',
-            'seq=NEW.seq OR forecast_id=NEW.forecast_id')}
+            'seq=NEW.seq OR forecast_id=NEW.forecast_id'),
+        'cognition_attention_off_observations': (
+            'seq INTEGER PRIMARY KEY AUTOINCREMENT, observation_id TEXT UNIQUE NOT NULL, '
+            'observation TEXT NOT NULL, observation_hash TEXT NOT NULL',
+            'seq=NEW.seq OR observation_id=NEW.observation_id')}
     for table, (columns, collision) in definitions.items():
         c.execute(f'CREATE TABLE IF NOT EXISTS {table}({columns})')
         for action in ('UPDATE', 'DELETE'):
@@ -61,6 +66,94 @@ def initialize(c):
             WHEN EXISTS(SELECT 1 FROM {table} WHERE {collision})
             BEGIN SELECT RAISE(ABORT,'frozen_attention_collision'); END''')
     c.execute('CREATE INDEX IF NOT EXISTS attention_scope_seq ON cognition_forecasts(scope_hash,seq)')
+
+
+def observe_off(c, selected_ids, frame_id, now, policy, identity_hash, configuration):
+    """Best-effort inactive marker, only after attention has ever been active.
+
+    An off observation is still the next real observation for pending forecasts.
+    Its changed policy makes those targets unobserved rather than training them
+    on a later resumed sample. No forecast is allocated and no waits are invented.
+    """
+    c.execute('SAVEPOINT attention_off_observation')
+    try:
+        if c.execute('SELECT 1 FROM cognition_forecasts LIMIT 1').fetchone() is None:
+            c.execute('RELEASE attention_off_observation')
+            return True
+        observation = {'schema': 1, 'observation_id': uuid.uuid4().hex, 'observed_at': now,
+                       'frame_id': frame_id, 'focus_ids': selected_ids, 'wait_state_available': False,
+                       'scope_hash': digest({'identity_hash': identity_hash, 'configuration': configuration,
+                                             'policy': policy, 'mechanism': MECHANISM})}
+        for row in c.execute('''SELECT f.forecast FROM cognition_forecasts f
+                              LEFT JOIN cognition_forecast_outcomes o USING(forecast_id)
+                              WHERE o.forecast_id IS NULL ORDER BY f.seq'''):
+            f = json.loads(row[0])
+            if now < f['captured_at']:
+                raise ValueError('attention_clock_reversed')
+            outcome = {'schema': 1, 'outcome_id': uuid.uuid4().hex, 'forecast_id': f['forecast_id'],
+                       'scope_hash': f['scope_hash'], 'observation_scope_hash': observation['scope_hash'],
+                       'observed_at': now, 'elapsed_seconds': now-f['captured_at'], 'status': 'scope_mismatch',
+                       'scope_mismatch_reason': 'attention_off_observation',
+                       'off_observation_id': observation['observation_id'],
+                       'sources': [{'source_id': p['source_id'], 'content': 'unobserved', 'fresh': None,
+                                    'observed_entry': None, 'eligibility': 'attention_off_scope'}
+                                   for p in f['source_predictions']],
+                       'new_source_ids': [], 'expected_next_source_ids': f['expected_next_source_ids']}
+            c.execute('INSERT INTO cognition_forecast_outcomes(forecast_id,observed_at,outcome,outcome_hash) VALUES(?,?,?,?)',
+                      (f['forecast_id'], now, canonical(outcome), digest(outcome)))
+        c.execute('INSERT INTO cognition_attention_off_observations(observation_id,observation,observation_hash) VALUES(?,?,?)',
+                  (observation['observation_id'], canonical(observation), digest(observation)))
+        c.execute('RELEASE attention_off_observation')
+        return True
+    except (sqlite3.DatabaseError, ValueError):
+        c.execute('ROLLBACK TO attention_off_observation')
+        c.execute('RELEASE attention_off_observation')
+        return False
+
+
+def _prior_control(c, now):
+    """Physical selection history is global; freshness evidence remains scoped."""
+    row = c.execute('SELECT forecast FROM cognition_forecasts ORDER BY seq DESC LIMIT 1').fetchone()
+    previous = json.loads(row[0]) if row else None
+    empty = {'focus_ids': [], 'wait_ticks': {}, 'last_selected_seq': {}}
+    marker = c.execute('SELECT seq,observation FROM cognition_attention_off_observations ORDER BY seq DESC LIMIT 1').fetchone()
+    if marker and (previous is None or marker['seq'] > previous.get('off_observation_cutoff', 0)):
+        observation = json.loads(marker['observation'])
+        if now < observation['observed_at']:
+            raise ValueError('attention_clock_reversed')
+        return {**empty, 'focus_ids': observation['focus_ids']}, {
+            'origin': 'off_observation_wait_reset', 'observation_id': observation['observation_id'],
+            'observed_at': observation['observed_at'], 'frame_id': observation['frame_id'],
+            'wait_state_available': False, 'interrupted_since_forecast': True}
+    frame = c.execute('SELECT seq,frame FROM cognition_frames ORDER BY seq DESC LIMIT 1').fetchone()
+    if previous is not None:
+        cutoff = previous.get('frame_seq_cutoff')
+        if cutoff is None and previous['origin_frame_id'] is not None:
+            origin = c.execute('SELECT seq FROM cognition_frames WHERE frame_id=?', (previous['origin_frame_id'],)).fetchone()
+            cutoff = origin['seq'] if origin else 0
+        if cutoff is None and frame:
+            value = json.loads(frame['frame'])
+            # Historical empty forecasts have no cross-journal cursor. Never
+            # claim an ordering at equal clock times that those records lack.
+            if value['captured_at'] == previous['captured_at'] and 'attention' not in value:
+                return empty, {'origin': 'legacy_order_unavailable_reset', 'wait_state_available': False,
+                               'focus_state_available': False, 'frame_id': value['frame_id'],
+                               'interrupted_since_forecast': True}
+            cutoff = frame['seq'] if value['captured_at'] <= previous['captured_at'] else 0
+        if frame and frame['seq'] > (cutoff or 0):
+            value = json.loads(frame['frame'])
+            return {**empty, 'focus_ids': [e['source_id'] for e in value['entries']]}, {
+                'origin': 'legacy_off_frame_wait_reset', 'frame_id': value['frame_id'],
+                'wait_state_available': False, 'interrupted_since_forecast': True}
+        return previous['state_after'], {'origin': 'immediately_preceding_forecast',
+            'forecast_id': previous['forecast_id'], 'scope_hash': previous['scope_hash'],
+            'wait_state_available': True, 'interrupted_since_forecast': False}
+    if frame:
+        value = json.loads(frame['frame'])
+        return {**empty, 'focus_ids': [e['source_id'] for e in value['entries']]}, {
+            'origin': 'legacy_frame_wait_reset', 'frame_id': value['frame_id'], 'wait_state_available': False,
+            'interrupted_since_forecast': False}
+    return empty, {'origin': 'initial', 'wait_state_available': True, 'interrupted_since_forecast': False}
 
 
 def _content(expected, actual):
@@ -108,11 +201,12 @@ def prepare(c, observations, eligible, now, policy, identity_hash, configuration
                         'observation_unavailable' if sid in known and not known[sid]['available'] else
                         'observation_missing' if sid not in known else 'admission_excluded')
                    for sid in population}
+    prior_state, provenance = _prior_control(c, now)
     settled = []
     for row in c.execute('''SELECT f.forecast FROM cognition_forecasts f
                           LEFT JOIN cognition_forecast_outcomes o USING(forecast_id)
                           WHERE o.forecast_id IS NULL ORDER BY f.seq'''):
-        f = json.loads(row[0]); matches = f['scope_hash'] == scope_hash
+        f = json.loads(row[0]); matches = f['scope_hash'] == scope_hash and not provenance['interrupted_since_forecast']
         if now < f['captured_at']:
             raise ValueError('attention_clock_reversed')
         cells = []
@@ -128,7 +222,9 @@ def prepare(c, observations, eligible, now, policy, identity_hash, configuration
                         'scope_hash': f['scope_hash'], 'observation_scope_hash': scope_hash,
                         'observed_at': now, 'elapsed_seconds': now-f['captured_at'], 'status': status,
                         'sources': cells, 'new_source_ids': sorted(set(known)-{p['source_id'] for p in f['source_predictions']}),
-                        'expected_next_source_ids': f['expected_next_source_ids']})
+                        'expected_next_source_ids': f['expected_next_source_ids'],
+                        'scope_mismatch_reason': 'unrecorded_legacy_off_interval' if provenance['interrupted_since_forecast'] else
+                            'configuration_transition' if not matches else None})
     # Persist labels now, before training or ranking. Schedule evidence lives in
     # the next forecast, linked to these immutable outcomes, and is scored there.
     for outcome in settled:
@@ -148,11 +244,10 @@ def prepare(c, observations, eligible, now, policy, identity_hash, configuration
             for cell in outcome['sources']:
                 if cell['source_id'] in counts and cell['fresh'] is not None:
                     counts[cell['source_id']]['fresh' if cell['fresh'] else 'not_fresh'] += 1
-    row = c.execute('SELECT seq,forecast FROM cognition_forecasts WHERE scope_hash=? ORDER BY seq DESC LIMIT 1', (scope_hash,)).fetchone()
-    previous = json.loads(row['forecast']) if row else None
-    state = previous['state_after'] if previous else {'focus_ids': [], 'wait_ticks': {}, 'last_selected_seq': {}}
-    state = json.loads(canonical(state))
-    prior_state = json.loads(canonical(state))
+    prior_state = json.loads(canonical(prior_state))
+    state = json.loads(canonical(prior_state))
+    state['wait_ticks'] = {sid: value for sid, value in state['wait_ticks'].items() if sid in population}
+    state['last_selected_seq'] = {sid: value for sid, value in state['last_selected_seq'].items() if sid in population}
     for sid in population:
         state['wait_ticks'][sid] = state['wait_ticks'].get(sid, 0)+1 if sid in eligible_ids else 0
     probabilities = {sid: (counts[sid]['fresh']+1)/(sum(counts[sid].values())+2) for sid in population}
@@ -165,6 +260,7 @@ def prepare(c, observations, eligible, now, policy, identity_hash, configuration
     return {'scope_hash': scope_hash, 'base_scope_hash': base_hash, 'population': sorted(population),
             'known': known, 'eligibility': eligibility, 'counts': counts, 'probabilities': probabilities,
             'prior_state': prior_state, 'rank_state': json.loads(canonical(state)), 'state': state,
+            'focus_state_provenance': provenance,
             'prior_outcome_ids': outcome_ids,
             'prior_outcome_cutoff': cutoff, 'capture_seq': capture_seq, 'settled': settled}
 
@@ -196,6 +292,9 @@ def finish(c, capture, selected_ids, frame_id, now, policy):
          'model': model, 'target': MECHANISM['target'], 'origin': 'prior_settled_observations',
          'prior_outcome_ids': capture['prior_outcome_ids'], 'prior_outcome_cutoff': capture['prior_outcome_cutoff'],
          'focus_state': capture['prior_state'], 'focus_state_hash': digest(capture['prior_state']),
+         'focus_state_provenance': capture['focus_state_provenance'],
+         'frame_seq_cutoff': c.execute('SELECT COALESCE(MAX(seq),0) FROM cognition_frames').fetchone()[0]+int(frame_id is not None),
+         'off_observation_cutoff': c.execute('SELECT COALESCE(MAX(seq),0) FROM cognition_attention_off_observations').fetchone()[0],
          'rank_state': capture['rank_state'],
          'state_after': state, 'expected_next_source_ids': selected_ids,
          'prior_schedule_outcomes': schedule,
