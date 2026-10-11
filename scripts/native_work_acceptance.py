@@ -342,7 +342,19 @@ def completed_goal(ledger, goal_id):
     return item if submission and submission['settled'] and item['state'] in {'succeeded', 'failed', 'blocked', 'unknown_result', 'cancelled'} else None
 
 
-def execute_allocation(base, host, image, fixture, allocation, hermes_command=None, *, program_bundle=None):
+def execute_allocation(base, host, image, fixture, allocation, hermes_command=None, *, program_bundle=None, explicit_policy=None, strict_trial=None):
+    if strict_trial is not None:
+        # New paired protocol has its own durable endpoint/cleanup lifecycle.
+        # The legacy and certified paths below retain their existing defaults.
+        from native_trial import FrozenTrial,arm_policy
+        if (not isinstance(strict_trial,FrozenTrial) or program_bundle is not None
+                or allocation!=strict_trial.allocation(allocation['id'])
+                or Path(base)!=strict_trial.base(allocation) or Path(host)!=Path(strict_trial.protocol['host'])
+                or image!=strict_trial.protocol['image'] or fixture!=strict_trial.fixture(allocation)
+                or explicit_policy!=arm_policy(Path(base)/'work',fixture,allocation['arm'])):
+            raise ValueError('strict_trial_context_mismatch')
+        return strict_trial._run_allocation(allocation['id'])
+    if explicit_policy is not None:raise ValueError('explicit_policy_requires_frozen_strict_trial')
     receipt = _blank_receipt(allocation); receipt['discovery_mode'] = 'native_llm'; work = base/'work'
     work.mkdir(mode=0o700, parents=True)
     frozen = canonical(fixture['data']).encode()
