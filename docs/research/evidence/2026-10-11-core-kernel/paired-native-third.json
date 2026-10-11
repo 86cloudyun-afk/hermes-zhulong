@@ -1,0 +1,286 @@
+{
+  "schema": 1,
+  "study": "third_distinct_native_paired_N3_bootstrap_fixed",
+  "accepted_source_head": "6c0b93a7784d3da2c2f3ccebd65728436d948b87",
+  "frozen_source_files": 104,
+  "protocol_canonical_sha256": "f9a606656e43607153e68e08535d13934776a6f47c45f0e98eb44f5bc6212563",
+  "protocol_file_sha256": "a6d9f104834906bf03c5c688303c05b67b2033ea230a52d4a935a447dae5951c",
+  "raw_final_summary_sha256": "76b6cd66a3a06135c4c5be250882f03db4ed4a8a2926f47214fa0cb44ccc40c7",
+  "summary": {
+    "allocated": 6,
+    "succeeded": 6,
+    "failed": 0,
+    "unknown": 0,
+    "unrun": 0
+  },
+  "protocol_stopped": false,
+  "stop_reason": null,
+  "allocations": [
+    {
+      "ordinal": 0,
+      "arm": "planner_masked",
+      "input_id": "workload",
+      "input_hash": "298ee97c56b82ff81c674e5aa6f9f92af223c7d070e4d5a15bbde7bd3d73e951",
+      "receipt": {
+        "outcome": "succeeded",
+        "business": true,
+        "native": true,
+        "settled": true,
+        "cleanup": true,
+        "paired_qualified": true,
+        "paired_qualification": "qualified",
+        "qualifiers": [],
+        "configured_model": "deepseek-flash",
+        "observed_model": "deepseek-flash",
+        "underlying_model_version": "unknown",
+        "main_usage": {
+          "input_tokens": 43341,
+          "output_tokens": 2204,
+          "total_tokens": 45545
+        },
+        "auxiliary_calls": null,
+        "endpoint_sha256": "0676901ae2f755897dcae94c42dce4fe4aa3904e36a2e396aced46ba2ad4fe60"
+      }
+    },
+    {
+      "ordinal": 1,
+      "arm": "planner_masked",
+      "input_id": "source-index",
+      "input_hash": "6aaa611a7624914c68ba1fc2f657090ccf9c13ac46f301e1c213034a89fe2b6c",
+      "receipt": {
+        "outcome": "succeeded",
+        "business": true,
+        "native": true,
+        "settled": true,
+        "cleanup": true,
+        "paired_qualified": true,
+        "paired_qualification": "qualified",
+        "qualifiers": [],
+        "configured_model": "deepseek-flash",
+        "observed_model": "deepseek-flash",
+        "underlying_model_version": "unknown",
+        "main_usage": {
+          "input_tokens": 44181,
+          "output_tokens": 2503,
+          "total_tokens": 46684
+        },
+        "auxiliary_calls": null,
+        "endpoint_sha256": "57be4814a87a62809aedc945e311a3a35d7d16462c0d2e351d3a68619c5b617e"
+      }
+    },
+    {
+      "ordinal": 2,
+      "arm": "planner_visible",
+      "input_id": "workload",
+      "input_hash": "298ee97c56b82ff81c674e5aa6f9f92af223c7d070e4d5a15bbde7bd3d73e951",
+      "receipt": {
+        "outcome": "succeeded",
+        "business": true,
+        "native": true,
+        "settled": true,
+        "cleanup": true,
+        "paired_qualified": true,
+        "paired_qualification": "qualified",
+        "qualifiers": [],
+        "configured_model": "deepseek-flash",
+        "observed_model": "deepseek-flash",
+        "underlying_model_version": "unknown",
+        "main_usage": {
+          "input_tokens": 65297,
+          "output_tokens": 3953,
+          "total_tokens": 69250
+        },
+        "auxiliary_calls": null,
+        "endpoint_sha256": "f9dd8190649fc4402d15a6764936f565e6af01a2922b28058e2f49b50165e697"
+      }
+    },
+    {
+      "ordinal": 3,
+      "arm": "planner_visible",
+      "input_id": "source-index",
+      "input_hash": "6aaa611a7624914c68ba1fc2f657090ccf9c13ac46f301e1c213034a89fe2b6c",
+      "receipt": {
+        "outcome": "succeeded",
+        "business": true,
+        "native": true,
+        "settled": true,
+        "cleanup": true,
+        "paired_qualified": true,
+        "paired_qualification": "qualified",
+        "qualifiers": [],
+        "configured_model": "deepseek-flash",
+        "observed_model": "deepseek-flash",
+        "underlying_model_version": "unknown",
+        "main_usage": {
+          "input_tokens": 36715,
+          "output_tokens": 1925,
+          "total_tokens": 38640
+        },
+        "auxiliary_calls": null,
+        "endpoint_sha256": "db6c86c9c92dd77ced05f9f73157eaaabcdd8bcd4d9d3d9e50d5dff8a2f17c30"
+      }
+    },
+    {
+      "ordinal": 4,
+      "arm": "planner_masked",
+      "input_id": "ticket-queue",
+      "input_hash": "025e9691d9346b9c11f8957af27bd63bfb30fef5cb8bd5462d914a56925be7a8",
+      "receipt": {
+        "outcome": "succeeded",
+        "business": true,
+        "native": true,
+        "settled": true,
+        "cleanup": true,
+        "paired_qualified": true,
+        "paired_qualification": "qualified",
+        "qualifiers": [],
+        "configured_model": "deepseek-flash",
+        "observed_model": "deepseek-flash",
+        "underlying_model_version": "unknown",
+        "main_usage": {
+          "input_tokens": 44558,
+          "output_tokens": 2175,
+          "total_tokens": 46733
+        },
+        "auxiliary_calls": null,
+        "endpoint_sha256": "1e54edafee3533d3516e54ffbb8444d1b50c2766d9b4a33dd1463bdd394d6d3a"
+      }
+    },
+    {
+      "ordinal": 5,
+      "arm": "planner_visible",
+      "input_id": "ticket-queue",
+      "input_hash": "025e9691d9346b9c11f8957af27bd63bfb30fef5cb8bd5462d914a56925be7a8",
+      "receipt": {
+        "outcome": "succeeded",
+        "business": true,
+        "native": true,
+        "settled": true,
+        "cleanup": true,
+        "paired_qualified": true,
+        "paired_qualification": "qualified",
+        "qualifiers": [],
+        "configured_model": "deepseek-flash",
+        "observed_model": "deepseek-flash",
+        "underlying_model_version": "unknown",
+        "main_usage": {
+          "input_tokens": 51188,
+          "output_tokens": 3177,
+          "total_tokens": 54365
+        },
+        "auxiliary_calls": null,
+        "endpoint_sha256": "3b98572cb35a7aa73548fabcdb5a94fe4b80f5a4ef6faae2a4c8e5ddf797b602"
+      }
+    }
+  ],
+  "paired_analysis": {
+    "alpha": 0.05,
+    "causal_gain_supported": false,
+    "complete_pairs": 3,
+    "control_only": 0,
+    "discordant_pairs": 0,
+    "disqualifications": [
+      "small_n"
+    ],
+    "endpoint": "qualified_success_by_deadline_v1",
+    "exact_mcnemar_p": 1.0,
+    "hoeffding_interval": [
+      -1.0,
+      1.0
+    ],
+    "inference_qualified": false,
+    "paired_effect": 0.0,
+    "pairs": 3,
+    "qualified_pairs": 3,
+    "scope": "Frozen endpoint and identity/mechanism scope only; conditional on trusted receipts and independent pairs; no cost-effectiveness assertion",
+    "ties": 3,
+    "treatment_only": 0
+  },
+  "deadline_seconds": 180,
+  "cleanup_grace_seconds": 120,
+  "max_attempts": 1,
+  "independent_cleanups": [
+    {
+      "captured_utc": "2026-10-11T11:09:05.048784+00:00",
+      "scope": "Independent read-only owned process identities, runtime/evaluator labels and bound loopback listener",
+      "service_state": "stopped",
+      "processes_absent": true,
+      "owned_runtime_count": 0,
+      "owned_evaluator_count": 0,
+      "api_listener_absent": true,
+      "status_sha256": "012b325f56901bc505ff8fcacc867d2d08def4ee8effd0a93bad158eaa1bae3e",
+      "confirmed": true,
+      "ordinal": 0
+    },
+    {
+      "captured_utc": "2026-10-11T11:09:05.107927+00:00",
+      "scope": "Independent read-only owned process identities, runtime/evaluator labels and bound loopback listener",
+      "service_state": "stopped",
+      "processes_absent": true,
+      "owned_runtime_count": 0,
+      "owned_evaluator_count": 0,
+      "api_listener_absent": true,
+      "status_sha256": "e9b1e9d82d798a95b1504673e945d99ee0f1ebb0b3894fefbe92d651073a2a05",
+      "confirmed": true,
+      "ordinal": 1
+    },
+    {
+      "captured_utc": "2026-10-11T11:09:05.165211+00:00",
+      "scope": "Independent read-only owned process identities, runtime/evaluator labels and bound loopback listener",
+      "service_state": "stopped",
+      "processes_absent": true,
+      "owned_runtime_count": 0,
+      "owned_evaluator_count": 0,
+      "api_listener_absent": true,
+      "status_sha256": "ef0decd28c19e3d51f148c3e807109e00895c134995908f3d1cd309acf653fda",
+      "confirmed": true,
+      "ordinal": 2
+    },
+    {
+      "captured_utc": "2026-10-11T11:09:05.222140+00:00",
+      "scope": "Independent read-only owned process identities, runtime/evaluator labels and bound loopback listener",
+      "service_state": "stopped",
+      "processes_absent": true,
+      "owned_runtime_count": 0,
+      "owned_evaluator_count": 0,
+      "api_listener_absent": true,
+      "status_sha256": "68faf5aa07a597c04b61c6be0649b978967149ea3624ea17689ff491b3473494",
+      "confirmed": true,
+      "ordinal": 3
+    },
+    {
+      "captured_utc": "2026-10-11T11:09:05.281614+00:00",
+      "scope": "Independent read-only owned process identities, runtime/evaluator labels and bound loopback listener",
+      "service_state": "stopped",
+      "processes_absent": true,
+      "owned_runtime_count": 0,
+      "owned_evaluator_count": 0,
+      "api_listener_absent": true,
+      "status_sha256": "d9544ca8793640388424d8f93d41fcd1cdf2c5abb022a297eb8ab3e7c223d179",
+      "confirmed": true,
+      "ordinal": 4
+    },
+    {
+      "captured_utc": "2026-10-11T11:09:05.341531+00:00",
+      "scope": "Independent read-only owned process identities, runtime/evaluator labels and bound loopback listener",
+      "service_state": "stopped",
+      "processes_absent": true,
+      "owned_runtime_count": 0,
+      "owned_evaluator_count": 0,
+      "api_listener_absent": true,
+      "status_sha256": "c46ace814c074a63571efd3e645ecb8ecde84d76395d878740e7cc99b7e88420",
+      "confirmed": true,
+      "ordinal": 5
+    }
+  ],
+  "independent_cleanup_status_hash_encoding": "SHA-256 of raw status file bytes",
+  "same_known_fixture_set": true,
+  "independent_confirmatory_task_set": false,
+  "prior_two_stopped_batches_retained_separately": true,
+  "pooled_with_prior": false,
+  "late_backfill": false,
+  "causal_gain_supported": false,
+  "full_billing": null,
+  "analysis_interpretation": "All three complete and qualified pairs succeeded in both arms. Effect0, ties3 and exactMcNemarP1 describe this completed small batch. The previously observed fixture set, smallN and absence of discordant pairs do not establish causal gain, equivalence or cost effectiveness.",
+  "scope": "Actual pinned Hermes and configured DeepSeek integration, frozen endpoint qualification and owned cleanup. No subjective experience, general correctness or long-term benefit claim."
+}

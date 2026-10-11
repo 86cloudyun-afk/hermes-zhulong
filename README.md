@@ -130,7 +130,7 @@ zhulong_autonomy(action=status|goals|tick|experience|skills|workflows|diagnostic
 
 五条研究线和历史证据见 [完整执行、根因、因果提升、意识与正确性](docs/research/2026-10-11-autonomy-frontiers.md)；当前实现、部署入口与未完成项目见 [工程清单](docs/deployment/engineering-closure.md)。v0.11 的[核心研究](docs/research/2026-10-11-core-evidence-research.md)与[独立审查](docs/research/2026-10-11-v0.11-review.md)区分产品实现、实际执行和未知结论。真实配对驱动在 `scripts/native_paired_trial.py`，有限业务 pilot 仍在 `scripts/native_work_acceptance.py`；结果须按冻结协议及实际运行单独记录。v0.10 的[认知与 refinement 研究](docs/research/2026-10-11-cognition-refinement-research.md)及其[证据包](docs/research/evidence/2026-10-11-cognition-refinement/artifact-manifest.json)保留历史结论。
 
-v0.11 的[实际验证](docs/research/2026-10-11-v0.11-validation.md)另记修复后的 575 项实机检查、原始付费试验及完整未知分母。Lean 已证明形式 typed 检查器的一般行 soundness，并通过独立干净重放；[证明范围](docs/research/evidence/2026-10-11-core-kernel/formal-model-proof.json)明确保留 JSON／Python／列表输出／原生执行的对应缺口。固定证明源码和[可复现入口](formal/ticket-kernel/README.integration.md)已通过独立包装审查及实际干净重建；GitHub CI 执行另记。
+v0.11 的[实际验证](docs/research/2026-10-11-v0.11-validation.md)记录最新 582 项 Hermes／Docker 实机检查全部通过、第三批原生任务六格成功，以及两个先前停止批次的完整未知分母。远程三版本 Python CI 与首次 formal CI 的实际结果分别保留。Lean 已证明形式 typed 检查器的一般行 soundness，并通过独立干净重放；[证明范围](docs/research/evidence/2026-10-11-core-kernel/formal-model-proof.json)明确保留 JSON／Python／列表输出／原生执行的对应缺口。固定证明源码和[可复现入口](formal/ticket-kernel/README.integration.md)已通过独立包装审查及实际干净重建。
 
 ## License
 

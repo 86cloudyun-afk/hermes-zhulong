@@ -168,6 +168,6 @@ zhulong-python scripts/native_work_acceptance.py \
 
 ## v0.11 实际核心证据续记
 
-修复后的实际 pinned Hermes／Docker suite 为 575/575 全通过、零跳过；宿主 smoke 与 paused gateway 启动／停止检查均为零外部模型调用。首次认证 N=1 成功，首次三对六格配对研究停在 unknown=1／unrun=5，均保留各自原协议和完整分母；前瞻修复后的新批次另行预登记，不能追补旧格。详细检查点与结果见 [v0.11 验证记录](../research/2026-10-11-v0.11-validation.md)。
+最新干净 `6c0b93a` 的实际 pinned Hermes／Docker suite 为 582/582 全通过、零跳过，166.601 秒；宿主 smoke 与 paused gateway 启动／停止检查均为零外部模型调用。两次分别冻结的认证 N=1 均成功。前两次三对六格配对研究各保留 unknown=1／unrun=5；修复 bootstrap／prompt probe 后，第三个独立冻结批次六格成功，三对在两个 arm 均成功，全部部署独立确认清理。它使用已经观察过的同三项业务 fixture，只证明有限原生集成，不能作为独立确认性样本、因果收益或通用能力。详细检查点与结果见 [v0.11 验证记录](../research/2026-10-11-v0.11-validation.md)。
 
-形式 typed 模型的一般 `rowCertificateSound` 已经 Lean kernel 检查并由独立审查者干净重放，83 项公开定理闭包的基础公理均披露。此项完成模型层检查器定理；Python／JSON、列表输出和原生执行桥仍未机械证明，部署检查器继续报告 `reviewed_argument_not_machine_formalized`。可复现源码和[独立 CI 入口](../../formal/ticket-kernel/README.integration.md)已通过包装审查和 root 实际重建，GitHub Actions 执行仍待验收。72 小时真实时钟观察保留原注册和截止时间；到期状态、持续服务和因果长期收益分别判断，主观意识仍未证实。
+形式 typed 模型的一般 `rowCertificateSound` 已经 Lean kernel 检查并由独立审查者干净重放，83 项公开定理闭包的基础公理均披露。此项完成模型层检查器定理；Python／JSON、列表输出和原生执行桥仍未机械证明，部署检查器继续报告 `reviewed_argument_not_machine_formalized`。可复现源码和[独立 CI 入口](../../formal/ticket-kernel/README.integration.md)已通过包装审查和 root 实际重建；首次远程 formal CI 成功，修复 fixture 后的三版本 Python CI 各 582 项、558 通过、24 显式外部依赖跳过。旧 CI 失败保留。严格 decoder 与 Lean 执行权威的[后续规格](../research/2026-10-11-runtime-authority-roadmap.md)尚未实现。72 小时真实时钟观察保留原注册和截止时间；到期状态、持续服务和因果长期收益分别判断，主观意识仍未证实。
