@@ -162,9 +162,42 @@ class Workspace:
         self.identity_hash=digest(identity)
         self.receipt_unavailable=False
 
+    def observe_disabled_selection(self,selected_ids,now):
+        """Record actual legacy selection, without creating a workspace binding.
+
+        If the inactive journal fails, an immutable unavailable frame preserves
+        the interruption cursor for restart. It asserts neither a focus nor a
+        forecast and cannot bind a goal because its entries are empty.
+        """
+        now=_time(now)
+        if self.policy['enabled']:raise ValueError('cognition_disabled_observation_required')
+        try:
+            from . import attention
+        except ImportError:
+            import attention
+        try:
+            with self.ledger._connection(True) as c:
+                if c.execute('SELECT 1 FROM cognition_forecasts LIMIT 1').fetchone() is None:return True
+                if attention.observe_off(c,selected_ids,None,now,self.policy,self.identity_hash,self.source_configuration,
+                                         reason='cognition_disabled_observation'):return True
+                self.receipt_unavailable=True
+                frame={'schema':1,'frame_id':uuid.uuid4().hex,'identity_hash':self.identity_hash,
+                       'policy':dict(self.policy),'policy_hash':digest(self.policy),'mechanism_hash':digest(MECHANISM),
+                       'captured_at':now,'expires_at':now+self.policy['ttl_seconds'],'entries':[],
+                       'forecast':{'source_ids':[],'origin':'inactive_observation_journal_unavailable'},
+                       'inactive_observation_reason':'cognition_disabled_observation_journal_unavailable'}
+                c.execute('INSERT INTO cognition_frames(frame_id,frame,frame_hash) VALUES(?,?,?)',
+                          (frame['frame_id'],canonical(frame),digest(frame)))
+        except (sqlite3.DatabaseError,ValueError):
+            # Legacy planning stays usable if its evidence journal is unavailable.
+            self.receipt_unavailable=True
+        return False
+
     def select(self,observations,now,*,source_owner=None,lease_seconds=120,max_attempts=3):
         now=_time(now)
-        if not self.policy['enabled']:return None
+        if not self.policy['enabled']:
+            self.observe_disabled_selection([],now)
+            return None
         try:
             from . import attention
         except ImportError:

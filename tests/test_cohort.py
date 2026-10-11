@@ -204,4 +204,3 @@ class CohortTests(unittest.TestCase):
         self.assertEqual(c.report()['states']['unrun'],2)
 
 if __name__=='__main__':unittest.main()
-

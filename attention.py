@@ -68,7 +68,8 @@ def initialize(c):
     c.execute('CREATE INDEX IF NOT EXISTS attention_scope_seq ON cognition_forecasts(scope_hash,seq)')
 
 
-def observe_off(c, selected_ids, frame_id, now, policy, identity_hash, configuration):
+def observe_off(c, selected_ids, frame_id, now, policy, identity_hash, configuration,
+                *, reason='attention_off_observation'):
     """Best-effort inactive marker, only after attention has ever been active.
 
     An off observation is still the next real observation for pending forecasts.
@@ -84,6 +85,8 @@ def observe_off(c, selected_ids, frame_id, now, policy, identity_hash, configura
                        'frame_id': frame_id, 'focus_ids': selected_ids, 'wait_state_available': False,
                        'scope_hash': digest({'identity_hash': identity_hash, 'configuration': configuration,
                                              'policy': policy, 'mechanism': MECHANISM})}
+        if reason != 'attention_off_observation':
+            observation['reason'] = reason
         for row in c.execute('''SELECT f.forecast FROM cognition_forecasts f
                               LEFT JOIN cognition_forecast_outcomes o USING(forecast_id)
                               WHERE o.forecast_id IS NULL ORDER BY f.seq'''):
@@ -93,10 +96,11 @@ def observe_off(c, selected_ids, frame_id, now, policy, identity_hash, configura
             outcome = {'schema': 1, 'outcome_id': uuid.uuid4().hex, 'forecast_id': f['forecast_id'],
                        'scope_hash': f['scope_hash'], 'observation_scope_hash': observation['scope_hash'],
                        'observed_at': now, 'elapsed_seconds': now-f['captured_at'], 'status': 'scope_mismatch',
-                       'scope_mismatch_reason': 'attention_off_observation',
+                       'scope_mismatch_reason': reason,
                        'off_observation_id': observation['observation_id'],
                        'sources': [{'source_id': p['source_id'], 'content': 'unobserved', 'fresh': None,
-                                    'observed_entry': None, 'eligibility': 'attention_off_scope'}
+                                    'observed_entry': None, 'eligibility': 'cognition_disabled_scope' if
+                                    reason == 'cognition_disabled_observation' else 'attention_off_scope'}
                                    for p in f['source_predictions']],
                        'new_source_ids': [], 'expected_next_source_ids': f['expected_next_source_ids']}
             c.execute('INSERT INTO cognition_forecast_outcomes(forecast_id,observed_at,outcome,outcome_hash) VALUES(?,?,?,?)',
@@ -116,17 +120,29 @@ def _prior_control(c, now):
     row = c.execute('SELECT forecast FROM cognition_forecasts ORDER BY seq DESC LIMIT 1').fetchone()
     previous = json.loads(row[0]) if row else None
     empty = {'focus_ids': [], 'wait_ticks': {}, 'last_selected_seq': {}}
+    frame = c.execute('SELECT seq,frame FROM cognition_frames ORDER BY seq DESC LIMIT 1').fetchone()
+    latest_frame = json.loads(frame['frame']) if frame else None
+    historical = {'historical_frame_id': latest_frame['frame_id']} if frame else {}
+    if (frame and latest_frame.get('inactive_observation_reason') and
+            (previous is None or frame['seq'] > previous.get('frame_seq_cutoff', 0))):
+        if now < latest_frame['captured_at']:
+            raise ValueError('attention_clock_reversed')
+        # A failed inactive marker must take precedence over any older marker.
+        # Cross-journal timestamps cannot establish a newer trustworthy focus.
+        return empty, {**historical, 'origin': 'cognition_disabled_observation_journal_unavailable_reset',
+            'interruption_reason': latest_frame['inactive_observation_reason'],
+            'wait_state_available': False, 'focus_state_available': False, 'interrupted_since_forecast': True}
     marker = c.execute('SELECT seq,observation FROM cognition_attention_off_observations ORDER BY seq DESC LIMIT 1').fetchone()
     if marker and (previous is None or marker['seq'] > previous.get('off_observation_cutoff', 0)):
         observation = json.loads(marker['observation'])
         if now < observation['observed_at']:
             raise ValueError('attention_clock_reversed')
         return {**empty, 'focus_ids': observation['focus_ids']}, {
-            'origin': 'off_observation_wait_reset', 'observation_id': observation['observation_id'],
+            'origin': 'cognition_disabled_observation_wait_reset' if
+                observation.get('reason') == 'cognition_disabled_observation' else 'off_observation_wait_reset',
+            'observation_id': observation['observation_id'],
             'observed_at': observation['observed_at'], 'frame_id': observation['frame_id'],
             'wait_state_available': False, 'focus_state_available': True, 'interrupted_since_forecast': True}
-    frame = c.execute('SELECT seq,frame FROM cognition_frames ORDER BY seq DESC LIMIT 1').fetchone()
-    historical = {'historical_frame_id': json.loads(frame['frame'])['frame_id']} if frame else {}
     if previous is not None:
         if 'frame_seq_cutoff' not in previous or 'off_observation_cutoff' not in previous:
             # Legacy empty off calls left neither frame nor marker. A stored
@@ -213,7 +229,7 @@ def prepare(c, observations, eligible, now, policy, identity_hash, configuration
                         'observed_at': now, 'elapsed_seconds': now-f['captured_at'], 'status': status,
                         'sources': cells, 'new_source_ids': sorted(set(known)-{p['source_id'] for p in f['source_predictions']}),
                         'expected_next_source_ids': f['expected_next_source_ids'],
-                        'scope_mismatch_reason': 'legacy_observation_order_unavailable' if provenance['interrupted_since_forecast'] else
+                        'scope_mismatch_reason': provenance.get('interruption_reason','legacy_observation_order_unavailable') if provenance['interrupted_since_forecast'] else
                             'configuration_transition' if not matches else None})
     # Persist labels now, before training or ranking. Schedule evidence lives in
     # the next forecast, linked to these immutable outcomes, and is scored there.

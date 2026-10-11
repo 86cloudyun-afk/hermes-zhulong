@@ -55,6 +55,126 @@ class AttentionTests(unittest.TestCase):
         self.assertEqual(len(self.calls[0][0]),1)
         self.assertEqual(self.forecasts(),[])
 
+    def test_disabled_controller_observation_excludes_changed_then_restored_future(self):
+        policy=self.policy(capacity=1); self.controller(policy)._synthesize(observe_sources(policy))
+        original_forecast=copy.deepcopy(self.forecasts()[0])
+        path=Path(policy['sources'][0]['path']); original=path.read_bytes()
+        disabled=copy.deepcopy(policy); disabled['cognition']['enabled']=False
+        self.now+=1; path.write_text(canonical({'report':'INTERVENING_PRIVATE_FACT'}))
+        self.controller(disabled)._synthesize(observe_sources(disabled))
+        self.assertEqual(len(self.outcomes()),1)
+        outcome=self.outcomes()[0]
+        self.assertEqual(outcome['observed_at'],self.now)
+        self.assertEqual(outcome['status'],'scope_mismatch')
+        self.assertEqual(outcome['scope_mismatch_reason'],'cognition_disabled_observation')
+        self.assertEqual(len(outcome['sources']),5)
+        self.assertTrue(all(cell['fresh'] is None and cell['observed_entry'] is None for cell in outcome['sources']))
+        path.write_bytes(original); self.now+=1
+        self.ledger=Ledger(self.ledger.path)
+        self.controller(policy)._synthesize(observe_sources(policy))
+        self.assertEqual(self.forecasts()[0],original_forecast)
+        self.assertEqual(len(self.outcomes()),1)
+        self.assertTrue(all(count=={'fresh':0,'not_fresh':0} for count in self.forecasts()[-1]['model']['counts'].values()))
+        self.assertEqual(self.workspace(policy).summary(now=self.now)['attention']['n_scored'],0)
+        self.assertNotIn('INTERVENING_PRIVATE_FACT',canonical(self.rows('cognition_attention_off_observations')))
+
+    def test_disabled_controller_resumption_uses_actual_legacy_focus_beyond_workspace_capacity(self):
+        self.raw['max_candidates']=2
+        policy=self.policy(capacity=1,attention_switch_penalty=1)
+        self.controller(policy)._synthesize(observe_sources(policy))
+        disabled=copy.deepcopy(policy); disabled['cognition']['enabled']=False
+        self.now+=1; self.controller(disabled)._synthesize(observe_sources(disabled))
+        actual_ids=[o['id'] for o in self.calls[-1][0]]
+        self.assertEqual(actual_ids,['source-1','source-2'])
+        self.ledger=Ledger(self.ledger.path); self.now+=1
+        self.controller(policy)._synthesize(observe_sources(policy))
+        resumed=self.forecasts()[-1]
+        self.assertEqual(resumed['focus_state']['focus_ids'],actual_ids)
+        self.assertEqual(resumed['focus_state']['wait_ticks'],{})
+        self.assertEqual(resumed['focus_state']['last_selected_seq'],{})
+        self.assertEqual(resumed['focus_state_provenance']['origin'],'cognition_disabled_observation_wait_reset')
+        self.assertTrue(resumed['focus_state_provenance']['focus_state_available'])
+        self.assertFalse(resumed['focus_state_provenance']['wait_state_available'])
+        self.assertTrue(resumed['focus_state_provenance']['interrupted_since_forecast'])
+
+    def test_removed_cognition_configuration_records_empty_actual_selection_across_restart(self):
+        policy=self.policy(capacity=1); observations=observe_sources(policy)
+        self.controller(policy)._synthesize(observations)
+        for o in observations:self.ledger.mark_source(o['id'],o['revision'],{'status':'processed'},self.now)
+        disabled=copy.deepcopy(policy); disabled.pop('cognition')
+        calls_before=len(self.calls); self.now+=1
+        self.controller(disabled)._synthesize(observe_sources(disabled))
+        self.assertEqual(len(self.calls),calls_before)
+        self.assertEqual(len(self.outcomes()),1)
+        self.assertEqual(self.outcomes()[0]['scope_mismatch_reason'],'cognition_disabled_observation')
+        marker=json.loads(self.rows('cognition_attention_off_observations')[-1]['observation'])
+        self.assertEqual(marker['focus_ids'],[])
+        self.ledger=Ledger(self.ledger.path)
+        self.controller(policy)._synthesize(observe_sources(policy))
+        resumed=self.forecasts()[-1]
+        self.assertEqual(resumed['focus_state'],{'focus_ids':[],'wait_ticks':{},'last_selected_seq':{}})
+        self.assertEqual(resumed['focus_state_provenance']['observed_at'],self.now)
+        self.assertEqual(resumed['focus_state_provenance']['origin'],'cognition_disabled_observation_wait_reset')
+
+    def test_disabled_without_attention_history_keeps_forecast_and_inactive_journals_inert(self):
+        from autonomy_checks import validate_config
+        disabled=validate_config(self.raw,self.root)
+        self.controller(disabled)._synthesize(observe_sources(disabled))
+        self.assertEqual([o['id'] for o in self.calls[-1][0]],['source-0'])
+        self.assertIsNone(self.workspace(disabled).select(observe_sources(disabled),self.now))
+        for table in ('cognition_forecasts','cognition_forecast_outcomes','cognition_attention_off_observations','cognition_frames'):
+            self.assertEqual(self.rows(table),[])
+
+    def test_direct_disabled_workspace_observation_records_no_invented_selection(self):
+        policy=self.policy(capacity=1); observations=observe_sources(policy)
+        self.workspace(policy).select(observations,self.now)
+        disabled=copy.deepcopy(policy); disabled['cognition']['enabled']=False
+        self.assertIsNone(self.workspace(disabled).select(observations,self.now))
+        self.assertEqual(len(self.forecasts()),1)
+        self.assertEqual(len(self.outcomes()),1)
+        self.assertEqual(self.outcomes()[0]['scope_mismatch_reason'],'cognition_disabled_observation')
+        self.ledger=Ledger(self.ledger.path)
+        resumed=self.workspace(policy).select(observations,self.now)['attention']
+        self.assertEqual(resumed['focus_state']['focus_ids'],[])
+        self.assertEqual(resumed['focus_state']['wait_ticks'],{})
+        self.assertEqual(resumed['focus_state_provenance']['origin'],'cognition_disabled_observation_wait_reset')
+
+    def test_missing_disabled_observation_journal_preserves_planning_but_excludes_resumed_training(self):
+        policy=self.policy(capacity=1); self.controller(policy)._synthesize(observe_sources(policy))
+        disabled=copy.deepcopy(policy); disabled['cognition']['enabled']=False
+        with self.ledger._connection(True) as db:db.execute('DROP TABLE cognition_attention_off_observations')
+        self.now+=1; self.controller(disabled)._synthesize(observe_sources(disabled))
+        self.assertEqual([o['id'] for o in self.calls[-1][0]],['source-1'])
+        self.ledger=Ledger(self.ledger.path); self.now+=1
+        self.controller(policy)._synthesize(observe_sources(policy))
+        resumed=self.forecasts()[-1]
+        self.assertFalse(resumed['focus_state_provenance']['focus_state_available'])
+        self.assertFalse(resumed['focus_state_provenance']['wait_state_available'])
+        self.assertTrue(resumed['focus_state_provenance']['interrupted_since_forecast'])
+        self.assertEqual(resumed['focus_state'],{'focus_ids':[],'wait_ticks':{},'last_selected_seq':{}})
+        self.assertEqual(self.outcomes()[0]['status'],'scope_mismatch')
+        self.assertEqual(self.outcomes()[0]['scope_mismatch_reason'],'cognition_disabled_observation_journal_unavailable')
+        self.assertEqual(self.workspace(policy).summary(now=self.now)['attention']['n_scored'],0)
+        self.assertNotIn('PRIVATE_FACT',canonical(self.rows('cognition_frames')))
+
+    def test_failed_empty_disabled_marker_does_not_restore_an_older_inactive_focus(self):
+        policy=self.policy(capacity=1); self.controller(policy)._synthesize(observe_sources(policy))
+        disabled=copy.deepcopy(policy); disabled['cognition']['enabled']=False
+        self.now+=1; self.controller(disabled)._synthesize(observe_sources(disabled))
+        self.assertEqual([o['id'] for o in self.calls[-1][0]],['source-1'])
+        with self.ledger._connection(True) as db:
+            db.execute("CREATE TRIGGER reject_inactive_marker BEFORE INSERT ON cognition_attention_off_observations BEGIN SELECT RAISE(ABORT,'journal_unavailable'); END")
+        self.now+=1; self.controller(disabled)._synthesize([])
+        self.ledger=Ledger(self.ledger.path)
+        with self.ledger._connection(True) as db:db.execute('DROP TRIGGER reject_inactive_marker')
+        self.now+=1; self.controller(policy)._synthesize(observe_sources(policy))
+        resumed=self.forecasts()[-1]
+        self.assertEqual(resumed['focus_state']['focus_ids'],[])
+        self.assertEqual(resumed['focus_state']['wait_ticks'],{})
+        self.assertFalse(resumed['focus_state_provenance']['focus_state_available'])
+        self.assertTrue(resumed['focus_state_provenance']['interrupted_since_forecast'])
+        self.assertEqual(self.workspace(policy).summary(now=self.now)['attention']['n_scored'],0)
+
     def test_forecast_all_configured_sources_and_no_future_leakage(self):
         policy=self.policy(capacity=1); w=self.workspace(policy); obs=observe_sources(policy)
         first=w.select(obs,self.now); f=self.forecasts()[0]

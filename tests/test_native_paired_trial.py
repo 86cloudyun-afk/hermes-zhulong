@@ -411,9 +411,3 @@ class PairedTests(unittest.TestCase):
         self.assertEqual(trial.protocol['input_artifacts'][0]['byte_sha256'],self.m.file_sha(trial.root/'inputs/empty-work.json'))
 
 if __name__=='__main__':unittest.main()
-
-
-
-
-
-

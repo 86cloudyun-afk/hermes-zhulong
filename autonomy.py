@@ -158,6 +158,7 @@ class Controller:
                 if not task_inputs.available(self.ledger,observation.get('task_input')):continue
                 if len(selected)>=self.policy['max_candidates']:break
                 if self.ledger.claim_source(observation['id'],observation['revision'],owner,self.clock(),self.policy['lease_seconds'],self.policy['max_attempts']):selected.append(observation)
+            self.workspace.observe_disabled_selection([o['id'] for o in selected],self.clock())
         if not selected:return 0
         success=False;accepted=0;deferred=None
         try:
