@@ -124,7 +124,7 @@ zhulong_autonomy(action=status|goals|tick|experience|skills|workflows|diagnostic
 - ✅ v0.7.0：独立 Docker 可执行程序评测、不可变版本发布、冻结请求复用和失败回退
 - ✅ v0.8.0：授权结构化输入冻结、原目标字段回归和严格原生执行证据
 - ✅ v0.9.0：完整参考 JSON 验收、持久步骤 DAG/本地 outbox、有界干预诊断、尝试级元认知和有限状态保证
-- v0.10.0：独立生产状态对应与同事务准入/发布门槛、可选限容量认知工作空间；验证结果按独立记录发布
+- ✅ v0.10.0：独立生产状态对应与同事务准入/发布门槛、可选限容量认知工作空间；430 项真实宿主/Docker 测试通过，单次 DeepSeek 原生集成验收成功
 - ⏳ 后续：周报投递、真实外部事务、控制内核自动晋升与长期测试
 
 五条研究线和历史证据见 [完整执行、根因、因果提升、意识与正确性](docs/research/2026-10-11-autonomy-frontiers.md)；当前实现、部署入口与未完成项目见 [v0.10 工程清单](docs/deployment/engineering-closure.md)。`causal_trial.py` 已提供固定 N 配对协议、收据资格检查和分析，真实配对 execution adapter 尚未实现。`native_work_acceptance.py` 是真实 Hermes 有限业务 pilot 的运行入口，验收结果须按实际运行单独记录。v0.10 路线、基线状态对应反例、理论边界和冻结预测见 [认知与 refinement 研究](docs/research/2026-10-11-cognition-refinement-research.md)及其[可移植证据包](docs/research/evidence/2026-10-11-cognition-refinement/artifact-manifest.json)。
@@ -177,7 +177,7 @@ capacity 为 1–8 个来源，TTL 为 1–3600 秒；mask 为 null/planner/exec
 
 新 admission、技能发布和正向 fallback activation 在写入事务内执行 gate；counterexample/unavailable 拒绝新正向动作，不新扣预算或启动 run，但 cancel/stop/reconcile/cleanup、旧结果真实结算和负向退役继续。checker/SQLite/保护代码及合法 mutation hooks 仍是可信边界；审计不证明 verifier 正确性、OS 静止、全部 workflow/skill 决策、诊断预算、外部效果或任意 Python 总正确性。`settled` 和 Runs 完成状态也不是独立 quiescence certificate。
 
-v0.9 native 任务、Docker 和审查记录保留为历史证据。本节不将它们升级为 v0.10 验收，不宣称新的 pilot、独立审查或长程测试已经完成；后续验证须绑定实际版本和运行记录。当前机制不提供主观体验 oracle、意识概率或通用正确性 theorem。
+v0.10 的[验证记录](docs/research/2026-10-11-v0.10-validation.md)绑定干净代码 `50acabe`：430 项真实宿主/Docker 测试全部通过，单个预登记 DeepSeek 原生任务完成业务、执行审计、结算和清理；[独立审查记录](docs/research/2026-10-11-v0.10-review.md)保留发现与修复。v0.9 结果继续作为历史证据。单次集成验收不建立因果收益，尚未运行长程测试；当前机制不提供主观体验 oracle、意识概率或通用正确性 theorem。
 
 ## 经验学习（v0.6）
 

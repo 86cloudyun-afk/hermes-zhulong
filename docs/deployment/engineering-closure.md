@@ -118,7 +118,7 @@ refinement 对 paused、全部 run_budget、goal 集合/state/lease/attempt/curr
 
 当前排除 reason、runtime/usage、source planning、模型版本、workflow 决策/effects、诊断预算、技能内部状态、verifier 正确性、OS quiescence、checkpoint 前历史及未覆盖时间/forecast/settings/applicability/resource guards。gate 对所覆盖的状态有效，不证明全部技能发布资格或任意 Python；特权者能替换控制代码或同时删除 marker/journal 的攻击不在保证范围。`settled` 与 Runs 完成状态不能升级为独立 OS 静止证据。
 
-本文介绍 v0.10 接口与限制，不报告新的 full suite、native/Docker、付费 pilot 或独立审查已通过。当前版本验收须另由实际运行记录绑定代码；下面保留的结果是 v0.9 历史证据。
+v0.10 的[验证记录](../research/2026-10-11-v0.10-validation.md)和[独立审查](../research/2026-10-11-v0.10-review.md)绑定干净代码 `50acabe`。430 项真实宿主/Docker 测试全部通过；唯一预登记 DeepSeek 原生工作量任务通过业务、执行审计、结算和所属进程/容器清理，认知交付绑定与当前 refinement 均合格。该 N=1 结果是集成证据，不能推断稳定收益、主观意识或通用正确性；确定性 selection forecast 的完整 miss/drift 评分端点及长程测试仍未交付。下面继续保留 v0.9 历史证据。
 
 ### 历史 v0.9 原生有限工作验收
 

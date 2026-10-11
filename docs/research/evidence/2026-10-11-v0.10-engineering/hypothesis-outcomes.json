@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "frozen_predictions": "../2026-10-11-cognition-refinement/frozen-predictions.json",
+  "frozen_predictions_sha256": "dfdb4972ff3312edb334906e7d88b700f054c9310847d9e4ca3b47ed48822cd9",
+  "tested_head": "50acabea7750a78396431bb57cddff282afc0ee1",
+  "evidence_type": "internal_engineering_tests; not externally registered scientific theory test",
+  "outcomes": [
+    {
+      "id": "C1",
+      "status": "supported_in_tested_scope",
+      "representative_test": "test_real_controller_capacity_all_sources_and_context_filter",
+      "file": "tests/test_cognition.py"
+    },
+    {
+      "id": "C2",
+      "status": "supported_under_frozen_eligibility_conditions",
+      "representative_test": "test_rotation_beyond_max_candidates_and_constant_tail_control",
+      "file": "tests/test_cognition.py"
+    },
+    {
+      "id": "C3",
+      "status": "supported_for_provider_free_matched_frames",
+      "representative_test": "test_all_consumer_masks_are_frozen_matched_interventions",
+      "file": "tests/test_cognition.py"
+    },
+    {
+      "id": "C4",
+      "status": "supported_for_controlled_consumer_only",
+      "representative_test": "test_real_controller_fact_dependent_decision_is_masked_and_restored",
+      "file": "tests/test_cognition.py"
+    },
+    {
+      "id": "C5",
+      "status": "supported_in_tested_scope",
+      "representative_test": "test_ttl_source_input_recheck_rollback_and_dedupe",
+      "file": "tests/test_cognition.py"
+    },
+    {
+      "id": "C6",
+      "status": "partial_preselection_freeze_only",
+      "representative_test": null,
+      "file": null
+    },
+    {
+      "id": "R1",
+      "status": "supported_for_covered_operations",
+      "representative_test": "test_real_lifecycle_corresponds_after_every_operation",
+      "file": "tests/test_refinement.py"
+    },
+    {
+      "id": "R2",
+      "status": "supported_for_injected_covered_fields",
+      "representative_test": "test_sql_faults_name_changed_fields_and_fence_before_allocation",
+      "file": "tests/test_refinement.py"
+    },
+    {
+      "id": "R3",
+      "status": "supported_for_tested_admission_publication_recovery_paths",
+      "representative_test": "test_positive_publication_fenced_but_rejection_available",
+      "file": "tests/test_refinement.py"
+    },
+    {
+      "id": "R4",
+      "status": "supported_for_tested_sqlite_concurrency_and_rollback",
+      "representative_test": "test_two_ledgers_fence_admission",
+      "file": "tests/test_refinement.py"
+    },
+    {
+      "id": "R5",
+      "status": "supported_for_tested_checkpoint_schema_and_resource_cases",
+      "representative_test": "test_legacy_checkpoint_is_complete_and_all_pages_verified",
+      "file": "tests/test_refinement.py"
+    }
+  ],
+  "C6_missing": "No persisted miss/drift denominator or scoring endpoint was implemented or run. Deterministic preselection schedule and ordering do not establish attention-schema control.",
+  "native_n": 1,
+  "live_model_causal_benefit": "not_established",
+  "subjective_consciousness": "unknown",
+  "general_correctness_theorem": false,
+  "limitations": "Representative tests overlap the full 430 suite and are not extra independent samples. Passing finite cases does not prove every future path or all stated scientific hypotheses."
+}
