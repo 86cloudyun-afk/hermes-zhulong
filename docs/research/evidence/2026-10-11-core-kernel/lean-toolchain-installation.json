@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "phase": "toolchain_installation_before_general_proof",
+  "toolchain": "leanprover/lean4:v4.19.0",
+  "source_commit": "6caaee842e9495688c1567e78c0e68dbb96942aa",
+  "archive_sha256": "6fe3ce97a58f44e2b3567d455b994eacec5bfe9ae7774f2a573444480ba813fe",
+  "archive_bytes": 343842845,
+  "publisher_digest": null,
+  "independent_checksum_verified": false,
+  "distribution_trust": "official_release_verified_TLS",
+  "global_tool_mutations": false,
+  "files": {
+    "bin/lean": {
+      "bytes": 8880,
+      "sha256": "92c3d35b5bfaa5e0fea413a775d504cf46cd95e1345df61c2274f76779e7e023"
+    },
+    "bin/lake": {
+      "bytes": 11928,
+      "sha256": "5111aee5c9434ab05d4265606475ef22e8bda69aaf3a0657b61a7eec6e550bed"
+    },
+    "LICENSE": {
+      "bytes": 9160,
+      "sha256": "8b28515ffffc5c0fe2807d8ae3735b00b324d9b7ce807dd63ff6ac8922fbce7e"
+    }
+  },
+  "proof_completion_claim": false,
+  "installation_record_sha256": "a24a518737d881c47086cbb0c72eff25f9e87d964a1e503df15504d88469af5c",
+  "version_commands": [
+    {
+      "started_utc": "2026-10-11T09:18:38.967553+00:00",
+      "finished_utc": "2026-10-11T09:18:38.997529+00:00",
+      "exit_status": 0,
+      "stdout": "Lean (version 4.19.0, x86_64-unknown-linux-gnu, commit 6caaee842e94, Release)\n",
+      "stderr": ""
+    },
+    {
+      "started_utc": "2026-10-11T09:18:38.997718+00:00",
+      "finished_utc": "2026-10-11T09:18:39.026889+00:00",
+      "exit_status": 0,
+      "stdout": "Lake version 5.0.0-6caaee8 (Lean version 4.19.0)\n",
+      "stderr": ""
+    }
+  ]
+}
