@@ -71,7 +71,7 @@ class Controller:
         self.skills=skills
         self.execution_identity={'api_url':policy.get('api_url'),'credential_env':policy.get('api_key_env','API_SERVER_KEY'),
                                  'identity_version':policy.get('api_identity_version'),'profile':policy.get('api_profile','default')}
-        self.workspace=cognition.Workspace(ledger,policy.get('cognition'),self.execution_identity)
+        self.workspace=cognition.Workspace(ledger,policy,self.execution_identity)
         self._tick_lock=threading.Lock();self._lifecycle_lock=threading.Lock();self._stop=threading.Event();self._thread=None;self._recovery_cursor=0;self._ready_cursor=0
         self.admission_gate=None
         self.workflows=workflow.WorkflowStore(ledger,policy.get('workflows',[]))
@@ -147,7 +147,7 @@ class Controller:
         owner=uuid.uuid4().hex;selected=[];frame=None
         if self.workspace.policy['enabled']:
             eligible=[o for o in observations if o['available'] and task_inputs.available(self.ledger,o.get('task_input'))]
-            frame=self.workspace.select(eligible,self.clock(),source_owner=owner,
+            frame=self.workspace.select(observations,self.clock(),source_owner=owner,
                 lease_seconds=self.policy['lease_seconds'],max_attempts=self.policy['max_attempts'])
             if frame:
                 selected=[next(o for o in eligible if o['id']==e['source_id']) for e in frame['entries']]
