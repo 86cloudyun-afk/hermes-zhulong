@@ -1,0 +1,9 @@
+✔ [2/10] Built HermesTicket.Interfaces
+✔ [3/10] Built HermesTicket.Affine
+✔ [4/10] Built HermesTicket.Coverage
+✔ [5/10] Built HermesTicket.Syntax
+✔ [6/10] Built HermesTicket.Derive
+✔ [7/10] Built HermesTicket.Certificate
+✔ [8/10] Built HermesTicket.Fixtures
+✔ [9/10] Built HermesTicket
+Build completed successfully.

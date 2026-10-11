@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "source_manifest_sha256": "cd3fa704215fa48dec4215fa0ffd57b6ff4bf5994becddf06a21bdefd0b15f69",
+  "toolchain_manifest_sha256": "7c890479b405c695b835d0d7d81affad13c082975bde6ead33e608a57d9f12e2",
+  "independent_proof_review_sha256": "6da1577a6c64095dfaedf3410904fcfcf5c6983aeb29dc9713970e293dfd29e4",
+  "proof_report_sha256": "7e0a6f0172838c88956db53390d8cb4db839926c3fe391257bb326344b6fbe6f",
+  "source_python_checker_sha256": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+  "scope": "typed_checker_model_only",
+  "original_reviewed_file_count": 14,
+  "original_reviewed_files_preserved_byte_for_byte": true,
+  "historical_record_policy": "copied exact research execution records; private filesystem paths identify task-local provenance, no raw user facts/transcripts/gold or environment/authorization dumps",
+  "publisher_digest": null,
+  "independent_publisher_checksum_verified": false
+}

@@ -1,0 +1,18 @@
+{
+  "accessed_utc": "2026-10-11T09:08:16.491127+00:00",
+  "command": [
+    "git",
+    "-c",
+    "http.sslVerify=true",
+    "ls-remote",
+    "https://github.com/leanprover/lean4.git",
+    "refs/tags/v4.19.0",
+    "refs/tags/v4.19.0^{}"
+  ],
+  "exit_status": 0,
+  "stdout": "6caaee842e9495688c1567e78c0e68dbb96942aa\trefs/tags/v4.19.0\n",
+  "stderr": "",
+  "tls_verification_disabled": false,
+  "inherited_proxy": true,
+  "installed_or_executed_lean": false
+}

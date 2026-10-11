@@ -1,0 +1,170 @@
+{
+  "format_version": 1,
+  "frozen_at_utc": "2026-10-11T09:32:09.323274+00:00",
+  "proof_scope": "typed_checker_model_only",
+  "pinned_python_checker_sha256": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+  "lean_version": "Lean (version 4.19.0, x86_64-unknown-linux-gnu, commit 6caaee842e94, Release)",
+  "lake_version": "Lake version 5.0.0-6caaee8 (Lean version 4.19.0)",
+  "allowed_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ],
+  "audited_theorems": [
+    "HermesTicket.evalTerms_eq_operand_sum",
+    "HermesTicket.nodesTerms_cons",
+    "HermesTicket.limitsTerms_cons",
+    "HermesTicket.literal_depth_24",
+    "HermesTicket.literal_depth_25",
+    "HermesTicket.scalar_lower_bound",
+    "HermesTicket.scalar_below_bound",
+    "HermesTicket.combined_nodes_256_accept",
+    "HermesTicket.combined_nodes_257_reject",
+    "HermesTicket.root_depth_24_accept",
+    "HermesTicket.root_depth_25_reject",
+    "HermesTicket.unselected_branch_bounds_reject",
+    "HermesTicket.affine_add_value",
+    "HermesTicket.affine_scale_value",
+    "HermesTicket.affine_sub_value",
+    "HermesTicket.affine_bounds",
+    "HermesTicket.equalOnCell_sound",
+    "HermesTicket.referenceAffine_sound",
+    "HermesTicket.priorityRelation_sound",
+    "HermesTicket.deriveI_sound",
+    "HermesTicket.deriveB_sound",
+    "HermesTicket.deriveTerms_sound",
+    "HermesTicket.deriveP_sound",
+    "HermesTicket.derive_sound",
+    "HermesTicket.negative_slope_ge_false",
+    "HermesTicket.negative_slope_min_left",
+    "HermesTicket.crossing_ge_reject",
+    "HermesTicket.before_boundary_ge_false",
+    "HermesTicket.singleton_boundary_ge_true",
+    "HermesTicket.min_singleton_tie_left",
+    "HermesTicket.nary_derive_every_operand",
+    "HermesTicket.nary_eval_every_operand",
+    "HermesTicket.cached_score_priority",
+    "HermesTicket.insertCell_perm",
+    "HermesTicket.sortCells_perm",
+    "HermesTicket.validCell_interval",
+    "HermesTicket.checkChain_lower",
+    "HermesTicket.checkChain_count",
+    "HermesTicket.validRow_group",
+    "HermesTicket.coverage_count",
+    "HermesTicket.coverage_unique",
+    "HermesTicket.coverage_exists",
+    "HermesTicket.checkCell_sound",
+    "HermesTicket.rowCertificateSound",
+    "HermesTicket.accepted_coverage_unique",
+    "HermesTicket.accepted_resources",
+    "HermesTicket.accepted_score_businessPriority",
+    "HermesTicket.sampleCellCount",
+    "HermesTicket.sampleAccepted",
+    "HermesTicket.alternateAccepted",
+    "HermesTicket.sampleUnsortedAccepted",
+    "HermesTicket.alternateProgramDifferent",
+    "HermesTicket.crossingReferenceCover",
+    "HermesTicket.crossingReferenceRejected",
+    "HermesTicket.forgedScoreCover",
+    "HermesTicket.forgedScoreRejected",
+    "HermesTicket.forgedPriorityRejected",
+    "HermesTicket.nonuniformPriorityCover",
+    "HermesTicket.nonuniformPriorityRejected",
+    "HermesTicket.thresholdFalseCellAccepted",
+    "HermesTicket.thresholdTrueCellAccepted",
+    "HermesTicket.urgentThresholdFalseCellAccepted",
+    "HermesTicket.urgentThresholdTrueCellAccepted",
+    "HermesTicket.singletonWitnessAccepted",
+    "HermesTicket.singletonWitnessDifferent",
+    "HermesTicket.singletonWitnessCellAccepted",
+    "HermesTicket.emptyRejected",
+    "HermesTicket.missingGroupRejected",
+    "HermesTicket.gapCellsSemanticallyValid",
+    "HermesTicket.gapRejected",
+    "HermesTicket.overlapCellsSemanticallyValid",
+    "HermesTicket.overlapRejected",
+    "HermesTicket.duplicateCellsSemanticallyValid",
+    "HermesTicket.duplicateRejected",
+    "HermesTicket.invalidSeverityCover",
+    "HermesTicket.invalidSeverityRejected",
+    "HermesTicket.fullCheckerRejectsMalformed",
+    "HermesTicket.combinedNodesViolationRejected",
+    "HermesTicket.depth25ViolationRejected",
+    "HermesTicket.unselectedLiteralViolationRejected",
+    "HermesTicket.unselectedDepthViolationRejected",
+    "HermesTicket.scalarMagnitudeViolationRejected",
+    "HermesTicket.tooManyCellsRejected"
+  ],
+  "sources": [
+    {
+      "path": "HermesTicket.lean",
+      "bytes": 29,
+      "sha256": "290d0a7a27c0e2f7a2e92fc5505f1eac7e7e90be5533ef18e833d4b56bc8a8d9"
+    },
+    {
+      "path": "HermesTicket/Affine.lean",
+      "bytes": 4215,
+      "sha256": "63a3a5e5e4114d8c0e3ac6e792f9de1bb27b03f3f75fb853d4feeacc04505949"
+    },
+    {
+      "path": "HermesTicket/Certificate.lean",
+      "bytes": 4930,
+      "sha256": "9f45aebe614ed2399ec741b3cf998586e759174e9fb950a6909a223725c0faaf"
+    },
+    {
+      "path": "HermesTicket/Coverage.lean",
+      "bytes": 8561,
+      "sha256": "df99c18c8b7d72e63ca2d464a6aef905f50e1d06dc847d7731dc9c84f5febb01"
+    },
+    {
+      "path": "HermesTicket/Derive.lean",
+      "bytes": 11268,
+      "sha256": "ce6b6774c6bf1d2a971db992979be1ecf6f2d0075e05fb7dac2863bc1375ff1f"
+    },
+    {
+      "path": "HermesTicket/Fixtures.lean",
+      "bytes": 8520,
+      "sha256": "a78c723a22cb326dba9d288ddb3457ba798777ad5b9f6d9901f364f19b206c0b"
+    },
+    {
+      "path": "HermesTicket/Interfaces.lean",
+      "bytes": 2608,
+      "sha256": "8282b1b41b05258cc45c0f2ad81788fedaaaea3e4872423adb208cc60fcc3a4f"
+    },
+    {
+      "path": "HermesTicket/KernelAudit.lean",
+      "bytes": 4496,
+      "sha256": "55b544cd0e75d2af2656432f3531a00d68d623bd506408bf5b4791bab94f6738"
+    },
+    {
+      "path": "HermesTicket/Syntax.lean",
+      "bytes": 6663,
+      "sha256": "83dcb8140bc333e771a467ac10d7cf51da45ead9680d1df96021857a1e2c9604"
+    },
+    {
+      "path": "README.md",
+      "bytes": 6028,
+      "sha256": "2c89863e7e44f734576d12809d463c41a6316f7daf829d96fbcb5a9d3e47a23f"
+    },
+    {
+      "path": "lake-manifest.json",
+      "bytes": 129,
+      "sha256": "d09cc1e1042e301b6a5132eb5a9c10b999d8c2a9f71c8089b068cec453a59c6d"
+    },
+    {
+      "path": "lakefile.toml",
+      "bytes": 117,
+      "sha256": "28d6225bb1f9f848504b117856fea5d2ec4cc4db0fe81b696d2d27413fea8c0c"
+    },
+    {
+      "path": "lean-toolchain",
+      "bytes": 25,
+      "sha256": "55e97be96000b5e9e290c9e74482e5e317861499a5540353ce845471bded8cea"
+    },
+    {
+      "path": "replay.py",
+      "bytes": 7059,
+      "sha256": "e6ac46f7bf3f7350fdd77e3b47301d68b8075d713908e257a740cdc5d53e642a"
+    }
+  ]
+}

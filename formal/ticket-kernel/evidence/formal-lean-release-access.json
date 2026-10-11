@@ -1,0 +1,45 @@
+{
+  "url": "https://api.github.com/repos/leanprover/lean4/releases/tags/v4.19.0",
+  "accessed_utc": "2026-10-11T09:10:22.670378+00:00",
+  "curl_exit": 0,
+  "http_tls_result": "200\n0\n",
+  "stderr": "",
+  "bytes": 25230,
+  "sha256": "1a2c1b9bc64177515ab355d3843db21a1e137a9f8740d54c159454c2a352e580",
+  "tag_name": "v4.19.0",
+  "target_commitish": "master",
+  "published_at": "2025-05-01T09:13:00Z",
+  "assets": [
+    {
+      "id": 250981932,
+      "name": "lean-4.19.0-linux.tar.zst",
+      "size": 343842845,
+      "digest": null,
+      "browser_download_url": "https://github.com/leanprover/lean4/releases/download/v4.19.0/lean-4.19.0-linux.tar.zst"
+    },
+    {
+      "id": 250981927,
+      "name": "lean-4.19.0-linux.zip",
+      "size": 540353287,
+      "digest": null,
+      "browser_download_url": "https://github.com/leanprover/lean4/releases/download/v4.19.0/lean-4.19.0-linux.zip"
+    },
+    {
+      "id": 250981935,
+      "name": "lean-4.19.0-linux_x86.tar.zst",
+      "size": 339619766,
+      "digest": null,
+      "browser_download_url": "https://github.com/leanprover/lean4/releases/download/v4.19.0/lean-4.19.0-linux_x86.tar.zst"
+    },
+    {
+      "id": 250981933,
+      "name": "lean-4.19.0-linux_x86.zip",
+      "size": 461777736,
+      "digest": null,
+      "browser_download_url": "https://github.com/leanprover/lean4/releases/download/v4.19.0/lean-4.19.0-linux_x86.zip"
+    }
+  ],
+  "tls_verification_disabled": false,
+  "inherited_proxy": true,
+  "asset_downloaded_or_executed": false
+}

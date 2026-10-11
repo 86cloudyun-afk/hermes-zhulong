@@ -1,0 +1,102 @@
+{
+  "scope": "typed_checker_model_only",
+  "reviewed_14_files_unchanged": true,
+  "source_manifest_sha256": "cd3fa704215fa48dec4215fa0ffd57b6ff4bf5994becddf06a21bdefd0b15f69",
+  "toolchain_manifest_sha256": "7c890479b405c695b835d0d7d81affad13c082975bde6ead33e608a57d9f12e2",
+  "verify_entry_sha256": "151292c9296016ca7816fc65d8ca8d68357b0101cb02ecad2d6b24167972ac6e",
+  "workflow_sha256": "a43beae8ac8e3ae62c78ed730208094da0316701753bd90651183025c3d2fc80",
+  "allowed_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ],
+  "actual_general_theorem_axioms": [
+    "Classical.choice",
+    "Quot.sound",
+    "propext"
+  ],
+  "wrapper_boundary_tests": {
+    "tests": 10,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "exit_status": 0
+  },
+  "workflow_yaml_parse_exit_status": 0,
+  "github_actions_execution": "not_run_in_this_session",
+  "publisher_digest": null,
+  "independent_publisher_checksum_verified": false,
+  "executions": [
+    {
+      "mode": "existing_toolchain",
+      "entry_exit_status": 0,
+      "replay_exit_status": 0,
+      "four_separate_command_exits": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "audited_theorems": 83,
+      "checker_sha256_before": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+      "checker_sha256_after": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+      "verification_result_sha256": "09b18a8eda085b95dc41457c0e11f8a6862c68019e0e78626b2e7c416501493a",
+      "replay_result_sha256": "1e287c6c0dce38d251a359f5ada20b4de0ec579c0c7f582a676c329fbf69c058",
+      "source_bytes_unchanged": true,
+      "toolchain_bytes_unchanged": true,
+      "local_proof_objects_reused": false
+    },
+    {
+      "mode": "fresh_official_download",
+      "entry_exit_status": 0,
+      "replay_exit_status": 0,
+      "four_separate_command_exits": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "audited_theorems": 83,
+      "checker_sha256_before": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+      "checker_sha256_after": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+      "verification_result_sha256": "e8e128e828d5dd5703cd9147145daa53ed37501c4f13966504233b9c0fb2099d",
+      "replay_result_sha256": "c64a93a260809deeb751ed77822ce657f793adfb89cc30b889691b8d72ff8bc1",
+      "source_bytes_unchanged": true,
+      "toolchain_bytes_unchanged": true,
+      "local_proof_objects_reused": false,
+      "download_exit_status": 0,
+      "http_status": 200,
+      "ssl_verify_result": 0,
+      "downloaded_bytes": 343842845,
+      "redirects": 1,
+      "archive_validation_exit_status": 0,
+      "archive_members": 5066,
+      "extract_exit_status": 0,
+      "tls_verification_disabled": false
+    },
+    {
+      "mode": "verified_cache_hit",
+      "entry_exit_status": 0,
+      "replay_exit_status": 0,
+      "four_separate_command_exits": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "audited_theorems": 83,
+      "checker_sha256_before": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+      "checker_sha256_after": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+      "verification_result_sha256": "afba2f37032e9b21b2af5488e750f7a909c7f2bad140be7d0474c5a6395f8675",
+      "replay_result_sha256": "661cf16ef68215a6865c5636de4c2ea5c1525c32e258a90e7247e3268b7037c1",
+      "source_bytes_unchanged": true,
+      "toolchain_bytes_unchanged": true,
+      "local_proof_objects_reused": false,
+      "download_performed": false,
+      "extraction_performed": false,
+      "verification_entry_sha256": "151292c9296016ca7816fc65d8ca8d68357b0101cb02ecad2d6b24167972ac6e"
+    }
+  ],
+  "evidence_content_policy": "official source/download metadata, proof commands/hashes/closures and pure mathematical fixture identities only; no HTTP authentication headers, full environment, credentials, user transcripts or business gold",
+  "packaging_execution_note": "Fresh HTTPS download/extraction replay passed before the final dangling-partial-link rejection was added; that guard preserves the clean-cache fallthrough. Final entry bytes passed the 10-test boundary suite and a separate cache-hit clean replay."
+}

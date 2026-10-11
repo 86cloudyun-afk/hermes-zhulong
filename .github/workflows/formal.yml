@@ -1,0 +1,48 @@
+name: typed ticket proof
+on:
+  push:
+    paths:
+      - 'formal/ticket-kernel/**'
+      - 'certified_ticket.py'
+      - '.github/workflows/formal.yml'
+  pull_request:
+    paths:
+      - 'formal/ticket-kernel/**'
+      - 'certified_ticket.py'
+      - '.github/workflows/formal.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lean:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Cache the pinned official archive and toolchain
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/hermes-ticket-lean-4.19.0
+          key: lean-4.19.0-linux-6fe3ce97a58f44e2b3567d455b994eacec5bfe9ae7774f2a573444480ba813fe
+      - name: Verify identities and run clean kernel build and axiom audit
+        run: |
+          formal/ticket-kernel/check.sh \
+            --cache-dir "$RUNNER_TEMP/hermes-ticket-lean-4.19.0" \
+            --workdir "$RUNNER_TEMP/hermes-ticket-proof-replay" \
+            --evidence-dir "$RUNNER_TEMP/hermes-ticket-proof-evidence"
+      - name: Check verification failure boundaries
+        env:
+          HERMES_TEST_LEAN_TOOLCHAIN: ${{ runner.temp }}/hermes-ticket-lean-4.19.0/lean-4.19.0-linux
+        run: python3 -I formal/ticket-kernel/test_verify.py
+      - name: Retain proof and provenance logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typed-ticket-proof-logs
+          path: |
+            ${{ runner.temp }}/hermes-ticket-proof-evidence
+            ${{ runner.temp }}/hermes-ticket-proof-replay/replay-evidence
+          if-no-files-found: warn

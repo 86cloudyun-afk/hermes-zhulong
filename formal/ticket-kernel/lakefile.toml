@@ -1,0 +1,6 @@
+name = "hermes-ticket-proof"
+version = "0.1.0"
+defaultTargets = ["HermesTicket"]
+
+[[lean_lib]]
+name = "HermesTicket"
