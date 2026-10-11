@@ -354,12 +354,20 @@ class PairedTests(unittest.TestCase):
 
     def test_expired_cleanup_grace_is_never_refilled_on_reconciliation(self):
         trial=self.freeze();a=trial.allocations[0];trial.prepare(a['id']);trial.launch_intent(a['id'])
-        old=self.m.host_clock();old['utc']-=1000;old['monotonic']-=1000
+        # Keep the stale origin valid even on a freshly booted CI runner.
+        self.clock.utc=self.clock.mono=2000.
+        old=self.clock();old['utc']-=1000;old['monotonic']-=1000
         trial._append('endpoint_origin',a['id'],{'origin':old,'deadline_utc':old['utc']+180,'seconds':180})
-        with patch.object(self.m.subprocess,'run',side_effect=OSError('offline')):
-            trial.reconcile()
+        Deadline=self.m.Deadline
+        with patch.object(self.m,'Deadline',side_effect=lambda origin,seconds:Deadline(origin,seconds,clock=self.clock)),patch.object(self.m,'host_clock',self.clock),patch.object(self.m.subprocess,'run',side_effect=OSError('offline')):
+            report=trial.reconcile()
         start=trial._event('cleanup_origin',a['id'])
         self.assertLessEqual(start['monotonic'],old['monotonic']+180)
+        self.assertEqual(start,dict(utc=1180.,monotonic=1180.,boot_id=self.clock.boot))
+        self.assertGreater(self.clock.mono,start['monotonic']+trial.protocol['cleanup_grace_seconds'])
+        receipt=report['allocations'][0]['receipt']
+        self.assertIsNone(receipt['cleanup']);self.assertEqual(receipt['outcome'],'unknown')
+        self.assertFalse(receipt['paired_qualified'])
 
     def test_capture_cannot_reset_registered_origin_after_outcome(self):
         trial,a,profile,sub=self.execution_artifacts()
