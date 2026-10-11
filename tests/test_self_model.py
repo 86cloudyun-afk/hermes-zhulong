@@ -93,4 +93,75 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(self.model.expected_success('personal'),0.5)
 
 
+class MonitoringMetricTests(unittest.TestCase):
+    def test_auroc_ties_reverse_and_single_class(self):
+        from self_model import _metrics
+        for samples,expected in (([(.9,True),(.1,False)],1),
+                                 ([(.1,True),(.9,False)],0),
+                                 ([(.5,True),(.5,False)],.5)):
+            with self.subTest(samples=samples):
+                result=_metrics(samples)
+                self.assertEqual(result['auroc2'],expected)
+                self.assertTrue(result['discrimination_available'])
+                self.assertEqual(result['positive_samples'],1)
+                self.assertEqual(result['negative_samples'],1)
+        result=_metrics([(.8,True)])
+        self.assertIsNone(result['auroc2'])
+        self.assertFalse(result['discrimination_available'])
+        self.assertEqual(result['error_discrimination'],'unavailable')
+
+    def test_unknown_labels_are_excluded_from_coverage_and_risk(self):
+        from self_model import _metrics
+        result=_metrics([(.9,True),(.1,False),(.99,None),(None,False)])
+        self.assertEqual(result['forecast_samples'],2)
+        self.assertAlmostEqual(result['confidence_gap'],.8)
+        row=next(row for row in result['coverage_risk'] if row['threshold']==.6)
+        self.assertEqual(row['coverage'],.5)
+        self.assertEqual(row['risk'],0)
+        self.assertEqual(row['covered'],1)
+
+    def test_bound_forecast_is_exported_with_scope_and_measured_cost(self):
+        import metacognition
+        from self_model import SelfModel
+        with tempfile.TemporaryDirectory() as name:
+            ledger=Ledger(Path(name)/'data.db');goal=make_goal(ledger)
+            lease=ledger.claim('a',1000,20);identity={'version':'v1'};request={'input':json.dumps({'objective':'Work'})}
+            policy=metacognition.validate_monitoring({'enabled':True,'mode':'constant','constant_probability':.7})
+            with ledger._connection(True) as c:
+                metacognition.initialize(c)
+                captured=metacognition.capture(c,goal,identity,request,1000,policy)
+            submission=ledger.prepare_submission(lease,request,'session',identity,1000,8,1,3,86400,
+                                                monitoring_policy=policy,monitoring_capture=captured)['submission']
+            before=SelfModel(ledger,Path(name)).refresh()
+            ledger.record_attempt_result(lease,submission['id'],evidence(goal,True),1001)
+            ledger.finish(lease,evidence(goal,True),'succeeded',True,1001,expected_submission_id=submission['id'])
+            snapshot=SelfModel(ledger,Path(name)).refresh()
+            self.assertGreater(snapshot['version'],before['version'])
+            self.assertEqual(snapshot['functional_monitoring']['bound_predictions'],1)
+            self.assertEqual(snapshot['functional_monitoring']['actual_extra_checks'],0)
+            attempts=snapshot['domains']['code']['attempts']
+            self.assertEqual(attempts['forecast_provenance'][0]['origin'],'trusted_constant')
+            self.assertEqual(attempts['forecast_provenance'][0]['scope']['source_id'],goal['source_id'])
+            self.assertAlmostEqual(attempts['brier'],.09)
+
+    def test_self_model_reports_functional_monitoring_and_legacy_origin(self):
+        from self_model import SelfModel
+        with tempfile.TemporaryDirectory() as name:
+            ledger=Ledger(Path(name)/'data.db');goal=make_goal(ledger)
+            lease=ledger.claim('a',1000,20)
+            submission=ledger.prepare_submission(lease,{'input':'intent'},'session',{'version':'v1'},
+                                                1000,8,1,3,86400)['submission']
+            # A pre-monitoring ledger contains submissions but no prediction side table.
+            with ledger._connection(True) as c:c.execute('DROP TABLE attempt_predictions')
+            ledger.record_attempt_result(lease,submission['id'],evidence(goal,True),1001)
+            ledger.finish(lease,evidence(goal,True),'succeeded',True,1001,expected_submission_id=submission['id'])
+            model=SelfModel(ledger,Path(name)).refresh()
+            summary=model['functional_monitoring']
+            self.assertEqual(summary['legacy_forecasts'],1)
+            self.assertEqual(summary['bound_predictions'],0)
+            provenance=model['domains']['code']['attempts']['forecast_provenance'][0]
+            self.assertEqual(provenance['origin'],'goal_prior_reused_before_submission')
+            self.assertNotIn('consciousness_score',model)
+
+
 if __name__=='__main__':unittest.main()

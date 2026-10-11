@@ -11,7 +11,7 @@ Zhulong 是 [Hermes Agent](https://github.com/NousResearch/hermes-agent) 的插�
 1. **观测（S2）**：订阅 11 个 observer hooks，把每个生命周期事件规范化、脱敏、写入本地日记（JSONL + SQLite）。
 2. **校准（S3）**：登记 agent 的预测/声明（工具 `zhulong_predict`），由**机械核验器或人工**结算，产出 Brier / ECE / 命中率 / 弃答统计与历史快照。
 
-3. **自主核心（v0.5）**：观察配置来源、合成可验证目标、持久提交、独立核验及维护有样本分母的自我模型；增加受监督运行与 Docker 执行边界。配置启用后，日常闭环无需逐项人工评分。
+3. **自主核心（v0.9）**：观察配置来源、合成可验证目标、持久提交和独立核验；在受监督 Docker 边界内执行可信步骤 DAG、有界干预诊断和派发前复查，维护有样本分母的自我模型。配置启用后，日常闭环无需逐项人工评分。
 
 这是可测试的功能自我模型，测试不证明主观意识。关键纪律：**agent 永远不能给自己的预测打分**。
 
@@ -43,6 +43,11 @@ hermes plugins enable zhulong    # 加入 allow-list
 /zhulong model                        # 证据型自我模型
 /zhulong autonomy status              # 自主状态
 /zhulong autonomy goals               # 最近目标
+/zhulong autonomy experience          # 策略经验与证据范围
+/zhulong autonomy skills              # 可执行技能版本与状态
+/zhulong autonomy workflows           # 持久步骤、依赖与效果状态
+/zhulong autonomy diagnostics         # 有界干预诊断与证据等级
+/zhulong autonomy assurance           # 运行有限模型检查及账本轨迹验证
 /zhulong autonomy tick                # 推进一次有界循环
 /zhulong autonomy pause               # 暂停新合成/派发，继续对账
 /zhulong autonomy resume              # 恢复配置允许的工作
@@ -53,10 +58,12 @@ Agent 侧工具：
 
 ```
 zhulong_predict(claim, confidence?, verify?)    # 登记预测
-zhulong_calibration(action=report|run|list)     # 读账/对账
+zhulong_calibration(action=report|run|list|reflect|probes|run_probes)
 zhulong_model()                               # 只读自我模型
-zhulong_autonomy(action=status|goals|tick)     # 不提供直接评分/改验收入口
+zhulong_autonomy(action=status|goals|tick|experience|skills|workflows|diagnostics|assurance)
 ```
+
+仍为 **4 个工具、11 个观测 hooks、1 个命令入口**。`zhulong_autonomy` 有上述 8 个 actions；暂停、恢复和取消由 `/zhulong autonomy` 命令操作。工具不提供直接评分或修改验收入口；`assurance` 会运行检查，普通 `status` 只展示已有检查记录。
 
 ## 校准账（S3）
 
@@ -115,9 +122,10 @@ zhulong_autonomy(action=status|goals|tick)     # 不提供直接评分/改验收
 - ✅ v0.6.0：失败证据学习、策略复用、独立任务验证晋升和失败自动退役
 - ✅ v0.7.0：独立 Docker 可执行程序评测、不可变版本发布、冻结请求复用和失败回退
 - ✅ v0.8.0：授权结构化输入冻结、原目标字段回归和严格原生执行证据
+- ✅ v0.9.0：完整参考 JSON 验收、持久步骤 DAG/本地 outbox、有界干预诊断、尝试级元认知和有限状态保证
 - ⏳ 后续：周报投递、真实外部事务、控制内核自动晋升与长期测试
 
-下一阶段的五条研究线、复现实验和工程验收见 [完整执行、根因、因果提升、意识与正确性](docs/research/2026-10-11-autonomy-frontiers.md)。本轮新增研究证据，产品版本仍为 v0.8；步骤工作流、干预诊断和正式随机评测尚待实现。
+五条研究线和历史证据见 [完整执行、根因、因果提升、意识与正确性](docs/research/2026-10-11-autonomy-frontiers.md)；当前实现、部署入口与未完成项目见 [v0.9 工程清单](docs/deployment/engineering-closure.md)。`causal_trial.py` 已提供固定 N 配对协议、收据资格检查和分析，真实配对 execution adapter 尚未实现。`native_work_acceptance.py` 是真实 Hermes 有限业务 pilot 的运行入口，验收结果须按实际运行单独记录。
 
 ## License
 
@@ -133,11 +141,15 @@ MIT © 2026 YG
 
 默认每日新 run 8 次、同时 1 个、候选最多 3 个、租约 120 秒、目标期限 600 秒、独立尝试最多 3 次。共享辅助模型调用默认 40 次/日，零表示停用。一次 tick 至多 20 个目标操作和一次新 submission；积压受阻工作轮转，模型、HTTP 和检查在数据库写锁之外。源事实和验收 / 方向的相关变化形成新版本；相同输入不反复规划。`input_fields` 可从 JSON 选取相关字段，避免无关噪声触发工作。
 
-机械验收支持 `file_contains`、`json_equals`、显式可信的 `argv`。文件和输出最多 64 KiB，argv 默认 15 秒且不用 shell。已有产物记为 `already_satisfied`，不派发或计能力成功；要求变化的契约比较初始 hash。研究字段 / 格式验收只覆盖约定范围，不能据此声称论文结论普遍正确；个人场景是本地草案，未接真实日历 / 邮箱。
+机械验收支持 `file_contains`、`json_equals`、`json_reference`、显式可信的 `argv`。文件和输出最多 64 KiB，argv 默认 15 秒且不用 shell。`json_equals` 使用整文件严格 JSON 解析，拒绝重复键、非有限数及超过 32 层的业务 JSON，比较时区分布尔、整数与浮点类型；检查版本为 2，旧收据保留。
+
+`json_reference` 从已授权冻结输入计算整份期望业务结果，支持 `workload_summary_v1`（工作量汇总）、`ticket_priority_v1`（工单排序）、`source_index_v1`（来源索引）。来源须显式设置 `persist_input_fields`，契约包含 `path`、`reference_id`、`reference_version: 1` 和可选 `require_change`/`safe_retry`；执行请求提供规则和授权输入，私有核验器计算答案。缺少有效输入绑定为 unknown。配置示例和限制见 [工程清单](docs/deployment/engineering-closure.md#部署使用)。
+
+已有产物记为 `already_satisfied`，不派发或计能力成功；要求变化的契约比较初始 hash。研究字段 / 格式验收只覆盖约定范围，不能据此声称论文结论普遍正确；个人场景是本地草案，未接真实日历 / 邮箱。
 
 `pause` 只暂停新工作。相同 submission 的恢复不消耗新尝试或预算；响应丢失在保留窗口内重放原请求。`interrupted`、stop accepted 和缺少产物都不能证明没有迟到副作用；未知在途执行保留名额。审批终止后的旧目标保持受阻，不自动重发；新来源 / 契约版本可以形成新目标。过期重放或身份连续性不明时记录 `unknown_result`，避免盲目重复动作。正常宿主结果与独立验收都完成后才结算可信结果。
 
-自我模型展示领域 / 执行身份范围、可信样本、未知、受阻、首次 / 累计成功、Brier/ECE 及错误置信度。零样本明确未知，单一标签时错误区分指标不可用。历史影响目标选择；反思仍是有来源和适用范围的假设。`SelfModel.restore(version)` 只恢复导出快照，保留原始结果；下一次刷新从最新证据重建。
+自我模型展示领域 / 执行身份范围、可信样本、未知、受阻、首次 / 累计成功、Brier/ECE、AUROC2、confidence gap 和 coverage-risk。旧 `error_discrimination` 字段只表示指标可计算性；质量另由带正负样本数的指标报告。每次派发前冻结同范围历史估计和监控决策，低概率时可按可信配置执行有界前置复查。零样本为 prior_only，单一标签时 AUROC2 不可用。历史影响目标选择；反思仍是有来源和适用范围的假设。`SelfModel.restore(version)` 只恢复导出快照，保留原始结果；下一次刷新从最新证据重建。
 
 ## 经验学习（v0.6）
 

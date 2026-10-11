@@ -151,7 +151,7 @@ MODEL_SCHEMA = {
 AUTONOMY_SCHEMA = {
     "name": "zhulong_autonomy", "description": "查看自主目标/状态，或推进一个有界自主循环；不能直接评分或改验收。",
     "parameters": {"type": "object", "properties": {
-        "action": {"type": "string", "enum": ["status", "goals", "tick", "experience", "skills"]}}, "additionalProperties": False},
+        "action": {"type": "string", "enum": ["status", "goals", "tick", "experience", "skills", "workflows", "diagnostics", "assurance"]}}, "additionalProperties": False},
 }
 
 
@@ -177,11 +177,14 @@ def _autonomy_handler(controller, ledger, error=None):
         if not isinstance(params, dict) or set(params)-{'action'}:
             return json.dumps({"ok": False, "reason": "invalid_autonomy_action"})
         action=params.get('action','status')
-        if action not in ('status','goals','tick','experience','skills'):
+        if action not in ('status','goals','tick','experience','skills','workflows','diagnostics','assurance'):
             return json.dumps({"ok": False, "reason": "invalid_autonomy_action"})
         try:
             if action=='goals':return json.dumps({"ok": True, "goals": _public_goals(ledger)},ensure_ascii=False)
             if controller is None:return json.dumps({"ok": False,"enabled": False,"blocked_reason":error or 'runtime_unavailable'})
+            if action in ('workflows','diagnostics','assurance'):
+                result=controller.workflows.summary() if action=='workflows' else controller.diagnostics_status() if action=='diagnostics' else controller.assurance_status(run=True)
+                return json.dumps({'ok':True,**result},ensure_ascii=False)
             result=controller.tick() if action=='tick' else (controller.experience_status() if action=='experience' else
                 (controller.skills_status() if action=='skills' else controller.status()))
             return json.dumps({"ok": True, **result},ensure_ascii=False)

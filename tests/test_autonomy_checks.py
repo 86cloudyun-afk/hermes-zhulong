@@ -84,6 +84,22 @@ class CheckTests(unittest.TestCase):
         contract={'type':'json_equals','path':str(self.root/'result.txt'),'field':'ok','value':True}
         self.assertIs(self.m.Verifier(self.policy).capture(contract)['verdict'],False)
 
+    def test_json_equals_validates_entire_file_strictly_and_versions_new_checks(self):
+        contract={'type':'json_equals','path':str(self.root/'result.txt'),'field':'ok','value':True}
+        for raw in ['{"ok":false,"ok":true}', '{"ok":true,"noise":NaN}',
+                    '{"ok":true,"noise":Infinity}', '{"ok":true,"noise":1e999}',
+                    '{"ok":true,"noise":'+ '['*33+'0'+']'*33+'}']:
+            with self.subTest(raw=raw):
+                (self.root/'result.txt').write_text(raw)
+                self.assertEqual(self.m.Verifier(self.policy).capture(contract)['verdict'],'unknown')
+        (self.root/'result.txt').write_text('{"ok":true}')
+        self.assertEqual(self.m.Verifier(self.policy).capture(contract)['check_version'],2)
+
+    def test_json_equals_preserves_integer_and_float_types(self):
+        contract={'type':'json_equals','path':str(self.root/'result.txt'),'field':'ok','value':1}
+        (self.root/'result.txt').write_text('{"ok":1.0}')
+        self.assertIs(self.m.Verifier(self.policy).capture(contract)['verdict'],False)
+
     def test_changed_contract_changes_source_revision(self):
         before=self.m.observe_sources(self.policy)[0]['revision']
         self.raw['sources'][0]['contracts']['result']['text']='new acceptance'

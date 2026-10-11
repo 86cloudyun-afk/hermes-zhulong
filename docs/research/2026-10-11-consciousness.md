@@ -156,3 +156,7 @@ PP-1 也在 Butlin 指标中：明确感知模块使用 predictive coding。普�
 所有联网请求使用继承的代理和 CA，保持 TLS 验证，没有读取或输出凭据。无需新增插件即可取得公开原站论文并完成离线探针。正文下载为 `.download`，提取为 `.txt`，来源清单和文件 SHA-256 为同目录 `sources.json`；探针 JSON 记录固定 repo HEAD 和合成样本。
 
 本轮实测范围只有三组人工观测的真实产品 `_metrics` 调用与现有 6 项 self_model 单测。没有付费模型测试、人工意识实验、长期运行、神经激活测量、IIT 计算、分步计划新实现或随机真实任务干预。未访问正文的文献和失败下载已在上文单独记录。
+
+## 后续工程入口（v0.9）
+
+尝试级事前预测、前置复查、AUROC2/coverage-risk 与意识证据边界见 [工程清单](../deployment/engineering-closure.md)；实现范围与验收设计见 [研究落地规格](../superpowers/specs/2026-10-11-frontiers-engineering-design.md)。本报告的研究时点、实验结果和未运行提案保留原记录。

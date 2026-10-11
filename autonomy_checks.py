@@ -17,8 +17,10 @@ from urllib.parse import urlsplit
 
 try:
     from .autonomy_store import digest, canonical
+    from .skill_evaluator import strict_json
 except ImportError:
     from autonomy_store import digest, canonical
+    from skill_evaluator import strict_json
 
 LIMIT=65536
 DEFAULTS={'daily_runs':8,'skill_daily_evaluations':16,'input_snapshot_bytes':8388608,'max_active':1,'max_candidates':3,'lease_seconds':120,
@@ -54,18 +56,27 @@ def scoped_path(value,policy):
 def contract_policy(raw,policy):
     if not isinstance(raw,dict):raise ValueError('invalid_contract')
     kind=raw.get('type')
-    fields={'file_contains':{'path','text'},'json_equals':{'path','field','value'},'argv':{'argv','cwd','timeout_seconds'}}
+    fields={'file_contains':{'path','text'},'json_equals':{'path','field','value'},
+            'json_reference':{'path','reference_id','reference_version'},'argv':{'argv','cwd','timeout_seconds'}}
     if kind not in fields or set(raw)-fields[kind]-{'type','require_change','safe_retry'}:raise ValueError('invalid_contract_fields')
     out=dict(raw)
     for flag in ('require_change','safe_retry'):
         if type(out.get(flag,False)) is not bool:raise ValueError('invalid_'+flag)
         out[flag]=out.get(flag,False)
-    if kind in ('file_contains','json_equals'):
+    if kind in ('file_contains','json_equals','json_reference'):
         out['path']=str(scoped_path(out.get('path'),policy))
         if kind=='file_contains':out['text']=bounded_text(out.get('text'),'contract_text',4096)
-        else:
+        elif kind=='json_equals':
             out['field']=bounded_text(out.get('field'),'json_field',200)
             if 'value' not in out or len(canonical(out['value']))>4096:raise ValueError('invalid_json_value')
+            strict_json(canonical(out['value']))
+        else:
+            try:
+                from .work_reference import REFERENCE_IDS
+            except ImportError:
+                from work_reference import REFERENCE_IDS
+            if out.get('reference_id') not in REFERENCE_IDS:raise ValueError('unknown_reference')
+            if type(out.get('reference_version')) is not int or out['reference_version']!=1:raise ValueError('unknown_reference_version')
     else:
         argv=out.get('argv')
         if not isinstance(argv,list) or not 1<=len(argv)<=32 or any(not isinstance(a,str) or not a or len(a)>4096 or '\x00' in a for a in argv):raise ValueError('invalid_argv')
@@ -80,7 +91,7 @@ def validate_config(raw,base):
     if not isinstance(raw,dict):raise ValueError('invalid_autonomy_config')
     if type(raw.get('enabled',False)) is not bool:raise ValueError('invalid_enabled')
     if not raw.get('enabled',False):return {'enabled':False,'base':str(base)}
-    allowed={'enabled','mission','workspace_roots','sources','api_url','api_key_env','api_identity_version','api_profile','learning_enabled','executable_skills',*DEFAULTS}
+    allowed={'enabled','mission','workspace_roots','sources','api_url','api_key_env','api_identity_version','api_profile','learning_enabled','executable_skills','workflows','diagnostics','diagnostic_daily_evaluations','monitoring',*DEFAULTS}
     if set(raw)-allowed:raise ValueError('unknown_autonomy_setting')
     policy={**DEFAULTS,**raw,'base':str(Path(base).resolve())}
     if type(policy.get('learning_enabled',True)) is not bool:raise ValueError('invalid_learning_enabled')
@@ -128,6 +139,20 @@ def validate_config(raw,base):
     except ImportError:
         from skill_evaluator import validate_skills
     policy['executable_skills']=validate_skills(raw.get('executable_skills',[]),normalized)
+    try:
+        from .workflow import validate_workflows
+        from .diagnostics import validate_diagnostics
+        from .metacognition import validate_monitoring
+    except ImportError:
+        from workflow import validate_workflows
+        from diagnostics import validate_diagnostics
+        from metacognition import validate_monitoring
+    policy['workflows']=validate_workflows(raw.get('workflows',[]),policy)
+    policy['diagnostics']=validate_diagnostics(raw.get('diagnostics',[]),policy)
+    policy['monitoring']=validate_monitoring(raw.get('monitoring',{}))
+    value=raw.get('diagnostic_daily_evaluations',2)
+    if type(value) is not int or not 0<=value<=16:raise ValueError('invalid_diagnostic_budget')
+    policy['diagnostic_daily_evaluations']=value
     return policy
 
 
@@ -205,11 +230,22 @@ def validate_candidates(raw,observations,policy):
 class Verifier:
     def __init__(self,policy):self.policy=policy
 
-    def capture(self,contract):
-        result={'verdict':'unknown','contract_hash':digest(contract),'artifact_hash':None,'reason':'verification_unavailable','check_version':1}
+    def capture(self,contract,task_input=None):
+        result={'verdict':'unknown','contract_hash':digest(contract),'artifact_hash':None,'reason':'verification_unavailable','check_version':2}
         try:
             normalized=contract_policy(contract,self.policy)
             kind=normalized['type']
+            if kind=='json_reference':
+                try:
+                    from .task_inputs import _validated
+                    from .work_reference import reference_output
+                except ImportError:
+                    from task_inputs import _validated
+                    from work_reference import reference_output
+                bound=_validated(task_input)
+                expected=reference_output(normalized['reference_id'],bound['data'])
+                result.update(input_hash=bound['input_hash'],rule_hash=bound['rule_hash'],source_revision=bound['source_revision'],
+                              reference_id=normalized['reference_id'],reference_version=1)
             if kind=='argv':
                 code,content=self._argv(normalized)
                 result.update(verdict=code==0,artifact_hash=digest([code,hashlib.sha256(content).hexdigest()]),reason='argv_exit_'+str(code))
@@ -219,16 +255,20 @@ class Verifier:
                     result.update(verdict=False,reason='artifact_absent');return result
                 result['artifact_hash']=hashlib.sha256(content).hexdigest()
                 if kind=='file_contains':valid=normalized['text'] in content.decode('utf-8')
-                else:
-                    try:valid=canonical(_field(json.loads(content),normalized['field']))==canonical(normalized['value'])
+                elif kind=='json_equals':
+                    try:valid=canonical(_field(strict_json(content),normalized['field']))==canonical(normalized['value'])
                     except KeyError:valid=False
+                else:valid=canonical(strict_json(content))==canonical(expected)
                 result.update(verdict=valid,reason='contract_satisfied' if valid else 'contract_not_satisfied')
         except (OSError,ValueError,UnicodeError,subprocess.SubprocessError):pass
         return result
 
-    def check(self,contract,baseline):
-        result=self.capture(contract)
-        if baseline.get('verdict') is True:
+    def check(self,contract,baseline,task_input=None):
+        result=self.capture(contract,task_input)
+        same_binding=(contract.get('type')!='json_reference' or
+                      (result.get('input_hash') is not None and all(result.get(k)==baseline.get(k)
+                       for k in ('input_hash','rule_hash','source_revision','reference_id','reference_version'))))
+        if baseline.get('verdict') is True and result['verdict']!='unknown' and same_binding:
             result.update(verdict='already_satisfied',reason='satisfied_before_action')
         elif result['verdict'] is True and contract.get('require_change',False) and result['artifact_hash']==baseline.get('artifact_hash'):
             result.update(verdict=False,reason='artifact_unchanged')

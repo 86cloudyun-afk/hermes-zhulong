@@ -18,7 +18,8 @@ HOST_REVISION='73162b00eefde3794bed0afb53d84a19c0eed230'
 PLUGIN_FILES=('plugin.yaml','__init__.py','storage.py','sensor.py','commands.py',
     'calibrate.py','reflect.py','probes.py','autonomy_store.py','autonomy_checks.py',
     'hermes_runs.py','self_model.py','autonomy.py','runtime_channel.py','experience_store.py','experience.py',
-              'skill_store.py','skill_evaluator.py','skill_learning.py','task_inputs.py','skill_replay.py')
+              'skill_store.py','skill_evaluator.py','skill_learning.py','task_inputs.py','skill_replay.py',
+              'work_reference.py','workflow.py','diagnostics.py','metacognition.py','assurance.py','causal_trial.py')
 DOCKER_ENV_KEYS=('DOCKER_CONTEXT','DOCKER_TLS','DOCKER_TLS_VERIFY','DOCKER_CERT_PATH')
 CACHE_PATHS=('cache/documents','cache/images','cache/audio','cache/videos','cache/screenshots',
     'cache/web','cache/delegation','cache/spillover','cache/generated','images','attachments','composer-pastes')
@@ -27,7 +28,7 @@ OTHER_PLATFORMS=('local','telegram','discord','whatsapp','whatsapp_cloud','slack
     'wecom_callback','weixin','bluebubbles','qqbot','yuanbao','relay')
 TMPFS_POLICY={'/tmp':'rw,nosuid,size=512m','/var/tmp':'rw,noexec,nosuid,size=256m',
     '/run':'rw,noexec,nosuid,size=64m','/home':'rw,exec,size=1g',
-    '/root':'rw,exec,size=1g','/workspace':'rw,exec,size=10g'}
+    '/root':'rw,exec,size=1g,mode=711','/workspace':'rw,exec,size=10g'}
 
 
 def overlaps(a,b):
@@ -80,7 +81,7 @@ def validate_worker_policy(m,policy):
         path=Path(source['path'])
         if not path.is_relative_to(Path(m['work'])):raise ValueError('source_outside_work')
         for contract in source['contracts'].values():
-            if contract['type'] not in {'file_contains','json_equals'}:raise ValueError('host_code_verification_forbidden')
+            if contract['type'] not in {'file_contains','json_equals','json_reference'}:raise ValueError('host_code_verification_forbidden')
             if contract['path'] in sources:raise ValueError('source_output_overlap')
     return policy
 
@@ -94,7 +95,13 @@ def native_config(m,policy,boot_id='preflight'):
         'docker_network':False,'container_persistent':False,'docker_persist_across_processes':False,
         'docker_shared_container_key':'','docker_orphan_reaper':False,'docker_snap_compat':False,
         'docker_shm_size':'64m','container_cpu':0,'container_memory':0,'container_disk':0,
-        'docker_extra_args':['--read-only','--cpus','1','--memory','512m','--memory-swap','512m',
+        # The pinned host treats any :/workspace-prefixed bind as a workspace
+        # mount and omits its default tmpfs. Provision the exact checked mount.
+        # The image's /root is 0700; uid1000 needs traversal to the native RO
+        # cache mounts. Keep root-owned /root unlistable and unwritable.
+        'docker_extra_args':['--read-only','--tmpfs','/workspace:'+TMPFS_POLICY['/workspace'],
+            '--tmpfs','/root:'+TMPFS_POLICY['/root'],
+            '--cpus','1','--memory','512m','--memory-swap','512m',
             '--pids-limit','128','--label','zhulong.runtime='+m['deployment_id'],
             '--label','zhulong.boot='+boot_id]}
     return {'model':{'provider':'deepseek','default':'deepseek-flash'},

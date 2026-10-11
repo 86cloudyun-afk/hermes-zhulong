@@ -12,11 +12,13 @@ try:
     from .autonomy_store import canonical
     from .hermes_runs import RunsError
     from . import task_inputs
+    from . import workflow,metacognition
 except ImportError:
     from autonomy_checks import observe_sources,validate_candidates
     from autonomy_store import canonical
     from hermes_runs import RunsError
     import task_inputs
+    import workflow,metacognition
 
 
 class PlannerError(Exception):pass
@@ -67,6 +69,16 @@ class Controller:
                                  'identity_version':policy.get('api_identity_version'),'profile':policy.get('api_profile','default')}
         self._tick_lock=threading.Lock();self._lifecycle_lock=threading.Lock();self._stop=threading.Event();self._thread=None;self._recovery_cursor=0;self._ready_cursor=0
         self.admission_gate=None
+        self.workflows=workflow.WorkflowStore(ledger,policy.get('workflows',[]))
+        self.workflows.capture=lambda contract,task_input:self.verifier.capture(contract,task_input)
+        try:
+            from .diagnostics import DiagnosticStore,DiagnosticRunner
+            from .skill_evaluator import DockerEvaluator
+        except ImportError:
+            from diagnostics import DiagnosticStore,DiagnosticRunner
+            from skill_evaluator import DockerEvaluator
+        self.diagnostics=DiagnosticRunner(DiagnosticStore(ledger,policy.get('diagnostics',[])),
+            DockerEvaluator(ledger.path),clock=clock,daily_budget=policy.get('diagnostic_daily_evaluations',2))
         self._progress_lock=threading.Lock()
         self._progress_state={'phase':'idle','updated_monotonic':time.monotonic(),'ticks':0,'errors':0,'reason':None}
 
@@ -155,8 +167,8 @@ class Controller:
                     if lost.is_set():raise PlannerError('source_lease_lost')
                     if current.get(candidate['source_id'])!=candidate['source_revision']:raise PlannerError('source_changed')
                     contract=sources[candidate['source_id']]['contracts'][candidate['contract_id']]
-                    baseline=self.verifier.capture(contract)
                     observed=next(o for o in selected if o['id']==candidate['source_id'])
+                    baseline=self.verifier.capture(contract,observed.get('task_input'))
                     goal=self.ledger.create_goal(candidate,candidate['source_revision'],contract,baseline,self.clock(),self.policy['run_deadline_seconds'],source_owner=owner,task_input=observed.get('task_input'))
                     if goal is None:raise PlannerError('source_lease_lost')
                     accepted+=1
@@ -178,6 +190,15 @@ class Controller:
         if goal.get('task_input') is not None:
             intent['task_input']=goal['task_input']
             intent['input_rule']='Use the frozen canonical JSON data in task_input for this goal. A current source file is not a replacement for that input. Binding alone is not evidence of use.'
+        if goal['contract']['type']=='json_reference':
+            try:
+                from .work_reference import reference_instructions
+            except ImportError:
+                from work_reference import reference_instructions
+            intent['business_rules']=reference_instructions(goal['contract']['reference_id'])
+        if goal.get('workflow') is not None:
+            intent['workflow_step']=goal['workflow']
+            intent['operation_id']=goal['operation_id']
         if self.experience is not None and self.policy.get('learning_enabled',True):
             try:strategies=self.experience.store.retrieve(goal,self.execution_identity)
             except Exception:strategies=[]
@@ -213,19 +234,19 @@ class Controller:
             self.ledger.record_runtime(lease,submission['id'],result,self.clock())
             state=result['status'];cancel=bool(goal.get('cancel_requested'))
             quiet=state in {'completed','failed','cancelled'}
-            if goal['state']=='succeeded':
-                self._transition(lease,goal,'succeeded','verified; execution tracking continues',quiet)
-                return
             if cancel:
                 if not quiet:self.runs.stop(submission)
                 self._finish(lease,goal,'cancelled','cancel_requested',quiet);return
+            if goal['state']=='succeeded':
+                self._transition(lease,goal,'succeeded','verified; execution tracking continues',quiet)
+                return
             if state=='waiting_for_approval':
                 self.runs.stop(submission)
                 self._transition(lease,goal,'blocked','waiting_for_approval; stop requested',False);return
             if not quiet and state!='interrupted':
                 if now>=goal['deadline']:self.runs.stop(submission)
                 self._transition(lease,goal,'running','stop requested at deadline' if now>=goal['deadline'] else 'execution_active',False);return
-            checked=self.verifier.check(goal['contract'],goal['baseline'])
+            checked=self.verifier.check(goal['contract'],goal['baseline'],goal.get('task_input'))
             if state=='interrupted':
                 if checked['verdict'] is True and now<=goal['deadline']:
                     self.ledger.record_attempt_result(lease,submission['id'],checked,self.clock())
@@ -239,7 +260,7 @@ class Controller:
                 self._finish(lease,goal,'succeeded','contract_satisfied',True,checked)
             elif checked['verdict'] is False:
                 self.ledger.record_attempt_result(lease,submission['id'],checked,self.clock())
-                if goal['contract'].get('safe_retry',False) and goal['attempts']<self.policy['max_attempts'] and now<goal['deadline']:
+                if goal['contract'].get('safe_retry',False) and self.workflows.retry_allowed(goal['id']) and goal['attempts']<self.policy['max_attempts'] and now<goal['deadline']:
                     self._transition(lease,goal,'ready','safe_retry_after_verified_failure',True)
                 else:self._finish(lease,goal,'failed','contract_not_satisfied',True,checked)
             else:self._finish(lease,goal,'unknown_result','late_or_unavailable_verification',True)
@@ -254,7 +275,7 @@ class Controller:
         if goal['state']=='blocked' and goal['recovery_reason']=='runtime_requires_approval':return False
         if current.get(goal['source_id'])!=goal['source_revision']:
             self._finish(lease,goal,'blocked','source_revision_changed',True);return False
-        before=self.verifier.capture(goal['contract'])
+        before=self.verifier.capture(goal['contract'],goal.get('task_input'))
         if before['verdict'] is True:
             self._finish(lease,goal,'already_satisfied','satisfied_before_dispatch',True,before);return False
         if before['verdict']!='unknown' and goal['baseline'].get('verdict')!='unknown' and now<goal['deadline']:
@@ -262,20 +283,33 @@ class Controller:
                 capabilities=self.runs.capabilities()
                 if not self._admissible():return False
                 self._transition(lease,goal,'ready','prerequisites_available')
-                prepared=self.ledger.prepare_submission(lease,self._request(goal),'zhulong-'+goal['id'],self.execution_identity,
+                request=self._request(goal)
+                with self.ledger._connection() as c:
+                    forecast=metacognition.capture(c,goal,self.execution_identity,request,self.clock(),self.policy.get('monitoring',{}))
+                request=metacognition.apply_directive(request,forecast);recheck=None
+                if forecast['action']=='recheck':
+                    start=self.clock();checked=self.verifier.capture(goal['contract'],goal.get('task_input'));end=self.clock()
+                    if checked['verdict'] is True:
+                        self._finish(lease,goal,'already_satisfied','satisfied_before_monitoring',True,checked);return False
+                    if checked['verdict'] is not False:
+                        self._finish(lease,goal,'blocked','monitoring_recheck_unavailable',True);return False
+                    recheck={'checks':1,'started_at':start,'finished_at':end,'evidence':checked}
+                prepared=self.ledger.prepare_submission(lease,request,'zhulong-'+goal['id'],self.execution_identity,
                     self.clock(),self.policy['daily_runs'],self.policy['max_active'],self.policy['max_attempts'],capabilities['retention_seconds'],
-                    expected_submission_id=goal['submission']['id'] if goal['submission'] else None)
+                    expected_submission_id=goal['submission']['id'] if goal['submission'] else None,
+                    monitoring_policy=self.policy.get('monitoring',{}),monitoring_capture=forecast,monitoring_recheck=recheck)
                 if not prepared['admitted']:
                     self._transition(lease,goal,'blocked',prepared['reason']);return False
                 result=self.runs.submit(prepared['submission'])
                 self.ledger.record_admission(lease,prepared['submission']['id'],result['run_id'],result['status'],self.clock())
                 self.ledger.record_runtime(lease,prepared['submission']['id'],result,self.clock())
                 return True
-            except RunsError as exc:
+            except (RunsError,ValueError) as exc:
+                reason=exc.code if isinstance(exc,RunsError) else 'monitoring_or_intent_invalid'
                 fresh=self.ledger.get_goal(goal['id'])
                 if fresh['submission']:
-                    self._transition(lease,fresh,'unknown_result',exc.code,False)
-                else:self._finish(lease,goal,'blocked',exc.code,True)
+                    self._transition(lease,fresh,'unknown_result',reason,False)
+                else:self._finish(lease,goal,'blocked',reason,True)
                 return False
         self._finish(lease,goal,'blocked','baseline_unavailable_or_deadline_expired',True);return False
 
@@ -285,7 +319,13 @@ class Controller:
         summary={'ok':True,'new_dispatches':0,'accepted':0}
         try:
             self._phase('observing')
+            self.workflows.sync_cancellations(self.clock())
             observations=observe_sources(self.policy)
+            # Internal step contracts are reached through their frozen dependencies.
+            for observed in observations:
+                parents={m['contract_id'] for m in self.policy.get('workflows',[]) if m['source_id']==observed['id']}
+                hidden={step['contract_id'] for m in self.policy.get('workflows',[]) if m['source_id']==observed['id'] for step in m['steps']}-parents
+                observed['contract_ids']=[cid for cid in observed['contract_ids'] if cid not in hidden]
             current={o['id']:o.get('revision') for o in observations if o['available']}
             work=self.ledger.work_goals();recovered=set();processed=0
             recovery=[g for g in work if g['submission'] and (not g['submission']['settled'] or g['state']=='unknown_result')]
@@ -304,22 +344,43 @@ class Controller:
                         goal=self.ledger.owned_goal(lease,self.clock())
                         if goal and goal['submission']:self._reconcile(lease,goal)
                 finally:self.ledger.release(lease,self.clock())
+            if self.diagnostics is not None:
+                try:self.diagnostics.tick(self.clock(),lambda:self._admissible() and not self.ledger.paused())
+                except Exception:summary['diagnostics_reason']='diagnostics_unavailable'
+            diagnosis_quiet=self.diagnostics is None or not self.diagnostics.store.requires_quiescence()
             if self.experience is not None:
                 self._phase('learning')
                 try:
                     self.experience.tick(self.clock(),lambda:self._admissible() and not self.ledger.paused()
-                                         and self.policy.get('learning_enabled',True))
+                                         and self.policy.get('learning_enabled',True) and diagnosis_quiet)
                 except Exception:
                     with self._progress_lock:self._progress_state['learning_reason']='experience_unavailable'
             if self.skills is not None:
                 self._phase('skill_learning')
                 try:self.skills.tick(self.clock(),lambda:self._admissible() and not self.ledger.paused()
-                                     and self.policy.get('learning_enabled',True))
+                                     and self.policy.get('learning_enabled',True) and diagnosis_quiet)
                 except Exception:
                     with self._progress_lock:self._progress_state['skill_reason']='skills_unavailable'
-            if self._admissible() and not self.ledger.paused():
+            if self._admissible() and not self.ledger.paused() and diagnosis_quiet:
                 summary['accepted']=self._synthesize(observations)
-                ready=self.rank_ready([g for g in self.ledger.work_goals() if g['state'] in ('ready','blocked') and (not g['submission'] or g['submission']['settled'])])
+            self.workflows.sync(self.clock())
+            advanced=self.workflows.advance(self.clock(),lambda:self._admissible() and not self.ledger.paused() and diagnosis_quiet)
+            for parent_id in advanced['finalizable'][:max(0,20-processed)]:
+                lease=self.ledger.claim(self.owner,self.clock(),self.policy['lease_seconds'],(parent_id,))
+                if lease is None:continue
+                try:
+                    with self._heartbeat(lease):
+                        parent=self.ledger.owned_goal(lease,self.clock())
+                        if parent is not None:
+                            checked=self.verifier.check(parent['contract'],parent['baseline'],parent.get('task_input'))
+                            outcome=('already_satisfied' if checked['verdict']=='already_satisfied' else
+                                     'succeeded' if checked['verdict'] is True and self.clock()<=parent['deadline'] else
+                                     'failed' if checked['verdict'] is False else 'unknown_result')
+                            self._finish(lease,parent,outcome,'workflow_final_'+outcome,True,checked)
+                finally:self.ledger.release(lease,self.clock())
+                processed+=1
+            if self._admissible() and not self.ledger.paused() and diagnosis_quiet:
+                ready=self.rank_ready([g for g in self.ledger.work_goals() if g['state'] in ('ready','blocked') and (not g['submission'] or g['submission']['settled']) and self.workflows.dispatchable(g['id'])])
                 if ready:
                     start=self._ready_cursor%len(ready)
                     ready=ready[start:]+ready[:start]
@@ -352,10 +413,29 @@ class Controller:
         for goal in records['goals']:counts[goal['state']]=counts.get(goal['state'],0)+1
         return {'enabled':bool(self.policy.get('enabled')),'paused':self.ledger.paused(),'states':counts,
                 'active_executions':sum(not s['settled'] for s in records['submissions']),
-                'required_human_interventions':0,'runtime_rule':'Approval-required work is blocked and stopped',
+                'required_human_interventions':sum(g['state']=='blocked' and 'approval' in g['recovery_reason'] for g in records['goals']),
+                'runtime_rule':'Approval-required work is blocked and stopped; intervention count includes recorded approval blockers only',
                 'limits':{k:self.policy.get(k) for k in ('daily_runs','max_active','max_attempts')},
                 'input_snapshots':task_inputs.summary(self.ledger),
+                'workflows':self.workflows.summary(),
+                'diagnostics':self.diagnostics.summary() if self.diagnostics is not None else {'enabled':False},
+                'monitoring':self.model.snapshot().get('functional_monitoring',{}),
+                'assurance':self.assurance_status(),
                 'subjective_consciousness':'not established'}
+
+    def assurance_status(self,run=False):
+        try:
+            from .assurance import check_status,bounded_check,validate_trace
+        except ImportError:
+            from assurance import check_status,bounded_check,validate_trace
+        if run:
+            report=bounded_check(ledger=self.ledger)
+            with self.ledger._connection() as c:trace=validate_trace(c)
+            return {'bounded_model':report,'implementation_trace':trace}
+        return check_status(self.ledger)
+
+    def diagnostics_status(self):
+        return self.diagnostics.summary() if self.diagnostics is not None else {'enabled':False}
 
     def pause(self):self.ledger.set_pause(True);return self.status()
     def experience_status(self):
@@ -369,7 +449,9 @@ class Controller:
         except Exception:return {'enabled':False,'reason':'skills_unavailable'}
     def resume(self):self.ledger.set_pause(False);return self.status()
     def cancel(self,goal_id):
-        return {'ok':self.ledger.request_cancel(goal_id),'goal_id':goal_id,'cancel_requested':True}
+        accepted=self.ledger.request_cancel(goal_id)
+        self.workflows.sync_cancellations(self.clock())
+        return {'ok':accepted,'goal_id':goal_id,'cancel_requested':True}
 
     def start(self,interval_seconds=15):
         with self._lifecycle_lock:

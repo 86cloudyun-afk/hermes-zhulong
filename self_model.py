@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import tempfile
 from pathlib import Path
@@ -13,7 +14,8 @@ except ImportError:
 
 
 def _metrics(samples):
-    pairs=[(p,int(y)) for p,y in samples if p is not None]
+    pairs=[(p,int(y)) for p,y in samples if type(y) is bool and type(p) in (int,float)
+           and math.isfinite(p) and 0<=p<=1]
     good=[p for p,y in pairs if y];bad=[p for p,y in pairs if not y]
     ece=None
     if pairs:
@@ -21,24 +23,51 @@ def _metrics(samples):
         for i in range(5):
             bucket=[(p,y) for p,y in pairs if i/5<=p<(i+1)/5 or (i==4 and p==1)]
             if bucket:ece+=len(bucket)/len(pairs)*abs(sum(p for p,_ in bucket)/len(bucket)-sum(y for _,y in bucket)/len(bucket))
+    available=bool(good and bad)
+    coverage=[]
+    for threshold in (0,.2,.4,.6,.8,1):
+        selected=[y for p,y in pairs if p>=threshold]
+        coverage.append({'threshold':threshold,'covered':len(selected),
+                         'coverage':len(selected)/len(pairs) if pairs else None,
+                         'risk':sum(not y for y in selected)/len(selected) if selected else None})
+    # Rank positives against negatives in O(n log n), with half credit for ties.
+    wins=0; negatives=0; counts={}
+    for p,y in pairs:
+        count=counts.setdefault(p,[0,0]);count[y]+=1
+    for _,(negative,positive) in sorted(counts.items()):
+        wins+=positive*(negatives+negative/2);negatives+=negative
     return {'forecast_samples':len(pairs),'brier':sum((p-y)**2 for p,y in pairs)/len(pairs) if pairs else None,
             'ece':ece,'mean_confidence':sum(p for p,_ in pairs)/len(pairs) if pairs else None,
             'confidence_on_correct':sum(good)/len(good) if good else None,
             'confidence_on_error':sum(bad)/len(bad) if bad else None,
-            'error_discrimination':'available' if good and bad else 'unavailable'}
+            'error_discrimination':'available' if available else 'unavailable',
+            'discrimination_available':available,'positive_samples':len(good),'negative_samples':len(bad),
+            'auroc2':wins/(len(good)*len(bad)) if available else None,
+            'confidence_gap':sum(good)/len(good)-sum(bad)/len(bad) if available else None,
+            'coverage_risk':coverage,'metric_scope':'Known Boolean labels with finite forecasts; unknown labels excluded'}
 
 
 def _stats(goals,truth,submissions,scope=None):
     verified=[g for g in goals if g['id'] in truth]
     successes=sum(truth[g['id']]['outcome']=='succeeded' for g in verified)
     forecasts=[(g.get('confidence'),truth[g['id']]['outcome']=='succeeded') for g in verified]
-    first=[];attempts=[]
+    first=[];attempts=[];provenance=[]
     ids={g['id'] for g in goals}
     for s in submissions:
         if s['goal_id'] not in ids or (scope is not None and s['execution_identity']!=scope):continue
+        if not s.get('settled'):continue
+        prediction=s.get('prediction')
+        provenance.append({'submission_id':s['id'],'attempt':s['attempt'],
+                           **({'origin':prediction['provenance']['origin'],
+                               'samples':prediction['provenance']['samples'],
+                               'scope':prediction['provenance']['scope'],
+                               'input_hash':prediction['input_hash'],'request_hash':prediction['request_hash'],
+                               'action':prediction['action'],'extra_checks':prediction['extra_checks'],
+                               'extra_check_seconds':prediction['extra_check_seconds']} if prediction else
+                              {'origin':'goal_prior_reused_before_submission','samples':None})})
         ev=s.get('evidence')
         if ev and type(ev.get('verdict')) is bool:
-            attempts.append((s.get('forecast'),ev['verdict']))
+            attempts.append((prediction['probability'] if prediction else s.get('forecast'),ev['verdict']))
             if s['attempt']==1:first.append(ev['verdict'])
         elif s['attempt']==1 and s['goal_id'] in truth:
             # A single final verified attempt also supplies first-pass truth.
@@ -54,7 +83,8 @@ def _stats(goals,truth,submissions,scope=None):
             'eventual_success':successes,'eventual_verified':n,
             'expected_success_estimate':(successes+1)/(n+2),'estimate_method':'Laplace; scope and sample size apply',
             **_metrics(forecasts),'attempts':{'verified_samples':len(attempts),'success':attempt_success,
-                'failure':len(attempts)-attempt_success,'forecast_origin':'goal_prior_reused_before_submission',**_metrics(attempts)}}
+                'failure':len(attempts)-attempt_success,'forecast_origin':'per_attempt_provenance' if any(s.get('prediction') for s in submissions if s['goal_id'] in ids) else 'goal_prior_reused_before_submission',
+                'forecast_provenance':provenance,**_metrics(attempts)}}
 
 
 class SelfModel:
@@ -80,6 +110,20 @@ class SelfModel:
 
     def refresh(self):
         records=self.ledger.model_records();goals=records['goals'];submissions=records['submissions']
+        if 'predictions' in records:
+            bound=records['predictions']
+        else:
+            try:
+                from .metacognition import predictions
+            except ImportError:
+                from metacognition import predictions
+            with self.ledger._connection() as c:bound=predictions(c)
+        for submission in submissions:submission['prediction']=bound.get(submission['id'])
+        monitoring={'bound_predictions':len(bound),'legacy_forecasts':sum(s['id'] not in bound for s in submissions),
+                    'actual_extra_checks':sum(p['extra_checks'] for p in bound.values()),
+                    'extra_check_seconds':sum(p['extra_check_seconds'] for p in bound.values()),
+                    'actions':{action:sum(p['action']==action for p in bound.values()) for action in ('continue','recheck')},
+                    'scope':'Functional attempt monitoring under configured contracts; no subjective consciousness inference'}
         experience=None
         if self.experience is not None:
             try:experience=self.experience.summary()
@@ -90,7 +134,8 @@ class SelfModel:
             except Exception:skills={'reason':'skills_unavailable'}
         revision=digest({'goals':sorted((g['id'],g['state'],g['attempts']) for g in goals),
                          'receipts':sorted(e['receipt'] for e in records['evidence']),
-                         'attempt_evidence':[(s['id'],s.get('evidence')) for s in submissions],
+                         'attempt_evidence':[(s['id'],s.get('evidence'),s['settled']) for s in submissions],
+                         'attempt_predictions':bound,'functional_monitoring':monitoring,
                          'experience':experience,'skills':skills})
         versions=self.ledger.model_versions(1)
         if versions and versions[0]['evidence_revision']==revision:
@@ -105,6 +150,7 @@ class SelfModel:
                 group=[g for g in goals if g['domain']==goal['domain'] and (g['submission']['execution_identity'] if g['submission'] else {})==identity]
                 contexts[key]={'domain':goal['domain'],'execution_context':identity,**_stats(group,truth,submissions,identity)}
         snapshot={'schema':1,'evidence_revision':revision,'domains':domains,'contexts':contexts,
+                  'functional_monitoring':monitoring,
                   'scope':'Configured local contracts; no subjective consciousness or general capability claim',
                   'active_commitments':[{'goal_id':g['id'],'domain':g['domain'],'state':g['state'],'objective':g['objective'],
                       'deadline':g['deadline'],'attempts':g['attempts']} for g in goals

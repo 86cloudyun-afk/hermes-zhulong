@@ -110,12 +110,26 @@ class SkillStore:
         return evaluation_task(task,goal,sub)
 
     @staticmethod
+    def _paused(c):
+        row = c.execute("SELECT value FROM settings WHERE key='paused'").fetchone()
+        return row is not None and json.loads(row[0]) is True
+
+    @staticmethod
     def _configured(c, task):
         row = c.execute("SELECT value FROM settings WHERE key='skill_manifests'").fetchone()
         return row is not None and json.loads(row[0]).get(task['id']) == task['task_digest']
 
     def sync(self, now):
         with self.ledger._connection(True) as c:
+            paused = self._paused(c)
+            if not paused:
+                for fallback in c.execute("SELECT * FROM skill_versions WHERE state='standby' AND reason='rollback_deferred_by_pause' ORDER BY sequence DESC").fetchall():
+                    scope = json.loads(fallback['scope'])
+                    task = next((t for t in self.tasks if t['id']==scope['task_id']), None)
+                    if (task is not None and self._configured(c,task) and scope==scope_for(task,self.identity)
+                        and not c.execute("SELECT 1 FROM skill_versions WHERE scope=? AND state='active'",(fallback['scope'],)).fetchone()):
+                        c.execute("UPDATE skill_versions SET state='active',reason='rollback_after_bound_failure' WHERE id=?",(fallback['id'],))
+                        self._publication(c,fallback['id'],now,'rollback_after_bound_failure')
             rows = c.execute('''SELECT s.* FROM submissions s WHERE s.settled=1 AND s.evidence IS NOT NULL
                 AND s.host_status IN ('completed','failed','cancelled') AND NOT EXISTS(
                     SELECT 1 FROM skill_scans x WHERE x.submission_id=s.id AND x.config_digest=?)
@@ -140,7 +154,10 @@ class SkillStore:
                             c.execute("UPDATE skill_versions SET state='retired',reason='verified_bound_goal_failure' WHERE id=?", (version['id'],))
                             if version['state'] == 'active':
                                 fallback = c.execute("SELECT id FROM skill_versions WHERE scope=? AND state='standby' ORDER BY sequence DESC LIMIT 1", (version['scope'],)).fetchone()
-                                if fallback: c.execute("UPDATE skill_versions SET state='active',reason='rollback_after_bound_failure' WHERE id=?", (fallback['id'],))
+                                if fallback:
+                                    c.execute('UPDATE skill_versions SET state=?,reason=? WHERE id=?',
+                                              ('standby' if paused else 'active', 'rollback_deferred_by_pause' if paused else 'rollback_after_bound_failure', fallback['id']))
+                                    if not paused:self._publication(c,fallback['id'],now,'rollback_after_bound_failure')
                     if not checked['verdict'] and sub['execution_identity'] == self.identity:
                         for task in self.tasks:
                             if task['source_id'] != goal['source_id'] or task['domain'] != goal['domain'] or task['contract_hash'] != goal['contract_hash']: continue
@@ -228,6 +245,9 @@ class SkillStore:
                     or report.get('evaluation_digest') != task['evaluation_digest']
                     or canonical({k:v for k,v in replay.items() if k!='passed'}) != canonical(task['origin_replay'])): return False
             if report['verdict']:
+                # This read and every positive activation share BEGIN IMMEDIATE
+                # with pause(), so a returned pause fences all later publication.
+                if self._paused(c): return False
                 cases = task.get('_evaluation_cases',task['examples']+task['holdout']); receipts = report.get('cases')
                 if task.get('replay_origin') and report['origin_replay']['passed'] is not True: return False
                 if (report.get('passed') != len(cases) or not isinstance(receipts, list) or len(receipts) != len(cases)
@@ -237,12 +257,21 @@ class SkillStore:
                 if state == 'active': c.execute("UPDATE skill_versions SET state='standby',reason='superseded' WHERE scope=? AND state='active'", (version['scope'],))
                 c.execute('UPDATE skill_versions SET report=?,state=?,reason=? WHERE id=?',
                           (canonical(report), state, 'trusted_cases_passed', version['id']))
+                if state=='active':self._publication(c,version['id'],now,'trusted_cases_passed')
                 c.execute("UPDATE skill_jobs SET state='published',owner=NULL,lease_until=NULL WHERE id=?", (job['id'],))
             else:
                 c.execute("UPDATE skill_versions SET report=?,state='rejected',reason='trusted_case_failure' WHERE id=?", (canonical(report), version['id']))
                 c.execute('UPDATE skill_jobs SET state=?,owner=NULL,lease_until=NULL,next_retry=?,candidate_id=NULL WHERE id=?',
                           ('pending' if row['attempts'] < 2 else 'invalid', now+60, job['id']))
             return True
+
+    @staticmethod
+    def _publication(c,version_id,now,outcome):
+        try:
+            from .assurance import record_event
+        except ImportError:
+            from assurance import record_event
+        record_event(c,'publication',{'skill_id':version_id,'positive':True,'outcome':outcome},now)
 
     def retrieve(self, goal, identity):
         if identity != self.identity: return []

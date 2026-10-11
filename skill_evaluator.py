@@ -75,7 +75,9 @@ def validate_skills(raw, sources):
             if fingerprint in seen: raise ValueError('duplicate_skill_input')
             seen.add(fingerprint)
         # Copy so caller mutation cannot change a trusted task after normalization.
-        normalized = strict_json(canonical(item))
+        # examples/holdout -> case -> input/output add three wrapper levels.
+        # Each business value was independently checked at depth 32 above.
+        normalized = strict_json(canonical(item), max_depth=35)
         normalized.update(domain=source['domain'], contract_hash=digest(source['contracts'][item['contract_id']]), task_digest=digest(item))
         if item.get('replay_origin'):
             try:

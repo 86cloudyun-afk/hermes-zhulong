@@ -46,6 +46,7 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(env['TERMINAL_ENV'],'docker')
         self.assertEqual(env['DOCKER_HOST'],'unix:///var/run/docker.sock')
         self.assertEqual(json.loads(env['TERMINAL_DOCKER_FORWARD_ENV']),[])
+
         self.assertEqual(env['ZHULONG_NO_AUTOSWEEP'],'')
         self.assertEqual(config['platform_toolsets']['api_server'],['terminal','no_mcp'])
         self.assertEqual(config['known_plugin_toolsets']['api_server'],['zhulong'])
@@ -55,6 +56,20 @@ class PolicyTests(unittest.TestCase):
         self.assertFalse(config['gateway'].get('multiplex_profiles',True))
         self.assertFalse(config['platforms'].get('telegram',{}).get('enabled',True))
         self.assertNotIn('private-key',json.dumps(config))
+
+    def test_workspace_tmpfs_is_explicit_even_for_workspace_prefixed_bind(self):
+        manifest={**self.manifest,'work':'/workspace/authorized-work'}
+        policy={**self.policy,'workspace_roots':[manifest['work']],
+                'sources':[{'path':manifest['work']+'/facts.json'}]}
+        args=self.m.native_config(manifest,policy)['terminal']['docker_extra_args']
+        mounts=[args[i+1] for i,value in enumerate(args[:-1]) if value=='--tmpfs']
+        self.assertIn('/workspace:'+self.m.TMPFS_POLICY['/workspace'],mounts)
+
+    def test_root_tmpfs_allows_only_traversal_for_readonly_native_cache(self):
+        args=self.m.native_config(self.manifest,self.policy)['terminal']['docker_extra_args']
+        mounts=[args[i+1] for i,value in enumerate(args[:-1]) if value=='--tmpfs']
+        self.assertEqual(self.m.TMPFS_POLICY['/root'],'rw,exec,size=1g,mode=711')
+        self.assertEqual(mounts.count('/root:rw,exec,size=1g,mode=711'),1)
 
     def test_sources_require_direct_regular_single_link_topology(self):
         nested=self.work/'inputs';nested.mkdir();(nested/'facts.json').write_text('{}')
@@ -85,7 +100,7 @@ class PolicyTests(unittest.TestCase):
                 'CapAdd':['CAP_CHOWN','CAP_DAC_OVERRIDE','CAP_FOWNER'],
                 'Tmpfs':{'/tmp':'rw,nosuid,size=512m','/var/tmp':'rw,noexec,nosuid,size=256m',
                     '/run':'rw,noexec,nosuid,size=64m','/home':'rw,exec,size=1g',
-                    '/root':'rw,exec,size=1g','/workspace':'rw,exec,size=10g'}},
+                    '/root':'rw,exec,size=1g,mode=711','/workspace':'rw,exec,size=10g'}},
             'Mounts':[{'Type':'bind','Source':str(self.work),'Destination':str(self.work),'RW':True},
                 {'Type':'bind','Source':str(self.work/'facts.json'),'Destination':str(self.work/'facts.json'),'RW':False}]}
         self.m.inspect_worker(self.manifest,self.policy,expected)
@@ -97,6 +112,8 @@ class PolicyTests(unittest.TestCase):
             ('swap',lambda x:x['HostConfig'].update(MemorySwap=-1)),
             ('shm',lambda x:x['HostConfig'].update(ShmSize=0)),
             ('unbounded_tmpfs',lambda x:x['HostConfig']['Tmpfs'].update({'/home':'rw,exec'})),
+            ('unsearchable_root',lambda x:x['HostConfig']['Tmpfs'].update({'/root':'rw,exec,size=1g'})),
+            ('listable_root',lambda x:x['HostConfig']['Tmpfs'].update({'/root':'rw,exec,size=1g,mode=755'})),
             ('extra_tmpfs',lambda x:x['HostConfig']['Tmpfs'].update({'/extra':'rw,size=1g'})),
             ('missing_tmpfs',lambda x:x['HostConfig']['Tmpfs'].pop('/run'))]
         for name,change in cases:
