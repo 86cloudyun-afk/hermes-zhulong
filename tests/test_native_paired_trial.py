@@ -273,7 +273,7 @@ class PairedTests(unittest.TestCase):
         path=trial.base(a)/'worker-captures'/(raw['Id']+'.json');path.parent.mkdir()
         self.m.durable_json(path,raw,exclusive=True)
         value=dict(allocation_id=a['id'],clock=self.clock(),service_boot_id='test-boot',owner={'pid':1},
-                   submission_id=sub['id'],run_id=sub['run_id'],session_id=sub['session_key'])
+                   submission_id=sub['id'],run_id=sub['run_id'],session_id=sub['session_key'],purpose='session',task_label=sub['session_key'])
         trial._append('worker_launch',a['id'],value)
         trial._append('worker',a['id'],dict(value,worker_sha256=digest(raw),container_id=raw['Id'],
                       manifest_sha256=self.m.file_sha(manifest),created_utc=self.clock.utc))

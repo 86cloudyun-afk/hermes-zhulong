@@ -36,7 +36,7 @@ class WorkerCaptureTests(unittest.TestCase):
         self.raw['Config']['Hostname']=self.cid[:12]
         self.raw['Config']['Labels'].update({'zhulong.boot':self.boot,'hermes-task-id':self.sub['session_key'],'hermes-agent':'1'})
         args=self.fixture.m.native_config(self.manifest,self.trial.inspect_controls(self.a['id'])['policy'],self.boot)['terminal']['docker_extra_args']
-        self.env=patch.dict(os.environ,{'ZHULONG_BOOT_ID':self.boot,'TERMINAL_DOCKER_EXTRA_ARGS':json.dumps(args)})
+        self.env=patch.dict(os.environ,{'ZHULONG_BOOT_ID':self.boot,'TERMINAL_DOCKER_EXTRA_ARGS':json.dumps(args),'HERMES_BUNDLED_SKILLS':self.manifest['paired_bootstrap']['bundled_source']})
         self.env.start();self.addCleanup(self.env.stop)
 
     def daemon(self,argv,**kwargs):
@@ -46,7 +46,67 @@ class WorkerCaptureTests(unittest.TestCase):
         self.fail('unexpected daemon operation')
 
     def run_creation(self,transport=None):
-        return self.m.invoke(self.scope,['run','-d','explicit-test-image'],clock=self.clock,transport=transport or self.daemon)
+        return self.m.invoke(self.scope,['run','-d','--label','hermes-task-id='+self.sub['session_key'],'explicit-test-image'],clock=self.clock,transport=transport or self.daemon)
+
+    def test_paired_bootstrap_overrides_before_probe_and_main_and_rejects_population(self):
+        from runtime_policy import child_environment
+        for boot in ('probe',self.boot):
+            env=child_environment(self.manifest,boot,{'HERMES_BUNDLED_SKILLS':'/foreign/source'},api_key='fixture')
+            self.assertNotEqual(env['HERMES_BUNDLED_SKILLS'],'/foreign/source')
+            self.assertFalse(Path(env['HERMES_BUNDLED_SKILLS']).exists())
+        skills=self.profile/'skills';skills.mkdir(exist_ok=True);(skills/'unexpected').write_text('fixture')
+        with self.assertRaisesRegex(ValueError,'paired_skills'):
+            child_environment(self.manifest,self.boot,{},api_key='fixture')
+        with self.assertRaises(ValueError):self.trial.inspect_controls(self.a['id'])
+
+    def test_bootstrap_absence_canonical_parent_and_empty_skills_are_enforced(self):
+        from runtime_policy import child_environment
+        source=Path(self.manifest['paired_bootstrap']['bundled_source']);parent=source.parent
+        for kind in ('directory','dangling_link'):
+            parent.chmod(0o700)
+            if kind=='directory':source.mkdir()
+            else:source.symlink_to(parent/'missing-target')
+            parent.chmod(0o500)
+            try:
+                with self.assertRaisesRegex(ValueError,'bundled_source_present'):child_environment(self.manifest,self.boot,{},api_key='fixture')
+                with self.assertRaises(ValueError):self.run_creation()
+            finally:
+                parent.chmod(0o700)
+                if kind=='directory':source.rmdir()
+                else:source.unlink()
+                parent.chmod(0o500)
+        renamed=parent.with_name('old-parent');parent.rename(renamed);parent.symlink_to(renamed,target_is_directory=True)
+        try:
+            with self.assertRaisesRegex(ValueError,'parent_changed'):child_environment(self.manifest,self.boot,{},api_key='fixture')
+        finally:parent.unlink();renamed.rename(parent)
+        skills=self.profile/'skills';skills.rmdir();skills.symlink_to(self.fixture.root/'missing-skills')
+        try:
+            with self.assertRaisesRegex(ValueError,'skills_not_empty'):child_environment(self.manifest,self.boot,{},api_key='fixture')
+        finally:skills.unlink();skills.mkdir()
+        ordinary=dict(self.manifest);ordinary.pop('paired_bootstrap')
+        self.assertEqual(child_environment(ordinary,self.boot,{'HERMES_BUNDLED_SKILLS':'ordinary-choice'},api_key='fixture')['HERMES_BUNDLED_SKILLS'],'ordinary-choice')
+
+    def test_rejection_diagnostic_is_bounded_nonqualifying_and_sanitized(self):
+        self.raw['Config']['Labels']['hermes-task-id']='foreign'
+        with self.assertRaises(ValueError):self.run_creation()
+        with self.trial.journal.transaction() as c:
+            rejected=self.trial.journal.rows(c,'worker_rejection');self.assertEqual(self.trial.journal.rows(c,'worker'),[])
+        self.assertEqual(len(rejected),1);value=rejected[0]['payload']
+        self.assertEqual(value['code'],'observer_actual_container_changed');self.assertEqual(value['stage'],'boundary')
+        self.assertEqual(set(value),{'allocation_id','clock','code','stage'})
+
+    def test_auxiliary_prompt_capture_cannot_supply_foreground_identity(self):
+        self.raw['Config']['Labels']['hermes-task-id']='prompt-backend-probe'
+        self.m.invoke(self.scope,['run','-d','--label','hermes-task-id=prompt-backend-probe','explicit-test-image'],clock=self.clock,transport=self.daemon)
+        with self.trial.journal.transaction() as c:records=self.trial.journal.rows(c,'worker')
+        self.assertEqual(records[0]['payload']['purpose'],'prompt_probe')
+        result=self.trial.qualify_artifacts(self.a['id']);self.assertIsNone(result['arm_qualified'])
+        self.assertNotIn('worker_boundary',result)
+
+    def test_duplicate_or_foreign_requested_labels_reject_before_daemon(self):
+        for labels in (['--label','hermes-task-id='+self.sub['session_key']]*2,['--label=hermes-task-id=foreign'],['--label-file','untrusted']):
+            with self.subTest(labels=labels),self.assertRaises(ValueError):
+                self.m.invoke(self.scope,['run','-d',*labels,'explicit-test-image'],clock=self.clock,transport=lambda *a,**k:self.fail('ambiguous request reached daemon'))
 
     def test_probe_environment_never_installs_main_observer(self):
         from runtime_policy import child_environment
@@ -195,7 +255,12 @@ scope={'os':os,'json':json,'_is_ssh_remote_tilde_cwd':_is_ssh_remote_tilde_cwd}
 exec(compile(ast.Module(body=[fn],type_ignores=[]),'actual-pinned-gateway-bridge','exec'),scope)
 scope['_bridge_terminal_config_to_env'](config['terminal'])
 assert os.environ['TERMINAL_DOCKER_EXTRA_ARGS']==expected
+from gateway.run import _start_gateway_configure_logging
+_start_gateway_configure_logging(None)
+assert not any((Path(os.environ['HERMES_HOME'])/'skills').iterdir())
 from tools import terminal_tool as terminal
+from agent.prompt_builder import _run_backend_probe
+assert _run_backend_probe('docker',terminal)
 workers=[];receipts=[]
 try:
     for index in range(2):
@@ -216,7 +281,9 @@ finally:
             result=subprocess.run([sys.executable,'-c',script,str(fixtures.HOST),sub['session_key'],fixture.m.native.TRUSTED_RUNNER_COMMAND],env=env,capture_output=True,text=True,timeout=150)
             self.assertEqual(result.returncode,0,result.stderr[-3000:]);actual=json.loads(result.stdout.strip().splitlines()[-1]);ids=actual['workers']
             with trial.journal.transaction() as c:records=trial.journal.rows(c,'worker')
-            self.assertEqual({r['payload']['container_id'] for r in records},set(ids))
+            self.assertEqual(len(records),3)
+            self.assertEqual(sum(r['payload']['purpose']=='prompt_probe' for r in records),1)
+            self.assertEqual({r['payload']['container_id'] for r in records if r['payload']['purpose']=='session'},set(ids))
             with closing(sqlite3.connect(profile/'state.db')) as c,c:
                 c.execute("UPDATE messages SET content=? WHERE role='tool'",(json.dumps({'exit_code':0,'error':None,'output':json.dumps(actual['receipts'][-1])}),))
             proof=trial.qualify_artifacts(a['id']);self.assertTrue(proof['arm_qualified'],proof['reasons'])

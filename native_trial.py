@@ -25,7 +25,7 @@ from autonomy_store import canonical,digest,Ledger
 from autonomy_checks import validate_config,DEFAULTS,observe_sources
 from causal_trial import TrialLedger
 from cohort import Journal,durable_json,durable_bytes,strict_read,host_clock,stamp
-from runtime_policy import PLUGIN_FILES,HOST_REVISION,create_deployment,native_config,protected_native_config,load_manifest
+from runtime_policy import PLUGIN_FILES,HOST_REVISION,create_deployment,native_config,protected_native_config,paired_bootstrap,load_manifest
 from scripts import native_work_acceptance as native
 from skill_evaluator import strict_json
 
@@ -143,7 +143,7 @@ def declared_controls(fixtures):
             for arm in ARMS:
                 p=arm_policy(work,f,arm);p.update(enabled=True,workspace_roots=[str(work)],api_url='http://127.0.0.1:8642',api_key_env='API_SERVER_KEY',api_profile='default',api_identity_version='declaration-v1')
                 p=validate_config(p,Path(m['root'])/'profile/zhulong');config=protected_native_config(m,p);config['command_allowlist']=[native.TRUSTED_RUNNER_COMMAND]
-                result[f['id']][arm]=dict(policy=normalize_policy(p,m),native=normalize_native(config,m),launch_args=declared_launch_args(m,p))
+                result[f['id']][arm]=dict(policy=normalize_policy(p,m),native=normalize_native(config,m),launch_args=declared_launch_args(m,p),bootstrap='paired_absent_bundled_source_empty_skills',container_purposes={'session':'actual_registered_session','prompt_probe':'prompt-backend-probe'})
     return result
 
 
@@ -198,7 +198,7 @@ class FrozenTrial:
         protocol['launcher_sha256']={name:file_sha(name) for name in protocol['launcher']}
         protocol['preflight_budget_seconds']=300
         from native_worker_capture import real_docker_identity
-        protocol['worker_capture']=dict(version=1,mode='synchronous_creation_inspect',docker=real_docker_identity(),foreground_binding='protected_runner_hostname_and_native_session')
+        protocol['worker_capture']=dict(version=2,bootstrap='paired_absent_bundled_source_empty_skills',purposes={'session':'actual_registered_session','prompt_probe':'prompt-backend-probe'},mode='synchronous_creation_inspect',docker=real_docker_identity(),foreground_binding='protected_runner_hostname_and_native_session')
         if len(canonical(protocol).encode())>16*1024*1024:raise ValueError('frozen_protocol_too_large')
         # TrialLedger validates the statistical envelope before any root allocation.
         from causal_trial import validate_protocol
@@ -270,10 +270,11 @@ class FrozenTrial:
         m,policy=load_manifest(path)
         if m['host']!=self.protocol['host'] or m['host_revision']!=self.protocol['versions']['host'] or m['plugin_root']!=str(ROOT) or m['image']!=self.protocol['image'] or m['command']!=self.protocol['launcher']+['gateway','run','--no-supervise'] or m['max_launches']!=1:raise ValueError('deployment_scope_changed')
         if m['root']!=str(self.base(a)/'deployment') or m['work']!=str(self.base(a)/'work'):raise ValueError('physical_binding_changed')
+        if paired_bootstrap(m) is None:raise ValueError('paired_bootstrap_missing')
         profile=path.parent/'profile';config=strict_read(profile/'config.yaml');plugin=strict_read(profile/'zhulong/config.json')
         if {k:v for k,v in plugin.items() if k!='autonomy'}!={'scheduler':True,'narrative':False,'probe_weekday':-1,'llm_daily_cap':4}:raise ValueError('plugin_controls_changed')
         declared=self.protocol['declared_controls'][a['input_id']][a['arm']]
-        actual=dict(policy=normalize_policy(policy,m),native=normalize_native(config,m),launch_args=declared_launch_args(m,policy))
+        actual=dict(policy=normalize_policy(policy,m),native=normalize_native(config,m),launch_args=declared_launch_args(m,policy),bootstrap='paired_absent_bundled_source_empty_skills',container_purposes={'session':'actual_registered_session','prompt_probe':'prompt-backend-probe'})
         if canonical(actual)!=canonical(declared):raise ValueError('actual_arm_controls_changed')
         expected={str(profile/'config.yaml'),str(profile/'zhulong/config.json'),str(profile/native.TRUSTED_RUNNER_RELATIVE)}
         expected.update(str(profile/'plugins/zhulong'/name) for name in PLUGIN_FILES)
@@ -446,17 +447,19 @@ class FrozenTrial:
                     raw=strict_read(self.base(a)/'worker-captures'/(worker['container_id']+'.json'));labels=raw['Config']['Labels']
                     launch=launches[key]
                     if (digest(raw)!=worker['worker_sha256'] or raw.get('Id')!=worker['container_id'] or labels.get('zhulong.boot')!=worker['service_boot_id']
-                            or worker['service_boot_id'] in ('probe','preflight') or labels.get('hermes-task-id')!=sub['session_key']
+                            or worker['service_boot_id'] in ('probe','preflight') or worker.get('purpose') not in ('session','prompt_probe')
+                            or worker.get('task_label')!=(sub['session_key'] if worker['purpose']=='session' else 'prompt-backend-probe')
+                            or labels.get('hermes-task-id')!=worker['task_label']
                             or worker['session_id']!=sub['session_key'] or worker['submission_id']!=sub['id'] or worker['run_id']!=sub['run_id']
                             or worker['manifest_sha256']!=file_sha(self.base(a)/'deployment/deployment.json')
-                            or any(launch.get(k)!=worker.get(k) for k in ('service_boot_id','owner','session_id','submission_id','run_id'))):raise ValueError('actual_worker_binding_changed')
+                            or any(launch.get(k)!=worker.get(k) for k in ('service_boot_id','owner','session_id','submission_id','run_id','purpose','task_label'))):raise ValueError('actual_worker_binding_changed')
                     if raw.get('Config',{}).get('Image')!=m['image']:raise ValueError('actual_worker_image_changed')
                     if registered is None or not registered['origin']['utc']<=worker['created_utc']<=worker['clock']['utc']<=registered['deadline_utc']:raise ValueError('actual_worker_capture_late')
                     for observed in (launch['clock'],worker['clock']):
                         if Deadline(registered['origin'],180,clock=lambda:observed).remaining()<=0:raise ValueError('actual_worker_capture_late')
                     if launch['clock']['monotonic']>worker['clock']['monotonic'] or raw['Config'].get('Hostname')!=cid[:12]:raise ValueError('actual_worker_binding_changed')
                     boundary=inspect_worker(m,policy,raw)
-                    if raw['Config'].get('Hostname')==result.get('native_evidence',{}).get('worker_hostname'):
+                    if worker['purpose']=='session' and raw['Config'].get('Hostname')==result.get('native_evidence',{}).get('worker_hostname'):
                         matches.append(dict(container_id=worker['container_id'],worker_sha256=worker['worker_sha256'],**boundary))
                 if len(matches)!=1:raise ValueError('foreground_worker_binding_missing')
                 result['worker_boundary']=matches[0]

@@ -126,8 +126,27 @@ def protected_native_config(m,policy):
     return config
 
 
+def paired_bootstrap(m):
+    """Validate the paired-only absent bundled source before any host import."""
+    control=m.get('paired_bootstrap')
+    if control is None:return None
+    root=Path(m['root']);parent=root/'paired-bootstrap';source=parent/'absent-bundled-skills'
+    if control!={'version':1,'bundled_source':str(source)}:raise ValueError('paired_bootstrap_changed')
+    if root.resolve()!=root or parent.resolve()!=parent or parent.is_symlink() or not parent.is_dir():raise ValueError('paired_bootstrap_parent_changed')
+    info=parent.stat()
+    if info.st_uid!=os.getuid() or info.st_mode & 0o777!=0o500:raise ValueError('paired_bootstrap_parent_changed')
+    try:source.lstat()
+    except FileNotFoundError:pass
+    else:raise ValueError('paired_bundled_source_present')
+    skills=root/'profile/skills'
+    if skills.is_symlink() or skills.resolve()!=skills or not skills.is_dir() or any(skills.iterdir()):raise ValueError('paired_skills_not_empty')
+    return str(source)
+
+
 def child_environment(m,boot_id,inherited=None,*,api_key):
     env=dict(os.environ if inherited is None else inherited)
+    source=paired_bootstrap(m)
+    if source is not None:env['HERMES_BUNDLED_SKILLS']=source
     env.pop('HERMES_DOCKER_BINARY',None)
     for name in list(env):
         if name.startswith('TERMINAL_') or name in DOCKER_ENV_KEYS:env.pop(name,None)
