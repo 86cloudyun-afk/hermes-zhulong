@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "study": "original_native_paired_N3_stopped",
+  "accepted_source_head": "c868621602d7b58fd0167d506b5b70865bff90ff",
+  "protocol_canonical_sha256": "3fc3c972ae602fdc77a13d91fb1eef9309b72773571f249c65ba06de8508ef05",
+  "protocol_file_sha256": "bd564ca6ebf756ecbdfd03f475e0cb8e354dcd0126bde70bafe6bfc07f9eae3e",
+  "raw_final_summary_sha256": "c94b6839de68a19d40ece8b48b870e32ebb19d22c036fcbb9162af541d7ad600",
+  "source_checkpoint_sha256": "0b8cca5be6a3c33fb8f722662448d7e4aee2cf22f57c589bcdbedecbcacd2443",
+  "summary": {
+    "allocated": 6,
+    "succeeded": 0,
+    "failed": 0,
+    "unknown": 1,
+    "unrun": 5
+  },
+  "protocol_stopped": true,
+  "stop_reason": "arm_qualification_unconfirmed",
+  "allocations": [
+    {
+      "ordinal": 0,
+      "arm": "planner_masked",
+      "input_id": "workload",
+      "input_hash": "298ee97c56b82ff81c674e5aa6f9f92af223c7d070e4d5a15bbde7bd3d73e951",
+      "receipt": {
+        "outcome": "unknown",
+        "business": true,
+        "native": true,
+        "settled": true,
+        "cleanup": true,
+        "paired_qualified": false,
+        "paired_qualification": "missing_proof",
+        "qualifiers": [
+          "actual_worker_unobserved"
+        ],
+        "configured_model": "deepseek-flash",
+        "observed_model": "deepseek-flash",
+        "underlying_model_version": "unknown",
+        "main_usage": {
+          "input_tokens": 47218,
+          "output_tokens": 2909,
+          "total_tokens": 50127
+        },
+        "auxiliary_calls": null,
+        "endpoint_sha256": "67ac70daa784cf14423c1a22d3e754410d5d7634daaf2dfa926f3d96c0e34910"
+      }
+    },
+    {
+      "ordinal": 1,
+      "arm": "planner_masked",
+      "input_id": "source-index",
+      "input_hash": "6aaa611a7624914c68ba1fc2f657090ccf9c13ac46f301e1c213034a89fe2b6c",
+      "receipt": null
+    },
+    {
+      "ordinal": 2,
+      "arm": "planner_visible",
+      "input_id": "workload",
+      "input_hash": "298ee97c56b82ff81c674e5aa6f9f92af223c7d070e4d5a15bbde7bd3d73e951",
+      "receipt": null
+    },
+    {
+      "ordinal": 3,
+      "arm": "planner_visible",
+      "input_id": "source-index",
+      "input_hash": "6aaa611a7624914c68ba1fc2f657090ccf9c13ac46f301e1c213034a89fe2b6c",
+      "receipt": null
+    },
+    {
+      "ordinal": 4,
+      "arm": "planner_masked",
+      "input_id": "ticket-queue",
+      "input_hash": "025e9691d9346b9c11f8957af27bd63bfb30fef5cb8bd5462d914a56925be7a8",
+      "receipt": null
+    },
+    {
+      "ordinal": 5,
+      "arm": "planner_visible",
+      "input_id": "ticket-queue",
+      "input_hash": "025e9691d9346b9c11f8957af27bd63bfb30fef5cb8bd5462d914a56925be7a8",
+      "receipt": null
+    }
+  ],
+  "paired_analysis": {
+    "alpha": 0.05,
+    "causal_gain_supported": false,
+    "complete_pairs": 0,
+    "control_only": 0,
+    "discordant_pairs": 0,
+    "disqualifications": [
+      "incomplete",
+      "unqualified",
+      "small_n",
+      "protocol_stopped"
+    ],
+    "endpoint": "qualified_success_by_deadline_v1",
+    "exact_mcnemar_p": 1.0,
+    "hoeffding_interval": [
+      -1.0,
+      1.0
+    ],
+    "inference_qualified": false,
+    "paired_effect": 0.0,
+    "pairs": 3,
+    "qualified_pairs": 0,
+    "scope": "Frozen endpoint and identity/mechanism scope only; conditional on trusted receipts and independent pairs; no cost-effectiveness assertion",
+    "ties": 3,
+    "treatment_only": 0
+  },
+  "deadline_seconds": 180,
+  "cleanup_grace_seconds": 120,
+  "independent_cleanup": {
+    "confirmed": true,
+    "service_state": "stopped",
+    "processes_absent": true,
+    "owned_runtime_count": 0,
+    "owned_evaluator_count": 0,
+    "status_sha256": "067625c2daefe8a8aa3997bac53dc46710a383fc717ef6d1cbda06eacf66bff7",
+    "owned_api_listener_absent": true
+  },
+  "diagnosis": "Pinned gateway config bridge overwrote trusted dynamic service-boot Docker arguments with static preflight boot arguments. Actual workers could not match the current-boot capture filter.",
+  "original_outcomes_preserved": true,
+  "late_backfill": false,
+  "prospective_fix": "Pending separate reviewed implementation and distinct pre-outcome batch; never refill or pool this original batch.",
+  "causal_gain_supported": false,
+  "full_billing": null
+}

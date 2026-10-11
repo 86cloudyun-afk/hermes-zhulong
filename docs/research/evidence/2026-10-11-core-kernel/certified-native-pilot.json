@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "study": "separate_certified_ticket_native_N1",
+  "accepted_source_head": "c868621602d7b58fd0167d506b5b70865bff90ff",
+  "reviewed_harness_sha256": "4e188f79e2d16d5141b3a91a8080353f4a87fbd39a0a96a8ba51d2fe89052901",
+  "summary": {
+    "allocated": 1,
+    "axes": {
+      "business": true,
+      "cleanup": true,
+      "independent_business": true,
+      "native": true,
+      "settled": true
+    },
+    "failed": 0,
+    "full_billing": null,
+    "outcome": "succeeded",
+    "paid": true,
+    "protocol_sha256": "63cec70ceed7ce09a96b7e4d75668b1e63bac2fa3da3daf74b5b1585b39bac11",
+    "raw_receipt_sha256": "482f3a30d0938a59a2ab1c3387276af514e82caa0dd338e9fa2bb1b0f6e9c960",
+    "succeeded": 1,
+    "timing_scope": "legacy_separate_phases_no_shared_180_second_endpoint",
+    "unknown": 0,
+    "unrun": 0
+  },
+  "attempts": 1,
+  "main_usage": {
+    "input_tokens": 20373,
+    "output_tokens": 566,
+    "total_tokens": 20939
+  },
+  "auxiliary_calls": 1,
+  "native_binding": {
+    "admitted_request_binding_verified": true,
+    "execution_command_observed": true,
+    "execution_result_successful": true,
+    "bundle_hash": "ed8a5cb1cfab83387504035d68acd298fa229e753ec4706a2974ccc0f50762c0",
+    "execution_identity_hash": "8b251c2efa730b7544f9bf7e362bf6db0e34a03f37f2caf58d2d003ee3ccb5ef",
+    "input_hash": "025e9691d9346b9c11f8957af27bd63bfb30fef5cb8bd5462d914a56925be7a8",
+    "invocation_hash": "a38e9605aad608cda9ff4f3fd0347ba2e5c8f767629d56bd4f9b707c8a279807",
+    "kernel_hash": "232a90b524f8c248d764950bc021ab9fe2cc731c379fe5519b58bc99862fbbd2",
+    "output_hash": "a55c30be2bb83463920d563191bfd89e6ab2299655a3020e4e804dfd4809d285",
+    "request_hash": "291cc53c096ebf41f7d42d7411889754cbc71e5e9224a59b25e84829660b294c",
+    "runner_hash": "1b81ce061eebbab08e400cab19cbd4ea5ed66b60cc4162c8f879b5191bf5c853"
+  },
+  "independent_cleanup": {
+    "captured_utc": "2026-10-11T09:05:33.480489+00:00",
+    "scope": "Owned supervisor/child identities, runtime/evaluator containers and loopback API listener",
+    "service_state": "stopped",
+    "processes_absent": true,
+    "owned_runtime_count": 0,
+    "owned_evaluator_count": 0,
+    "api_listener_absent": true,
+    "confirmed": true,
+    "status_sha256": "be0594c76ff8a93cbe3579264bbba105ab48406a6efba2cad254a7fad656c8bb"
+  },
+  "protocol_file_sha256": "63cec70ceed7ce09a96b7e4d75668b1e63bac2fa3da3daf74b5b1585b39bac11",
+  "source_checkpoint_sha256": "0b8cca5be6a3c33fb8f722662448d7e4aee2cf22f57c589bcdbedecbcacd2443",
+  "scope": "One actual admitted canonical certificate execution and independent business result; separate legacy phase budgets, no paired shared-180 endpoint, general-correctness or causal-benefit claim.",
+  "provider": "deepseek",
+  "configured_alias": "deepseek-flash",
+  "underlying_model_version": "unverified",
+  "full_billing": null
+}

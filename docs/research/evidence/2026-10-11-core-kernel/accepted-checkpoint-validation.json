@@ -1,0 +1,30 @@
+{
+  "accepted_source_head": "c868621602d7b58fd0167d506b5b70865bff90ff",
+  "reviewed_product_head": "d0269913c4cca48bc8c4fc86eec8ad2ecf68f031",
+  "tests": 557,
+  "passed": 557,
+  "skipped": 0,
+  "failures": 0,
+  "errors": 0,
+  "seconds": 177.808,
+  "source_files": 96,
+  "source_unchanged": true,
+  "suite_log_sha256": "20322d87a01c4cfce685cf8a6a890350eff80b96ad2ab7646cbf726954ac0ed2",
+  "source_before_sha256": "2bcc17e347915811035e1adc87707c62b299f600f87684dfe430da8de64b0235",
+  "source_after_sha256": "0beb9e18f6473bfc1b531a7c5b2a8fcf517b5bcaf4d9b52a7fcc2991559c7cbe",
+  "smoke": {
+    "plugin": "zhulong",
+    "version": "0.11.0",
+    "hooks": 11,
+    "tools": 4,
+    "commands": 1,
+    "journal": "passed",
+    "privacy": "passed",
+    "calibration": "passed",
+    "digest": "passed",
+    "sqlite_integrity": "ok",
+    "external_llm_calls": 0
+  },
+  "smoke_log_sha256": "2be4dc5ff5f2eba0f26db2149b1f322592a334eb50523ad03fa955eec84a62f3",
+  "scope": "Accepted pre-prospective-worker-fix checkpoint; a later runtime/capture change requires fresh affected verification."
+}
