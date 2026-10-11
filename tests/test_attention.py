@@ -175,6 +175,80 @@ class AttentionTests(unittest.TestCase):
         self.assertTrue(resumed['focus_state_provenance']['interrupted_since_forecast'])
         self.assertEqual(self.workspace(policy).summary(now=self.now)['attention']['n_scored'],0)
 
+    def shadowed_disabled_failure(self):
+        policy=self.policy(capacity=1,attention_switch_penalty=1)
+        self.controller(policy)._synthesize(observe_sources(policy))
+        disabled=copy.deepcopy(policy); disabled['cognition']['enabled']=False
+        self.now+=1; self.controller(disabled)._synthesize(observe_sources(disabled))
+        with self.ledger._connection(True) as db:
+            db.execute("CREATE TRIGGER reject_inactive_marker BEFORE INSERT ON cognition_attention_off_observations BEGIN SELECT RAISE(ABORT,'journal_unavailable'); END")
+        self.now+=1; self.controller(disabled)._synthesize([])
+        inactive=copy.deepcopy(policy); inactive['cognition']['attention_mode']='off'
+        self.now+=1; self.controller(inactive)._synthesize(observe_sources(inactive))
+        self.assertEqual([o['id'] for o in self.calls[-1][0]],['source-2'])
+        self.ledger=Ledger(self.ledger.path)
+        with self.ledger._connection(True) as db:db.execute('DROP TRIGGER reject_inactive_marker')
+        return policy,disabled
+
+    def test_unacknowledged_disabled_interruption_survives_later_unmarked_off_frame(self):
+        policy,_=self.shadowed_disabled_failure()
+        self.now+=1; self.controller(policy)._synthesize(observe_sources(policy))
+        resumed=self.forecasts()[-1]
+        self.assertEqual(resumed['focus_state'],{'focus_ids':[],'wait_ticks':{},'last_selected_seq':{}})
+        self.assertFalse(resumed['focus_state_provenance']['focus_state_available'])
+        self.assertTrue(resumed['focus_state_provenance']['interrupted_since_forecast'])
+        self.assertEqual(resumed['focus_state_provenance']['origin'],'cognition_disabled_observation_journal_unavailable_reset')
+        self.assertEqual(self.workspace(policy).summary(now=self.now)['attention']['n_scored'],0)
+
+    def test_new_active_forecast_consumes_disabled_interruption_without_poisoning_next_observation(self):
+        policy,_=self.shadowed_disabled_failure()
+        self.now+=1; self.controller(policy)._synthesize(observe_sources(policy))
+        resumed=copy.deepcopy(self.forecasts()[-1])
+        self.assertFalse(resumed['focus_state_provenance']['focus_state_available'])
+        self.ledger=Ledger(self.ledger.path); self.now+=1
+        self.controller(policy)._synthesize(observe_sources(policy))
+        following=self.forecasts()[-1]
+        self.assertEqual(following['focus_state'],resumed['state_after'])
+        self.assertEqual(following['focus_state_provenance']['origin'],'immediately_preceding_forecast')
+        self.assertTrue(following['focus_state_provenance']['focus_state_available'])
+        self.assertTrue(following['focus_state_provenance']['wait_state_available'])
+        self.assertFalse(following['focus_state_provenance']['interrupted_since_forecast'])
+        outcome=next(o for o in self.outcomes() if o['forecast_id']==resumed['forecast_id'])
+        self.assertEqual(outcome['status'],'observed_on_time')
+        self.assertEqual(outcome['observed_at'],self.now)
+        self.assertTrue(all(count=={'fresh':1,'not_fresh':0} for count in following['model']['counts'].values()))
+
+    def test_new_usable_disabled_marker_supersedes_an_older_interruption_by_durable_cursor(self):
+        policy,disabled=self.shadowed_disabled_failure()
+        self.now+=1; self.controller(disabled)._synthesize(observe_sources(disabled))
+        actual=[o['id'] for o in self.calls[-1][0]]
+        self.assertEqual(actual,['source-3'])
+        self.ledger=Ledger(self.ledger.path); self.now+=1
+        self.controller(policy)._synthesize(observe_sources(policy))
+        resumed=self.forecasts()[-1]
+        self.assertEqual(resumed['focus_state']['focus_ids'],actual)
+        self.assertEqual(resumed['focus_state']['wait_ticks'],{})
+        self.assertTrue(resumed['focus_state_provenance']['focus_state_available'])
+        self.assertEqual(resumed['focus_state_provenance']['origin'],'cognition_disabled_observation_wait_reset')
+
+    def test_older_inactive_marker_cannot_outrank_a_later_unmarked_off_frame_without_a_tag(self):
+        policy=self.policy(capacity=1); self.controller(policy)._synthesize(observe_sources(policy))
+        disabled=copy.deepcopy(policy); disabled['cognition']['enabled']=False
+        self.now+=1; self.controller(disabled)._synthesize(observe_sources(disabled))
+        with self.ledger._connection(True) as db:
+            db.execute("CREATE TRIGGER reject_inactive_marker BEFORE INSERT ON cognition_attention_off_observations BEGIN SELECT RAISE(ABORT,'journal_unavailable'); END")
+        inactive=copy.deepcopy(policy); inactive['cognition']['attention_mode']='off'
+        self.now+=1; self.controller(inactive)._synthesize(observe_sources(inactive))
+        self.assertEqual([o['id'] for o in self.calls[-1][0]],['source-2'])
+        self.ledger=Ledger(self.ledger.path)
+        with self.ledger._connection(True) as db:db.execute('DROP TRIGGER reject_inactive_marker')
+        self.now+=1; self.controller(policy)._synthesize(observe_sources(policy))
+        resumed=self.forecasts()[-1]
+        self.assertEqual(resumed['focus_state']['focus_ids'],[])
+        self.assertFalse(resumed['focus_state_provenance']['focus_state_available'])
+        self.assertTrue(resumed['focus_state_provenance']['interrupted_since_forecast'])
+        self.assertEqual(resumed['focus_state_provenance']['origin'],'inactive_observation_order_unavailable_reset')
+
     def test_forecast_all_configured_sources_and_no_future_leakage(self):
         policy=self.policy(capacity=1); w=self.workspace(policy); obs=observe_sources(policy)
         first=w.select(obs,self.now); f=self.forecasts()[0]

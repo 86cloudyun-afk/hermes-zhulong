@@ -83,6 +83,7 @@ def observe_off(c, selected_ids, frame_id, now, policy, identity_hash, configura
             return True
         observation = {'schema': 1, 'observation_id': uuid.uuid4().hex, 'observed_at': now,
                        'frame_id': frame_id, 'focus_ids': selected_ids, 'wait_state_available': False,
+                       'frame_seq_cutoff': c.execute('SELECT COALESCE(MAX(seq),0) FROM cognition_frames').fetchone()[0]+int(frame_id is not None),
                        'scope_hash': digest({'identity_hash': identity_hash, 'configuration': configuration,
                                              'policy': policy, 'mechanism': MECHANISM})}
         if reason != 'attention_off_observation':
@@ -123,20 +124,41 @@ def _prior_control(c, now):
     frame = c.execute('SELECT seq,frame FROM cognition_frames ORDER BY seq DESC LIMIT 1').fetchone()
     latest_frame = json.loads(frame['frame']) if frame else None
     historical = {'historical_frame_id': latest_frame['frame_id']} if frame else {}
-    if (frame and latest_frame.get('inactive_observation_reason') and
-            (previous is None or frame['seq'] > previous.get('frame_seq_cutoff', 0))):
-        if now < latest_frame['captured_at']:
-            raise ValueError('attention_clock_reversed')
-        # A failed inactive marker must take precedence over any older marker.
-        # Cross-journal timestamps cannot establish a newer trustworthy focus.
-        return empty, {**historical, 'origin': 'cognition_disabled_observation_journal_unavailable_reset',
-            'interruption_reason': latest_frame['inactive_observation_reason'],
-            'wait_state_available': False, 'focus_state_available': False, 'interrupted_since_forecast': True}
+    frame_cutoff = previous.get('frame_seq_cutoff', 0) if previous else 0
     marker = c.execute('SELECT seq,observation FROM cognition_attention_off_observations ORDER BY seq DESC LIMIT 1').fetchone()
-    if marker and (previous is None or marker['seq'] > previous.get('off_observation_cutoff', 0)):
-        observation = json.loads(marker['observation'])
+    observation = json.loads(marker['observation']) if marker else None
+    marker_is_new = marker and (previous is None or marker['seq'] > previous.get('off_observation_cutoff', 0))
+    marker_frame_cutoff = observation.get('frame_seq_cutoff') if observation else None
+    if marker_is_new and type(marker_frame_cutoff) is not int:
+        # A legacy marker's associated frame gives a cursor; an empty legacy
+        # marker cannot establish order beyond the previous forecast's cursor.
+        associated = c.execute('SELECT seq FROM cognition_frames WHERE frame_id=?',
+                               (observation['frame_id'],)).fetchone()
+        marker_frame_cutoff = associated['seq'] if associated else frame_cutoff
+    interruption = None
+    for row in c.execute('SELECT seq,frame FROM cognition_frames WHERE seq>? ORDER BY seq DESC', (frame_cutoff,)):
+        candidate = json.loads(row['frame'])
+        if candidate.get('inactive_observation_reason'):
+            interruption = (row['seq'], candidate)
+            break
+    if interruption:
+        interruption_seq, interrupted_frame = interruption
+        if now < interrupted_frame['captured_at']:
+            raise ValueError('attention_clock_reversed')
+        if not marker_is_new or marker_frame_cutoff < interruption_seq:
+            # Later unmarked frames cannot hide an unacknowledged interruption.
+            # Only a marker that captured it, or a new forecast cursor, consumes it.
+            return empty, {**historical, 'origin': 'cognition_disabled_observation_journal_unavailable_reset',
+                'interruption_frame_id': interrupted_frame['frame_id'], 'interruption_frame_seq': interruption_seq,
+                'interruption_reason': interrupted_frame['inactive_observation_reason'],
+                'wait_state_available': False, 'focus_state_available': False, 'interrupted_since_forecast': True}
+    if marker_is_new:
         if now < observation['observed_at']:
             raise ValueError('attention_clock_reversed')
+        if frame and frame['seq'] > marker_frame_cutoff:
+            return empty, {**historical, 'origin': 'inactive_observation_order_unavailable_reset',
+                'interruption_reason': 'inactive_observation_order_unavailable', 'wait_state_available': False,
+                'focus_state_available': False, 'interrupted_since_forecast': True}
         return {**empty, 'focus_ids': observation['focus_ids']}, {
             'origin': 'cognition_disabled_observation_wait_reset' if
                 observation.get('reason') == 'cognition_disabled_observation' else 'off_observation_wait_reset',
