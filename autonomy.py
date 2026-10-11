@@ -373,7 +373,9 @@ class Controller:
                         parent=self.ledger.owned_goal(lease,self.clock())
                         if parent is not None:
                             checked=self.verifier.check(parent['contract'],parent['baseline'],parent.get('task_input'))
-                            outcome='succeeded' if checked['verdict'] is True and self.clock()<=parent['deadline'] else 'failed' if checked['verdict'] is False else 'unknown_result'
+                            outcome=('already_satisfied' if checked['verdict']=='already_satisfied' else
+                                     'succeeded' if checked['verdict'] is True and self.clock()<=parent['deadline'] else
+                                     'failed' if checked['verdict'] is False else 'unknown_result')
                             self._finish(lease,parent,outcome,'workflow_final_'+outcome,True,checked)
                 finally:self.ledger.release(lease,self.clock())
                 processed+=1

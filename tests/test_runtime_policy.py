@@ -46,6 +46,7 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(env['TERMINAL_ENV'],'docker')
         self.assertEqual(env['DOCKER_HOST'],'unix:///var/run/docker.sock')
         self.assertEqual(json.loads(env['TERMINAL_DOCKER_FORWARD_ENV']),[])
+
         self.assertEqual(env['ZHULONG_NO_AUTOSWEEP'],'')
         self.assertEqual(config['platform_toolsets']['api_server'],['terminal','no_mcp'])
         self.assertEqual(config['known_plugin_toolsets']['api_server'],['zhulong'])
@@ -55,6 +56,14 @@ class PolicyTests(unittest.TestCase):
         self.assertFalse(config['gateway'].get('multiplex_profiles',True))
         self.assertFalse(config['platforms'].get('telegram',{}).get('enabled',True))
         self.assertNotIn('private-key',json.dumps(config))
+
+    def test_workspace_tmpfs_is_explicit_even_for_workspace_prefixed_bind(self):
+        manifest={**self.manifest,'work':'/workspace/authorized-work'}
+        policy={**self.policy,'workspace_roots':[manifest['work']],
+                'sources':[{'path':manifest['work']+'/facts.json'}]}
+        args=self.m.native_config(manifest,policy)['terminal']['docker_extra_args']
+        mounts=[args[i+1] for i,value in enumerate(args[:-1]) if value=='--tmpfs']
+        self.assertIn('/workspace:'+self.m.TMPFS_POLICY['/workspace'],mounts)
 
     def test_sources_require_direct_regular_single_link_topology(self):
         nested=self.work/'inputs';nested.mkdir();(nested/'facts.json').write_text('{}')

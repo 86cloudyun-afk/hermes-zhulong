@@ -48,6 +48,29 @@ class FrontiersIntegrationTests(unittest.TestCase):
         self.assertEqual(self.ledger.goals()[0]['submission']['request'],frozen)
         self.assertEqual(self.runs.calls,1)
 
+    def test_workflow_initially_satisfied_parent_reaches_terminal_without_success_credit(self):
+        (self.root/'result.txt').write_text('done')
+        source=self.raw['sources'][0]
+        source['contracts']={'final':dict(source['contracts']['result']),
+            'prepare':{'type':'file_contains','path':str(self.root/'prepared.txt'),'text':'ready'}}
+        self.raw['workflows']=[{'id':'existing-report','source_id':source['id'],'contract_id':'final',
+            'steps':[{'id':'prepare','contract_id':'prepare','objective':'Prepare ready marker',
+                      'effect_mode':'opaque_nonretryable'}]}]
+        self.controller=self.build()
+        for _ in range(5):self.controller.tick();self.now[0]+=1
+        parent=next(g for g in self.ledger.goals() if g['contract_id']=='final')
+        self.assertEqual(parent['state'],'already_satisfied')
+        self.assertIsNone(parent['submission'])
+        self.assertEqual(parent['attempts'],0)
+        with self.ledger._connection() as c:
+            count=c.execute('SELECT COUNT(*) FROM evidence WHERE goal_id=?',(parent['id'],)).fetchone()[0]
+            successes=c.execute("SELECT COUNT(*) FROM evidence WHERE goal_id=? AND outcome='succeeded'",(parent['id'],)).fetchone()[0]
+        for _ in range(3):self.controller.tick();self.now[0]+=1
+        with self.ledger._connection() as c:
+            self.assertEqual(c.execute('SELECT COUNT(*) FROM evidence WHERE goal_id=?',(parent['id'],)).fetchone()[0],count)
+        self.assertEqual(successes,0)
+        self.assertEqual(self.runs.calls,1)
+
     def test_json_reference_uses_frozen_business_input_after_source_change(self):
         from autonomy_checks import observe_sources,Verifier,validate_config
         from work_reference import reference_output

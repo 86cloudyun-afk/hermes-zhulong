@@ -95,7 +95,10 @@ def native_config(m,policy,boot_id='preflight'):
         'docker_network':False,'container_persistent':False,'docker_persist_across_processes':False,
         'docker_shared_container_key':'','docker_orphan_reaper':False,'docker_snap_compat':False,
         'docker_shm_size':'64m','container_cpu':0,'container_memory':0,'container_disk':0,
-        'docker_extra_args':['--read-only','--cpus','1','--memory','512m','--memory-swap','512m',
+        # The pinned host treats any :/workspace-prefixed bind as a workspace
+        # mount and omits its default tmpfs. Provision the exact checked mount.
+        'docker_extra_args':['--read-only','--tmpfs','/workspace:'+TMPFS_POLICY['/workspace'],
+            '--cpus','1','--memory','512m','--memory-swap','512m',
             '--pids-limit','128','--label','zhulong.runtime='+m['deployment_id'],
             '--label','zhulong.boot='+boot_id]}
     return {'model':{'provider':'deepseek','default':'deepseek-flash'},

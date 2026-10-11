@@ -159,7 +159,8 @@ def execute_allocation(base, host, image, fixture, allocation, hermes_command=No
             submission = goal['submission']; receipt.update(main_usage=submission.get('usage'), settled=bool(submission['settled']),
                                                          goal_state=goal['state'], attempts=goal['attempts'])
             checked = Verifier(policy).check(contract, baseline, task_input=snapshot)
-            receipt['business'] = checked['verdict']; receipt['business_receipt'] = checked
+            receipt['business'] = checked['verdict'] if type(checked['verdict']) is bool else None
+            receipt['business_receipt'] = checked
             if checked['verdict'] is True and goal['state'] == 'succeeded':
                 code = (work/'.zhulong-work.py').read_text()
                 binding = {'code': code, 'code_hash': digest_bytes(code.encode())}
