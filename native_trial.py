@@ -25,7 +25,7 @@ from autonomy_store import canonical,digest,Ledger
 from autonomy_checks import validate_config,DEFAULTS,observe_sources
 from causal_trial import TrialLedger
 from cohort import Journal,durable_json,durable_bytes,strict_read,host_clock,stamp
-from runtime_policy import PLUGIN_FILES,HOST_REVISION,create_deployment,native_config,load_manifest
+from runtime_policy import PLUGIN_FILES,HOST_REVISION,create_deployment,native_config,protected_native_config,load_manifest
 from scripts import native_work_acceptance as native
 from skill_evaluator import strict_json
 
@@ -33,7 +33,7 @@ ROOT=Path(__file__).resolve().parent
 ARMS=('planner_masked','planner_visible')
 MONITORING=dict(enabled=True,mode='normal',max_rechecks=1,threshold=.6,constant_probability=.5)
 COGNITION=dict(enabled=True,capacity=1,selection_mode='adaptive',ttl_seconds=300,attention_mode='off',attention_constant_probability=.5,attention_max_wait=8,attention_switch_penalty=0.)
-CONTROL_FILES=tuple(sorted(set(PLUGIN_FILES)|{'native_trial.py','cohort.py','runtime_policy.py','runtime_supervisor.py','runtime_channel.py','scripts/runtime.py','scripts/runtime_probe.py','scripts/native_work_acceptance.py','scripts/native_paired_trial.py','scripts/skill_smoke_evidence.py'}))
+CONTROL_FILES=tuple(sorted(set(PLUGIN_FILES)|{'native_trial.py','native_worker_capture.py','cohort.py','runtime_policy.py','runtime_supervisor.py','runtime_channel.py','scripts/runtime.py','scripts/runtime_probe.py','scripts/native_work_acceptance.py','scripts/native_paired_trial.py','scripts/skill_smoke_evidence.py'}))
 
 
 def file_sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -120,11 +120,18 @@ def normalize_native(config,m):
     value=copy.deepcopy(config);terminal=value.get('terminal',{})
     work=m['work'];expected=[f'{work}:{work}:rw',f'{work}/facts.json:{work}/facts.json:ro']
     if terminal.get('cwd')!=work or terminal.get('docker_volumes')!=expected or value.get('platforms',{}).get('api_server',{}).get('port')!=m['port']:raise ValueError('native_instance_binding_changed')
-    args=terminal.get('docker_extra_args',[]);label='zhulong.runtime='+m['deployment_id']
-    if args.count(label)!=1 or args[args.index(label)-1]!='--label':raise ValueError('native_deployment_label_changed')
+    if 'docker_extra_args' in terminal or value.get('gateway',{}).get('multiplex_profiles') is not False:raise ValueError('launch_owned_terminal_args_required')
     terminal['cwd']='@work';terminal['docker_volumes']=['@work:@work:rw','@work/facts.json:@work/facts.json:ro']
-    args[args.index(label)]='zhulong.runtime=@deployment';value['platforms']['api_server']['port']='@port'
+    value['platforms']['api_server']['port']='@port'
     return value
+
+
+def declared_launch_args(m,policy):
+    args=native_config(m,policy,'@service_boot')['terminal']['docker_extra_args']
+    label='zhulong.runtime='+m['deployment_id']
+    if args.count(label)!=1:raise ValueError('native_deployment_label_changed')
+    args[args.index(label)]='zhulong.runtime=@deployment'
+    return args
 
 
 def declared_controls(fixtures):
@@ -135,8 +142,8 @@ def declared_controls(fixtures):
             result[f['id']]={}
             for arm in ARMS:
                 p=arm_policy(work,f,arm);p.update(enabled=True,workspace_roots=[str(work)],api_url='http://127.0.0.1:8642',api_key_env='API_SERVER_KEY',api_profile='default',api_identity_version='declaration-v1')
-                p=validate_config(p,Path(m['root'])/'profile/zhulong');config=native_config(m,p);config['command_allowlist']=[native.TRUSTED_RUNNER_COMMAND]
-                result[f['id']][arm]=dict(policy=normalize_policy(p,m),native=normalize_native(config,m))
+                p=validate_config(p,Path(m['root'])/'profile/zhulong');config=protected_native_config(m,p);config['command_allowlist']=[native.TRUSTED_RUNNER_COMMAND]
+                result[f['id']][arm]=dict(policy=normalize_policy(p,m),native=normalize_native(config,m),launch_args=declared_launch_args(m,p))
     return result
 
 
@@ -190,6 +197,8 @@ class FrozenTrial:
             safety_stop='unresolved_settlement_or_cleanup',hidden_provider_retries='unknown',preflight_outside_endpoint=True)
         protocol['launcher_sha256']={name:file_sha(name) for name in protocol['launcher']}
         protocol['preflight_budget_seconds']=300
+        from native_worker_capture import real_docker_identity
+        protocol['worker_capture']=dict(version=1,mode='synchronous_creation_inspect',docker=real_docker_identity(),foreground_binding='protected_runner_hostname_and_native_session')
         if len(canonical(protocol).encode())>16*1024*1024:raise ValueError('frozen_protocol_too_large')
         # TrialLedger validates the statistical envelope before any root allocation.
         from causal_trial import validate_protocol
@@ -214,7 +223,6 @@ class FrozenTrial:
             self.protocol=self.journal.rows(c,'protocol')[0]['payload'];files=self.journal.rows(c,'files')
             if len(files)!=1:raise ValueError('incomplete_freeze')
             self.files=files[0]['payload'];self.allocations=[r['payload'] for r in self.journal.rows(c,'allocation')]
-            self._captured_workers={r['key'] for r in self.journal.rows(c,'worker')}
         self.verify_frozen()
         self.fixtures=strict_read(self.root/'fixtures.json')['fixtures']
         self.oracle=independent_oracle(self.root/'oracle.json',self.fixtures)
@@ -247,7 +255,10 @@ class FrozenTrial:
         durable_bytes(work/'facts.json',(self.root/'inputs'/f"{f['id']}.json").read_bytes(),exclusive=True)
         with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
         manifest=create_deployment(base/'deployment',work,Path(self.protocol['host']),self.protocol['image'],self.protocol['launcher']+['gateway','run','--no-supervise'],arm_policy(work,f,a['arm']),port=port,max_launches=1)
-        native.prepare_trusted_runner(manifest,a['input_hash']);Ledger(manifest.parent/'profile/zhulong/autonomy.db').set_pause(True)
+        native.prepare_trusted_runner(manifest,a['input_hash'],worker_identity=True)
+        from native_worker_capture import install
+        install(self,a,manifest)
+        Ledger(manifest.parent/'profile/zhulong/autonomy.db').set_pause(True)
         value=dict(manifest=str(manifest),manifest_sha256=file_sha(manifest),allocation_id=allocation_id,clock=host_clock())
         self._append('prepared',allocation_id,value);return value
 
@@ -262,14 +273,15 @@ class FrozenTrial:
         profile=path.parent/'profile';config=strict_read(profile/'config.yaml');plugin=strict_read(profile/'zhulong/config.json')
         if {k:v for k,v in plugin.items() if k!='autonomy'}!={'scheduler':True,'narrative':False,'probe_weekday':-1,'llm_daily_cap':4}:raise ValueError('plugin_controls_changed')
         declared=self.protocol['declared_controls'][a['input_id']][a['arm']]
-        actual=dict(policy=normalize_policy(policy,m),native=normalize_native(config,m))
+        actual=dict(policy=normalize_policy(policy,m),native=normalize_native(config,m),launch_args=declared_launch_args(m,policy))
         if canonical(actual)!=canonical(declared):raise ValueError('actual_arm_controls_changed')
         expected={str(profile/'config.yaml'),str(profile/'zhulong/config.json'),str(profile/native.TRUSTED_RUNNER_RELATIVE)}
         expected.update(str(profile/'plugins/zhulong'/name) for name in PLUGIN_FILES)
         expected.update(str(ROOT/name) for name in ('runtime_policy.py','runtime_supervisor.py','runtime_channel.py','scripts/runtime_probe.py'))
+        expected.update({str(ROOT/'native_worker_capture.py'),str(ROOT/'cohort.py'),str(path.parent/'docker-observer'),str(path.parent/'worker-observer-scope.json')})
         if set(m['hashes'])!=expected:raise ValueError('protected_control_set_changed')
         if any(file_sha(profile/'plugins/zhulong'/name)!=self.protocol['versions']['code'][name] for name in PLUGIN_FILES):raise ValueError('installed_control_changed')
-        if (profile/native.TRUSTED_RUNNER_RELATIVE).read_text()!=native.trusted_runner_body(a['input_hash']):raise ValueError('runner_changed')
+        if (profile/native.TRUSTED_RUNNER_RELATIVE).read_text()!=native.trusted_runner_body(a['input_hash'],worker_identity=True):raise ValueError('runner_changed')
         if file_sha(Path(m['work'])/'facts.json')!=a['input_hash']:raise ValueError('actual_input_changed')
         current_host=host_identity(Path(m['host']))
         if current_host['files']!=self.protocol['versions']['host_files']:raise ValueError('host_code_changed')
@@ -416,21 +428,42 @@ class FrozenTrial:
                 if result['settled'] is not True:result['reasons'].append('runs_settlement_unconfirmed')
                 if value is not None:
                     code=bounded_regular(work/'.zhulong-work.py',1048576)
-                    result['native_evidence']=audit_native_skill(profile,sub,{'code':code.decode(),'code_hash':hashlib.sha256(code).hexdigest()},native.TRUSTED_RUNNER_COMMAND,work/'.zhulong-work.py',value,task_input=snapshot)
+                    result['native_evidence']=audit_native_skill(profile,sub,{'code':code.decode(),'code_hash':hashlib.sha256(code).hexdigest()},native.TRUSTED_RUNNER_COMMAND,work/'.zhulong-work.py',value,task_input=snapshot,worker_identity=True)
                     result['native']=True
             except (OSError,ValueError,RuntimeError,sqlite3.Error,UnicodeError) as exc:result['reasons'].append(error_code(exc,'native_transcript_unavailable'))
-            worker=self._event('worker',allocation_id)
+            with self.journal.transaction() as c:
+                launches={r['key']:r['payload'] for r in self.journal.rows(c,'worker_launch') if r['payload']['allocation_id']==allocation_id}
+                workers={r['key']:r['payload'] for r in self.journal.rows(c,'worker') if r['payload']['allocation_id']==allocation_id}
             try:
-                if worker is None:raise ValueError('actual_worker_unobserved')
+                if not workers:raise ValueError('actual_worker_unobserved')
+                if set(launches)!=set(workers):raise ValueError('actual_worker_capture_incomplete')
                 from runtime_policy import inspect_worker
-                raw=strict_read(self.base(a)/'worker.json')
-                if digest(raw)!=worker['worker_sha256'] or raw['Config']['Labels'].get('zhulong.boot')!=worker['service_boot_id']:raise ValueError('actual_worker_binding_changed')
-                if raw.get('Config',{}).get('Image')!=m['image']:raise ValueError('actual_worker_image_changed')
-                result['worker_boundary']=inspect_worker(m,policy,raw)
+                matches=[];seen=set()
+                for key,worker in workers.items():
+                    cid=worker['container_id']
+                    if not isinstance(cid,str) or not re.fullmatch('[a-f0-9]{64}',cid) or cid in seen:raise ValueError('actual_worker_identity_ambiguous')
+                    seen.add(cid)
+                    raw=strict_read(self.base(a)/'worker-captures'/(worker['container_id']+'.json'));labels=raw['Config']['Labels']
+                    launch=launches[key]
+                    if (digest(raw)!=worker['worker_sha256'] or raw.get('Id')!=worker['container_id'] or labels.get('zhulong.boot')!=worker['service_boot_id']
+                            or worker['service_boot_id'] in ('probe','preflight') or labels.get('hermes-task-id')!=sub['session_key']
+                            or worker['session_id']!=sub['session_key'] or worker['submission_id']!=sub['id'] or worker['run_id']!=sub['run_id']
+                            or worker['manifest_sha256']!=file_sha(self.base(a)/'deployment/deployment.json')
+                            or any(launch.get(k)!=worker.get(k) for k in ('service_boot_id','owner','session_id','submission_id','run_id'))):raise ValueError('actual_worker_binding_changed')
+                    if raw.get('Config',{}).get('Image')!=m['image']:raise ValueError('actual_worker_image_changed')
+                    if registered is None or not registered['origin']['utc']<=worker['created_utc']<=worker['clock']['utc']<=registered['deadline_utc']:raise ValueError('actual_worker_capture_late')
+                    for observed in (launch['clock'],worker['clock']):
+                        if Deadline(registered['origin'],180,clock=lambda:observed).remaining()<=0:raise ValueError('actual_worker_capture_late')
+                    if launch['clock']['monotonic']>worker['clock']['monotonic'] or raw['Config'].get('Hostname')!=cid[:12]:raise ValueError('actual_worker_binding_changed')
+                    boundary=inspect_worker(m,policy,raw)
+                    if raw['Config'].get('Hostname')==result.get('native_evidence',{}).get('worker_hostname'):
+                        matches.append(dict(container_id=worker['container_id'],worker_sha256=worker['worker_sha256'],**boundary))
+                if len(matches)!=1:raise ValueError('foreground_worker_binding_missing')
+                result['worker_boundary']=matches[0]
             except (OSError,ValueError,KeyError) as exc:result['reasons'].append(error_code(exc,'actual_worker_unavailable'))
             if result['observed_model'] is None:result['reasons'].append('native_runtime_model_unknown')
             if runtime.get('provider') is None:result['reasons'].append('native_runtime_provider_unknown')
-            if result['planner_qualified'] is True and worker is not None and 'worker_boundary' in result and runtime_qualified:result['arm_qualified']=True
+            if result['planner_qualified'] is True and 'worker_boundary' in result and runtime_qualified:result['arm_qualified']=True
         except (OSError,ValueError,RuntimeError,sqlite3.Error,KeyError,TypeError) as exc:result['reasons'].append(error_code(exc,'native_evidence_unavailable'))
         return result
 
@@ -465,24 +498,6 @@ class FrozenTrial:
         for key in DOCKER_ENV_KEYS:env.pop(key,None)
         env['DOCKER_HOST']='unix:///var/run/docker.sock'
         return deadline.call(lambda remaining:subprocess.run(['docker','--host=unix:///var/run/docker.sock',*args],env=env,capture_output=True,text=True,check=True,timeout=min(remaining,3)))
-
-    def _capture_worker(self,a,m,policy,deadline):
-        if a['id'] in self._captured_workers:return
-        from runtime_policy import inspect_worker
-        from runtime_channel import read_json
-        status=read_json(Path(m['root'])/'service/status.json');boot=status.get('boot_id')
-        if not boot:return
-        listed=self._docker(['ps','-q','--filter','label=zhulong.runtime='+m['deployment_id'],'--filter','label=zhulong.boot='+boot],deadline)
-        ids=listed.stdout.split()
-        if not ids:return
-        if len(ids)!=1:raise ValueError('multiple_owned_native_workers')
-        raw=json.loads(self._docker(['inspect',ids[0]],deadline).stdout)[0]
-        if raw.get('Config',{}).get('Labels',{}).get('zhulong.boot')!=boot:raise ValueError('worker_boot_changed')
-        if raw.get('Config',{}).get('Image')!=m['image']:raise ValueError('actual_worker_image_changed')
-        inspect_worker(m,policy,raw)
-        durable_json(self.base(a)/'worker.json',raw,exclusive=True)
-        self._append('worker',a['id'],dict(worker_sha256=digest(raw),clock=host_clock(),service_boot_id=boot,container_id=ids[0]),timeout=deadline.remaining())
-        self._captured_workers.add(a['id'])
 
     def _poll_settlement(self,a,deadline):
         from scripts.skill_smoke_evidence import read_db
@@ -590,14 +605,10 @@ class FrozenTrial:
                 # Persist origin BEFORE unpause. Every operation from here consumes
                 # the same monotonic bound, including discovery and final audit.
                 deadline=Deadline.start(180);self._append('endpoint_origin',allocation_id,deadline.record(),timeout=deadline.remaining())
+                deadline.call(lambda _:durable_json(self.base(a)/'worker-endpoint.json',deadline.record(),exclusive=True))
                 ledger=object.__new__(Ledger);ledger.path=manifest.parent/'profile/zhulong/autonomy.db';ledger.timeout=min(.1,deadline.remaining())
                 deadline.call(lambda _:ledger.set_pause(False))
-                last_inspect=0.
                 while deadline.remaining()>0:
-                    if time.monotonic()-last_inspect>=.5:
-                        try:self._capture_worker(a,m,policy,deadline)
-                        except subprocess.SubprocessError:pass
-                        last_inspect=time.monotonic()
                     if self._poll_settlement(a,deadline):break
                     if process.poll() is not None:raise ValueError('supervisor_exited_at_endpoint')
                     time.sleep(min(.2,deadline.remaining()))

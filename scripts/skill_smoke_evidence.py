@@ -43,7 +43,7 @@ def read_db(path):
     finally: c.close()
 
 
-def audit_native_skill(profile, submission, binding, command, program, expected_value, task_input=None):
+def audit_native_skill(profile, submission, binding, command, program, expected_value, task_input=None, *, worker_identity=False):
     profile = Path(profile)
     expected = {'code_hash':binding['code_hash'],'value':expected_value}
     if task_input is not None:
@@ -79,8 +79,12 @@ def audit_native_skill(profile, submission, binding, command, program, expected_
             # The terminal receipt adds one level around the depth-32 stdout value.
             try: output = strict_json(result['output'],max_depth=33)
             except (ValueError, KeyError): continue
-            if canonical(output) != canonical(expected): continue
-            successful.append(call['id'])
+            hostname=output.get('worker_hostname') if isinstance(output,dict) else None
+            if worker_identity:
+                if not isinstance(hostname,str) or not __import__('re').fullmatch('[a-f0-9]{12}',hostname):continue
+                if canonical(output)!=canonical(dict(expected,worker_hostname=hostname)):continue
+            elif canonical(output) != canonical(expected):continue
+            successful.append((call['id'],hostname))
     if len(successful) != 1: raise RuntimeError('native_skill_execution_unverified')
     if hashlib.sha256(binding['code'].encode()).hexdigest() != binding['code_hash'] or hashlib.sha256(Path(program).read_bytes()).hexdigest() != binding['code_hash']:
         raise RuntimeError('native_skill_code_hash_mismatch')
@@ -88,4 +92,5 @@ def audit_native_skill(profile, submission, binding, command, program, expected_
             'worker_copy_matches_published_code': True, 'execution_command_sha256': hashlib.sha256(command.encode()).hexdigest(),
             'claim': 'Observed execution in this finite smoke; no general execution enforcement or causal improvement claim'}
     if task_input is not None: result.update(frozen_input_execution_verified=True, input_hash=task_input['input_hash'])
+    if worker_identity:result['worker_hostname']=successful[0][1]
     return result

@@ -118,8 +118,17 @@ def native_config(m,policy,boot_id='preflight'):
         'gateway':{'multiplex_profiles':False,'api_server':{'max_concurrent_runs':1}},'terminal':terminal}
 
 
+def protected_native_config(m,policy):
+    # The pinned gateway bridges explicit YAML keys over inherited launch env.
+    # Boot-scoped args belong to child_environment; an empty list would erase them.
+    config=native_config(m,policy)
+    del config['terminal']['docker_extra_args']
+    return config
+
+
 def child_environment(m,boot_id,inherited=None,*,api_key):
     env=dict(os.environ if inherited is None else inherited)
+    env.pop('HERMES_DOCKER_BINARY',None)
     for name in list(env):
         if name.startswith('TERMINAL_') or name in DOCKER_ENV_KEYS:env.pop(name,None)
     policy=json.loads((Path(m['root'])/'profile/zhulong/config.json').read_text())['autonomy'] if (Path(m['root'])/'profile/zhulong/config.json').exists() else {'sources':[]}
@@ -132,6 +141,12 @@ def child_environment(m,boot_id,inherited=None,*,api_key):
         API_SERVER_KEY=api_key,API_SERVER_HOST='127.0.0.1',API_SERVER_PORT=str(m['port']),
         DOCKER_HOST='unix:///var/run/docker.sock')
     env.pop('HERMES_SAFE_MODE',None)
+    if m.get('docker_observer') is not None and boot_id!='probe':
+        observer=m['docker_observer'];root=Path(m['root'])
+        if observer!={'path':str(root/'docker-observer'),'scope':str(root/'worker-observer-scope.json')}:raise ValueError('docker_observer_scope_changed')
+        for name in observer.values():
+            if m['hashes'].get(name)!=file_hash(name):raise ValueError('docker_observer_changed')
+        env['HERMES_DOCKER_BINARY']=observer['path']
     return env
 
 
@@ -216,7 +231,7 @@ def create_deployment(root,work,host,image,command,autonomy,*,port=8642,max_laun
     # Empty .env prevents native project-secret fallback; local API key is private.
     (profile/'.env').touch(mode=0o600)
     keyfile=root/'api.key';keyfile.touch(mode=0o600);keyfile.write_text(secrets.token_urlsafe(32))
-    atomic_json(profile/'config.yaml',native_config(m,policy))
+    atomic_json(profile/'config.yaml',protected_native_config(m,policy))
     atomic_json(profile/'zhulong/config.json',{'scheduler':True,'narrative':False,'probe_weekday':-1,
         'llm_daily_cap':4,'autonomy':raw})
     protected=[profile/'config.yaml',profile/'zhulong/config.json']

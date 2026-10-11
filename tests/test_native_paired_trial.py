@@ -130,13 +130,13 @@ class PairedTests(unittest.TestCase):
         command=self.m.native.TRUSTED_RUNNER_COMMAND
         with closing(sqlite3.connect(profile/'runs_idempotency.db')) as c,c:
             c.execute('CREATE TABLE run_idempotency(idempotency_key TEXT,run_id TEXT,fingerprint TEXT,status_json TEXT)')
-            c.execute('INSERT INTO run_idempotency VALUES(?,?,?,?)',(sub['id'],sub['run_id'],digest({'body':sub['request'],'gateway_session_key':sub['session_key']}),canonical({'session_id':'native-session','run_id':sub['run_id'],'status':'completed'})))
+            c.execute('INSERT INTO run_idempotency VALUES(?,?,?,?)',(sub['id'],sub['run_id'],digest({'body':sub['request'],'gateway_session_key':sub['session_key']}),canonical({'session_id':sub['session_key'],'run_id':sub['run_id'],'status':'completed'})))
         with closing(sqlite3.connect(profile/'state.db')) as c,c:
             c.execute('CREATE TABLE messages(id INTEGER PRIMARY KEY,session_id TEXT,role TEXT,content TEXT,tool_calls TEXT,tool_call_id TEXT)')
             call=[{'id':'foreground','function':{'name':'terminal','arguments':{'command':command,'background':False}}}]
-            c.execute('INSERT INTO messages VALUES(1,?,?,?,?,?)',('native-session','assistant',None,canonical(call),None))
-            value={'code_hash':self.m.file_sha(work/'.zhulong-work.py'),'input_hash':a['input_hash'],'value':expected}
-            c.execute('INSERT INTO messages VALUES(2,?,?,?,?,?)',('native-session','tool',canonical({'exit_code':0,'error':None,'output':canonical(value)}),None,'foreground'))
+            c.execute('INSERT INTO messages VALUES(1,?,?,?,?,?)',(sub['session_key'],'assistant',None,canonical(call),None))
+            value={'code_hash':self.m.file_sha(work/'.zhulong-work.py'),'input_hash':a['input_hash'],'value':expected,'worker_hostname':'a'*12}
+            c.execute('INSERT INTO messages VALUES(2,?,?,?,?,?)',(sub['session_key'],'tool',canonical({'exit_code':0,'error':None,'output':canonical(value)}),None,'foreground'))
         return trial,a,profile,sub
 
     def test_qualifier_reads_actual_planner_native_and_independent_business_axes(self):
@@ -256,15 +256,34 @@ class PairedTests(unittest.TestCase):
         r=trial.qualify_artifacts(a['id']);self.assertTrue(r['native']);self.assertIsNone(r['planner_qualified'])
         self.assertIn('executor_delivery_mismatch',r['reasons'])
 
-    def worker_artifact(self,trial,a,*,image=IMAGE):
+    def worker_raw(self,trial,a,*,image=IMAGE):
         import os
         from runtime_policy import TMPFS_POLICY
         m=trial.inspect_controls(a['id'])['manifest'];work=m['work'];profile=Path(m['root'])/'profile'
-        raw={'Config':{'Image':image,'User':f'{os.getuid()}:{os.getgid()}','Env':['HOME=/home'],'Labels':{'zhulong.runtime':m['deployment_id'],'zhulong.boot':'test-boot'}},
+        raw={'Id':'a'*64,'Config':{'Hostname':'a'*12,'Image':image,'User':f'{os.getuid()}:{os.getgid()}','Env':['HOME=/home'],'Labels':{'zhulong.runtime':m['deployment_id'],'zhulong.boot':'test-boot'}},
              'HostConfig':{'ReadonlyRootfs':True,'NetworkMode':'none','Privileged':False,'PidMode':'','IpcMode':'private','Memory':536870912,'MemorySwap':536870912,'ShmSize':67108864,'NanoCpus':1000000000,'PidsLimit':128,'SecurityOpt':['no-new-privileges'],'CapDrop':['ALL'],'CapAdd':[],'Tmpfs':dict(TMPFS_POLICY)},
              'Mounts':[{'Type':'bind','Source':work,'Destination':work,'RW':True},{'Type':'bind','Source':work+'/facts.json','Destination':work+'/facts.json','RW':False}]}
-        self.m.durable_json(trial.base(a)/'worker.json',raw,exclusive=True)
-        trial._append('worker',a['id'],{'worker_sha256':digest(raw),'clock':self.clock(),'service_boot_id':'test-boot','container_id':'explicit-local-test-worker'})
+        return raw
+
+    def worker_artifact(self,trial,a,*,image=IMAGE):
+        raw=self.worker_raw(trial,a,image=image);manifest=trial.base(a)/'deployment/deployment.json'
+        with closing(sqlite3.connect(manifest.parent/'profile/zhulong/autonomy.db')) as c:
+            c.row_factory=sqlite3.Row;sub=dict(c.execute('SELECT * FROM submissions').fetchone())
+        raw['Config']['Labels']['hermes-task-id']=sub['session_key']
+        path=trial.base(a)/'worker-captures'/(raw['Id']+'.json');path.parent.mkdir()
+        self.m.durable_json(path,raw,exclusive=True)
+        value=dict(allocation_id=a['id'],clock=self.clock(),service_boot_id='test-boot',owner={'pid':1},
+                   submission_id=sub['id'],run_id=sub['run_id'],session_id=sub['session_key'])
+        trial._append('worker_launch',a['id'],value)
+        trial._append('worker',a['id'],dict(value,worker_sha256=digest(raw),container_id=raw['Id'],
+                      manifest_sha256=self.m.file_sha(manifest),created_utc=self.clock.utc))
+
+    def test_worker_capture_clock_discontinuity_cannot_qualify(self):
+        trial,a,profile,sub=self.execution_artifacts()
+        self.clock.boot='other-boot';self.worker_artifact(trial,a)
+        result=trial.qualify_artifacts(a['id'])
+        self.assertIsNone(result['arm_qualified'])
+        self.assertIn('deadline_clock_discontinuity',result['reasons'])
 
     def test_worker_full_actual_boundary_enables_arm_qualification(self):
         trial,a,profile,sub=self.execution_artifacts();self.worker_artifact(trial,a)
@@ -403,6 +422,12 @@ class PairedTests(unittest.TestCase):
         with patch.object(trial,'inspect_controls',return_value=controls),patch.object(self.m.subprocess,'run',side_effect=OSError('offline startup')),patch.object(trial,'freeze_endpoint',side_effect=ValueError('journal_unavailable')),patch.object(trial,'_cleanup',return_value={'confirmed':None}) as cleanup:
             with self.assertRaisesRegex(ValueError,'journal_unavailable'):trial._run_allocation(a['id'])
         cleanup.assert_called_once()
+
+    def test_paired_runner_records_hostname_without_changing_default_runner(self):
+        self.assertIn('worker_identity',__import__('inspect').signature(self.m.native.trusted_runner_body).parameters)
+        default=self.m.native.trusted_runner_body('a'*64)
+        paired=self.m.native.trusted_runner_body('a'*64,worker_identity=True)
+        self.assertNotIn('worker_hostname',default);self.assertIn('worker_hostname',paired)
 
     def test_saved_input_byte_hash_and_python_launcher_are_frozen(self):
         trial=self.freeze()

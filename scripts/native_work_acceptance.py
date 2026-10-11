@@ -64,7 +64,7 @@ def work_command(source, output, input_hash):
     return command
 
 
-def trusted_runner_body(input_hash):
+def trusted_runner_body(input_hash, *, worker_identity=False):
     """Existing bounded runner as a protected file; never includes an answer."""
     if not isinstance(input_hash,str) or not re.fullmatch('[0-9a-f]{64}',input_hash):
         raise ValueError('invalid_frozen_input_hash')
@@ -72,17 +72,20 @@ def trusted_runner_body(input_hash):
     body = wrapped.split('\n',1)[1].rsplit('\nZHULONG_SKILL_SMOKE',1)[0]
     old = "expected=hashlib.sha256(program.read_bytes()).hexdigest()\ncode=program.read_bytes()"
     if body.count(old) != 1: raise ValueError('trusted_runner_template_changed')
-    return body.replace(old,"code=program.read_bytes()\nexpected=hashlib.sha256(code).hexdigest()")+'\n'
+    body=body.replace(old,"code=program.read_bytes()\nexpected=hashlib.sha256(code).hexdigest()")
+    if worker_identity:
+        body=body.replace("'input_hash':input_hash,'value':value}","'input_hash':input_hash,'value':value,'worker_hostname':__import__('os').uname().nodename}")
+    return body+'\n'
 
 
-def prepare_trusted_runner(manifest, input_hash):
+def prepare_trusted_runner(manifest, input_hash, *, worker_identity=False):
     """Prepare this new deployment before startup; preserve native guard floors.
 
     Hermes' permanent command allowlist is a top-level list. The pinned host
     evaluates hardline/runtime-deletion/user-deny floors before this exact
     literal match. Its generated-cache Docker bind is already read-only.
     """
-    body=trusted_runner_body(input_hash);manifest=Path(manifest).resolve()
+    body=trusted_runner_body(input_hash,worker_identity=worker_identity);manifest=Path(manifest).resolve()
     m=read_json(manifest);root=manifest.parent;profile=root/'profile'
     if m.get('root') != str(root) or not isinstance(m.get('hashes'),dict):
         raise ValueError('trusted_runner_deployment_binding_missing')
