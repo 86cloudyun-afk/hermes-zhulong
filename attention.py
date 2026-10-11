@@ -124,36 +124,26 @@ def _prior_control(c, now):
         return {**empty, 'focus_ids': observation['focus_ids']}, {
             'origin': 'off_observation_wait_reset', 'observation_id': observation['observation_id'],
             'observed_at': observation['observed_at'], 'frame_id': observation['frame_id'],
-            'wait_state_available': False, 'interrupted_since_forecast': True}
+            'wait_state_available': False, 'focus_state_available': True, 'interrupted_since_forecast': True}
     frame = c.execute('SELECT seq,frame FROM cognition_frames ORDER BY seq DESC LIMIT 1').fetchone()
+    historical = {'historical_frame_id': json.loads(frame['frame'])['frame_id']} if frame else {}
     if previous is not None:
-        cutoff = previous.get('frame_seq_cutoff')
-        if cutoff is None and previous['origin_frame_id'] is not None:
-            origin = c.execute('SELECT seq FROM cognition_frames WHERE frame_id=?', (previous['origin_frame_id'],)).fetchone()
-            cutoff = origin['seq'] if origin else 0
-        if cutoff is None and frame:
-            value = json.loads(frame['frame'])
-            # Historical empty forecasts have no cross-journal cursor. Never
-            # claim an ordering at equal clock times that those records lack.
-            if value['captured_at'] == previous['captured_at'] and 'attention' not in value:
-                return empty, {'origin': 'legacy_order_unavailable_reset', 'wait_state_available': False,
-                               'focus_state_available': False, 'frame_id': value['frame_id'],
-                               'interrupted_since_forecast': True}
-            cutoff = frame['seq'] if value['captured_at'] <= previous['captured_at'] else 0
-        if frame and frame['seq'] > (cutoff or 0):
-            value = json.loads(frame['frame'])
-            return {**empty, 'focus_ids': [e['source_id'] for e in value['entries']]}, {
-                'origin': 'legacy_off_frame_wait_reset', 'frame_id': value['frame_id'],
-                'wait_state_available': False, 'interrupted_since_forecast': True}
+        if 'frame_seq_cutoff' not in previous or 'off_observation_cutoff' not in previous:
+            # Legacy empty off calls left neither frame nor marker. A stored
+            # selection/capture timestamp cannot establish the latest state.
+            return empty, {**historical, 'origin': 'legacy_unrecorded_observation_reset',
+                'historical_forecast_id': previous['forecast_id'], 'wait_state_available': False,
+                'focus_state_available': False, 'interrupted_since_forecast': True}
+        if frame and frame['seq'] > previous['frame_seq_cutoff']:
+            return empty, {**historical, 'origin': 'legacy_off_frame_unknown_focus_reset',
+                'wait_state_available': False, 'focus_state_available': False, 'interrupted_since_forecast': True}
         return previous['state_after'], {'origin': 'immediately_preceding_forecast',
             'forecast_id': previous['forecast_id'], 'scope_hash': previous['scope_hash'],
-            'wait_state_available': True, 'interrupted_since_forecast': False}
-    if frame:
-        value = json.loads(frame['frame'])
-        return {**empty, 'focus_ids': [e['source_id'] for e in value['entries']]}, {
-            'origin': 'legacy_frame_wait_reset', 'frame_id': value['frame_id'], 'wait_state_available': False,
-            'interrupted_since_forecast': False}
-    return empty, {'origin': 'initial', 'wait_state_available': True, 'interrupted_since_forecast': False}
+            'wait_state_available': True, 'focus_state_available': True, 'interrupted_since_forecast': False}
+    # Default-off history is intentionally inert; even a latest nonempty legacy
+    # frame may have been followed by unrecorded empty observations.
+    return empty, {**historical, 'origin': 'initial_unrecorded_focus_reset', 'wait_state_available': False,
+                   'focus_state_available': False, 'interrupted_since_forecast': False}
 
 
 def _content(expected, actual):
@@ -223,7 +213,7 @@ def prepare(c, observations, eligible, now, policy, identity_hash, configuration
                         'observed_at': now, 'elapsed_seconds': now-f['captured_at'], 'status': status,
                         'sources': cells, 'new_source_ids': sorted(set(known)-{p['source_id'] for p in f['source_predictions']}),
                         'expected_next_source_ids': f['expected_next_source_ids'],
-                        'scope_mismatch_reason': 'unrecorded_legacy_off_interval' if provenance['interrupted_since_forecast'] else
+                        'scope_mismatch_reason': 'legacy_observation_order_unavailable' if provenance['interrupted_since_forecast'] else
                             'configuration_transition' if not matches else None})
     # Persist labels now, before training or ranking. Schedule evidence lives in
     # the next forecast, linked to these immutable outcomes, and is scored there.

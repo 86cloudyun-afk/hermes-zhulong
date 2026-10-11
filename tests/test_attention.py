@@ -243,6 +243,67 @@ class AttentionTests(unittest.TestCase):
         self.assertEqual(resumed['attention']['model']['counts']['source-0'],{'fresh':1,'not_fresh':0})
         self.assertEqual(len(self.outcomes()),2)
 
+    def test_first_activation_after_unrecorded_empty_off_resets_unknown_focus_without_stale_penalty(self):
+        policy=fixtures.CognitionTests.policy(self,capacity=1,attention_mode='constant',
+                                             attention_max_wait=100,attention_switch_penalty=1)
+        obs=observe_sources(policy); offpolicy=copy.deepcopy(policy); offpolicy['cognition']['attention_mode']='off'
+        off=self.workspace(offpolicy)
+        off.select(obs,self.now); previous=off.select(obs,self.now+1)
+        self.assertEqual(previous['entries'][0]['source_id'],'source-1')
+        self.assertIsNone(off.select([],self.now+2))
+        with self.ledger._connection() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM cognition_attention_off_observations').fetchone()[0],0)
+        self.ledger=Ledger(self.ledger.path)
+        resumed=self.workspace(policy).select(obs,self.now+3); f=resumed['attention']
+        self.assertEqual(f['focus_state']['focus_ids'],[])
+        self.assertFalse(f['focus_state_provenance']['focus_state_available'])
+        self.assertEqual(f['focus_state_provenance']['origin'],'initial_unrecorded_focus_reset')
+        self.assertEqual(f['focus_state_provenance']['historical_frame_id'],previous['frame_id'])
+        self.assertEqual(resumed['entries'][0]['source_id'],'source-0')
+
+    def test_legacy_unrecorded_off_frame_is_historical_not_actual_focus(self):
+        from unittest.mock import patch
+        policy=fixtures.CognitionTests.policy(self,capacity=1,attention_mode='constant',
+                                             attention_max_wait=100,attention_switch_penalty=1)
+        obs=observe_sources(policy); self.workspace(policy).select(obs,self.now)
+        offpolicy=copy.deepcopy(policy); offpolicy['cognition']['attention_mode']='off'
+        # Represent the pre-marker writer's successful calls: nonempty frames
+        # persisted, empty off calls left no observation record. No journal is rewritten.
+        with patch('attention.observe_off',return_value=True):
+            off=self.workspace(offpolicy); previous=off.select(obs,self.now+1)
+            self.assertIsNone(off.select([],self.now+2))
+        self.ledger=Ledger(self.ledger.path)
+        resumed=self.workspace(policy).select(obs,self.now+3); f=resumed['attention']
+        self.assertEqual(f['focus_state']['focus_ids'],[])
+        self.assertFalse(f['focus_state_provenance']['focus_state_available'])
+        self.assertEqual(f['focus_state_provenance']['historical_frame_id'],previous['frame_id'])
+        self.assertEqual(resumed['entries'][0]['source_id'],'source-0')
+        self.assertEqual(self.outcomes()[-1]['status'],'scope_mismatch')
+
+    def test_legacy_forecast_without_off_cursor_cannot_establish_unrecorded_empty_observation_order(self):
+        from unittest.mock import patch
+        policy=fixtures.CognitionTests.policy(self,capacity=1,attention_mode='constant',attention_switch_penalty=1)
+        obs=observe_sources(policy); frame=self.workspace(policy).select(obs,self.now)
+        legacy=copy.deepcopy(frame['attention']); legacy.pop('off_observation_cutoff'); legacy.pop('frame_seq_cutoff')
+        frame['attention']=legacy
+        self.ledger=Ledger(self.root/'pre-marker.db')
+        # Seed an intact pre-marker format journal in a fresh ledger, rather
+        # than mutating any immutable current record.
+        with self.ledger._connection(True) as db:
+            db.execute('INSERT INTO cognition_forecasts(forecast_id,origin_frame_id,scope_hash,forecast,forecast_hash) VALUES(?,?,?,?,?)',
+                       (legacy['forecast_id'],frame['frame_id'],legacy['scope_hash'],canonical(legacy),digest(legacy)))
+            db.execute('INSERT INTO cognition_frames(frame_id,frame,frame_hash) VALUES(?,?,?)',
+                       (frame['frame_id'],canonical(frame),digest(frame)))
+        offpolicy=copy.deepcopy(policy); offpolicy['cognition']['attention_mode']='off'
+        with patch('attention.observe_off',return_value=True):
+            self.assertIsNone(self.workspace(offpolicy).select([],self.now+1))
+        self.ledger=Ledger(self.ledger.path)
+        resumed=self.workspace(policy).select(obs,self.now+2)
+        self.assertFalse(resumed['attention']['focus_state_provenance']['focus_state_available'])
+        self.assertEqual(resumed['attention']['focus_state_provenance']['origin'],'legacy_unrecorded_observation_reset')
+        self.assertEqual(resumed['attention']['focus_state']['focus_ids'],[])
+        self.assertEqual(self.outcomes()[-1]['status'],'scope_mismatch')
+
     def test_repeated_off_observations_track_last_empty_selection_and_are_inert_without_attention_history(self):
         policy=fixtures.CognitionTests.policy(self,capacity=1,attention_mode='constant',attention_switch_penalty=1)
         obs=observe_sources(policy); offpolicy=copy.deepcopy(policy); offpolicy['cognition']['attention_mode']='off'
