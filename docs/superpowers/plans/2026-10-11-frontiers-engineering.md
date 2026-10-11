@@ -64,7 +64,7 @@
 - [x] Test complete allocation denominator, missing/duplicate/hash/scope failures, random order reproducibility, no small-n gain assertion, actual native tool/hash auditing and failure receipt persistence.
 - [x] Verify RED.
 - [x] Implement replayable protocol and finite actual gateway lifecycle for three variable business inputs; no expected-answer disclosure.
-- [ ] Verify GREEN; root runs bounded real paid acceptance after a clean implementation commit and retains exact-version evidence.
+- [x] Verify GREEN; root ran three successful real native business allocations on clean 0f5841e and retained A/B failures and all denominators.
 - [x] Commit owned files.
 
 ### Task 5: attempt-time monitoring
@@ -85,14 +85,16 @@
 - [x] Test stale generations, budget races, pause-publication order, unknown recovery and real SQLite event projection; mutation must yield a counterexample.
 - [x] Verify RED; implement independent bounded model and production event journal.
 - [x] Verify GREEN; resolve implementable historic issues and list infrastructure/time/service-dependent items with concrete requirements.
-- [ ] Commit, run full actual host+Docker suite, installed plugin smoke and exact-code paid native work checks.
+- [x] Commit, run full actual host+Docker suite (368/368, zero skips), installed plugin smoke and exact-code paid native work checks.
 
 ### Task 7: review and delivery
 
 - [x] Fresh task review before dependent integration; resolve substantive findings.
-- [ ] Fresh whole-branch review on most capable available model; one scoped fix/re-review pass.
-- [ ] Update version/README/deployment/evidence with exact supported scope and unrun checks.
+- [x] Fresh whole-branch review on most capable available model; substantive findings closed by scoped fixes and re-review.
+- [x] Update version/README/deployment/evidence with exact supported scope and unrun checks.
 - [ ] Push, create and attach PR, confirm Python 3.11/3.12/3.14 CI, record independent review and merge authorized exact head.
 - [ ] Refresh installed managed copies and save full tested startup/configuration draft at merged revision; saved draft is not publication.
 
 Implementation note: root batches commits after shared integration; agents never commit concurrently. Actual native useful-work and independent whole-branch review remain separate delivery gates. Same-effective-identity live paired execution and infrastructure/time-dependent targets are listed explicitly in engineering-closure.md.
+
+Delivery note: checkboxes record the pre-merge verification point. PR/CI/authorized merge and cloud-draft persistence are recorded externally on GitHub and in the environment save receipt; they are the final delivery steps, not additional paid-validation runs.

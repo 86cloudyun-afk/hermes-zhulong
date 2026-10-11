@@ -1,19 +1,26 @@
 {
   "schema": "zhulong-v0.9-engineering-validation-summary-v1",
   "study_date": "2026-10-11",
-  "status": "pending_final_runner_acceptance",
+  "status": "verified_code_and_finite_native_acceptance",
   "repository": {
     "baseline_revision": "dd28648e3d730aca47cb0e7da8509b5737a3e6c3",
     "integrated_revision": "e3ed5fb94ea848dce5a5d58dc239b43be78857a0",
     "review_fixed_revision": "00dd66bab946263a85f383546fed41ab0db0920c",
-    "final_revision": null,
-    "final_revision_status": "pending",
+    "final_revision": "0f5841ebfcaa14325638cf199d8bb343bb9d1e59",
+    "final_revision_status": "committed_clean_code",
     "protected_runner_snapshot": {
-      "revision_binding": "Working-tree modification after review_fixed_revision; final commit pending",
+      "revision_binding": "Committed clean code 0f5841ebfcaa14325638cf199d8bb343bb9d1e59; later documentation-only revisions do not change this paid evidence binding",
       "implementation_sha256": "49b4745f481989b6d39cf9c4ed5fd33c6368ff1f72690d3115b3da1d9bd26961",
-      "tests_sha256": "be7f719d3fd70c290aadbf9ca9a76a4e231349f736919dce621b86295a8256d3",
+      "tests_sha256": "93a558f043284af5699e9aa12f1f014020a114cc76909a5fe1750c277e7a8e5f",
       "runtime_policy_sha256": "6e53cc3e32a87f4dfa7200cebdfa800dcd9d1dd04de09ccd3f36f6b517342826",
       "runtime_policy_tests_sha256": "c25a105af79e04cdf4171210659df1ae3b41694305c701e5433be6314f37a47e"
+    },
+    "paid_evidence_code_unchanged": true,
+    "paid_evidence_current_implementation_hashes": {
+      "causal_trial.py": "6aa9f3def987ef702624d2549e758b56c12c956919d69e6b0d617d6bfb0108cf",
+      "scripts/native_work_acceptance.py": "49b4745f481989b6d39cf9c4ed5fd33c6368ff1f72690d3115b3da1d9bd26961",
+      "scripts/skill_smoke_evidence.py": "532dd695f62b61e97af2e3c8a231c43a759c530c81104084cd2d1ce45263c2b7",
+      "work_reference.py": "e4c7d2770b8806ad9f14ea434d6891b22dfde58a11a98ecb0b0b79d9b6d06dec"
     }
   },
   "runtime": {
@@ -37,7 +44,9 @@
       "seconds": 119.234,
       "scope": "After both whole-branch Important fixes, before protected runner changes",
       "source": "full-suite-review-fixed.log",
-      "source_sha256": "2312db7a50dcb34ef9b43c56b470fedc63602a2c2d598da0b30c9cc040c2502a"
+      "source_sha256": "2312db7a50dcb34ef9b43c56b470fedc63602a2c2d598da0b30c9cc040c2502a",
+      "historical": true,
+      "superseded_by": "protected_runner_final_full_suite"
     },
     "installed_suite": {
       "status": "passed_with_explicit_skips",
@@ -50,7 +59,9 @@
       "seconds": 36.074,
       "scope": "Review-fixed revision before protected runner changes; skipped cases are unverified by this command",
       "source": "install-v09.log",
-      "source_sha256": "0648643634fdf819f38daf8f95aab1158b47b88b96423809cb4df72264c688b8"
+      "source_sha256": "0648643634fdf819f38daf8f95aab1158b47b88b96423809cb4df72264c688b8",
+      "historical": true,
+      "superseded_by": "protected_runner_final_installed_suite"
     },
     "host_smoke": {
       "status": "passed",
@@ -64,8 +75,11 @@
       "digest": "passed",
       "sqlite_integrity": "ok",
       "external_llm_calls": 0,
-      "source": "host-smoke-review-fixed.json",
-      "source_sha256": "c026295fe20d4add2f7476dc45ba56bb2643becb88ce15f4dca76161f6a30e61"
+      "source": "host-smoke-protected-runner.json",
+      "source_sha256": "c026295fe20d4add2f7476dc45ba56bb2643becb88ce15f4dca76161f6a30e61",
+      "exit_source": "host-smoke-protected-runner.exit",
+      "exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "revision": "0f5841ebfcaa14325638cf199d8bb343bb9d1e59"
     },
     "installation_hash_parity": {
       "status": "matched",
@@ -84,9 +98,10 @@
       "failed": 0,
       "errors": 0,
       "seconds": 0.923,
-      "scope": "Current protected runner working-tree snapshot; not its post-change full suite",
+      "scope": "Historical initial protected runner focused checks before later permission and test-import fixes; final full suite recorded separately",
       "source": "zhulong-r3-green-trusted-runner.log",
-      "source_sha256": "add4766dab9e5e4aa11a9f4e9500a1ce7532fafbf702413da890c41445782e8f"
+      "source_sha256": "add4766dab9e5e4aa11a9f4e9500a1ce7532fafbf702413da890c41445782e8f",
+      "historical": true
     },
     "protected_runner_actual_docker_probe": {
       "status": "passed",
@@ -156,16 +171,36 @@
       "paid_business_acceptance_claimed": false
     },
     "protected_runner_final_full_suite": {
-      "status": "running_pending_result",
-      "tests": null,
-      "passed": null,
-      "skipped": null
+      "status": "passed",
+      "revision": "0f5841ebfcaa14325638cf199d8bb343bb9d1e59",
+      "tests": 368,
+      "passed": 368,
+      "skipped": 0,
+      "failed": 0,
+      "errors": 0,
+      "exit_code": 0,
+      "seconds": 117.21,
+      "source": "full-suite-protected-runner-final.log",
+      "source_sha256": "d01510f864a61165e790fc483f986f67311f528971234955ea31cbd6d508b590",
+      "exit_source": "full-suite-protected-runner-final.exit",
+      "exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "scope": "Root full native host and actual Docker validation after test-only import compatibility fix; same code as clean final revision"
     },
     "protected_runner_final_installed_suite": {
-      "status": "pending",
-      "tests": null,
-      "passed": null,
-      "skipped": null
+      "status": "passed_with_explicit_skips",
+      "revision": "0f5841ebfcaa14325638cf199d8bb343bb9d1e59",
+      "tests": 368,
+      "passed": 350,
+      "skipped": 18,
+      "failed": 0,
+      "errors": 0,
+      "exit_code": 0,
+      "seconds": 36.307,
+      "source": "install-protected-runner.log",
+      "source_sha256": "883d0eebdb336dfae94b8fd422b3a722ce20894f128d4c6ef54ffa4b482d1ba9",
+      "exit_source": "install-protected-runner.exit",
+      "exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "scope": "Installed final code; explicitly skipped Docker cases are not counted as run by this command"
     },
     "protected_runner_probe_history": [
       {
@@ -194,7 +229,39 @@
         "original_record_preserved": true
       }
     ],
-    "protected_runner_probe_history_scope": "Earlier failed, diagnostic, and experimental cleanup-race reports retained. Independent cleanup was confirmed after the experimental race; this does not overwrite original outcomes. Only root711-verified is counted as a formal pass."
+    "protected_runner_probe_history_scope": "Earlier failed, diagnostic, and experimental cleanup-race reports retained. Independent cleanup was confirmed after the experimental race; this does not overwrite original outcomes. Only root711-verified is counted as a formal pass.",
+    "protected_runner_full_suite_history": [
+      {
+        "status": "failed_test_import",
+        "historical": true,
+        "tests": 368,
+        "errors": 1,
+        "failed": 0,
+        "exit_code": 1,
+        "seconds": 112.949,
+        "error_type": "ModuleNotFoundError",
+        "error_module": "tests.test_skill_smoke_evidence",
+        "trigger": "New test import incompatible with unittest discover -s tests module resolution",
+        "source": "full-suite-protected-runner.log",
+        "source_sha256": "c76c2ac949cc6b57fe10584577d0962ecd8baec1b4f593b2133e83a3ace9ae38",
+        "exit_source": "full-suite-protected-runner.exit",
+        "exit_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+        "remedy": "Test-only import compatibility change; production code unchanged",
+        "original_failure_preserved": true,
+        "superseded_by": "protected_runner_final_full_suite"
+      }
+    ],
+    "test_import_compatibility_fix": {
+      "status": "passed",
+      "tests": 15,
+      "passed": 15,
+      "seconds": 0.75,
+      "source": "zhulong-r3-green-discovery-fixture.log",
+      "source_sha256": "a3eb7672edd7cf735de5c696ddedfef2a0f9484e3ada59c1a24a43b03a71fc11",
+      "product_code_changed": false,
+      "independent_focused_review_passed": 15,
+      "independent_review_evidence_origin": "Independent focused review, as recorded by root"
+    }
   },
   "assurance": {
     "status": "no_counterexample_within_bounds",
@@ -355,20 +422,166 @@
     },
     {
       "id": "C",
-      "status": "pending",
-      "runner": "protected exact command in a newly authorized deployment",
-      "expected_allocations": 3,
-      "allocated": null,
-      "succeeded": null,
-      "failed": null,
-      "unknown": null,
-      "unrun": null,
-      "plugin_revision": null,
-      "report_sha256": null,
-      "known_main_tokens": null,
-      "billing_unknown": null,
-      "success_claimed": false,
-      "causal_gain_supported": false
+      "status": "completed",
+      "retained_report_id": "native-0f5841e-20261011-0216",
+      "plugin_revision": "0f5841ebfcaa14325638cf199d8bb343bb9d1e59",
+      "exit_code": 0,
+      "report_sha256": "a4cc8f4a83161597cf2dccff760560d3ebcf6c4e7e8c551ef2655c3c9a75cb97",
+      "protocol_sha256": "2f73bab2f939a5cf3a2d1895fc439d462bb3b19fc59b74ff1e89ba81f72053fc",
+      "public_summary_sha256": "6d26b642ec0808fd845592ad5175984984a3252219608a0b08288c83dad6273d",
+      "implementation_hashes": {
+        "causal_trial.py": "6aa9f3def987ef702624d2549e758b56c12c956919d69e6b0d617d6bfb0108cf",
+        "scripts/native_work_acceptance.py": "49b4745f481989b6d39cf9c4ed5fd33c6368ff1f72690d3115b3da1d9bd26961",
+        "scripts/skill_smoke_evidence.py": "532dd695f62b61e97af2e3c8a231c43a759c530c81104084cd2d1ce45263c2b7",
+        "work_reference.py": "e4c7d2770b8806ad9f14ea434d6891b22dfde58a11a98ecb0b0b79d9b6d06dec"
+      },
+      "mode": "finite_usefulness_pilot",
+      "paid_authorized": true,
+      "allocated": 3,
+      "succeeded": 3,
+      "failed": 0,
+      "unknown": 0,
+      "unrun": 0,
+      "protocol_stopped": false,
+      "stop_reason": null,
+      "missing_main_usage": 0,
+      "missing_token_counts": 0,
+      "known_main_tokens": 142759,
+      "known_main_tokens_scope": "Recorded main Runs usage for three allocations; excludes plugin auxiliary, native guardian and other model calls and is not full cost",
+      "auxiliary_calls": 3,
+      "auxiliary_calls_scope": "plugin llm_daily only; native guardian calls excluded; all auxiliary tokens/billing unavailable",
+      "missing_auxiliary_usage": 3,
+      "missing_auxiliary_billing": 3,
+      "billing_unknown": 3,
+      "causal_gain_supported": false,
+      "outcomes": [
+        {
+          "outcome": "succeeded",
+          "business": true,
+          "native": true,
+          "settled": true,
+          "cleanup": true,
+          "main_usage": {
+            "input_tokens": 51803,
+            "output_tokens": 3601,
+            "total_tokens": 55404
+          },
+          "auxiliary_calls": 1,
+          "goal_state": "succeeded",
+          "shutdown": {
+            "owned_containers_absent": true,
+            "state": "stopped",
+            "supervisor_exit_code": 0
+          },
+          "runner_sha256": "9a99dfcff7fd93d98d0203081d2da78df5f20bd9c47573dce9069f48eafb6ff9",
+          "code_sha256": "d27444e98e2605cac0512b0f1772e5867093843e122ec23148507452c09f46d6",
+          "artifact_sha256": "f7cb80f0819a1082f7496820c9bf0c7f5c351b3003a51d8dd1059891b7b182f5",
+          "input": "workload",
+          "input_hash": "298ee97c56b82ff81c674e5aa6f9f92af223c7d070e4d5a15bbde7bd3d73e951",
+          "native_checks": {
+            "execution_command_observed": true,
+            "execution_result_successful": true,
+            "frozen_input_execution_verified": true,
+            "worker_copy_matches_published_code": true
+          }
+        },
+        {
+          "outcome": "succeeded",
+          "business": true,
+          "native": true,
+          "settled": true,
+          "cleanup": true,
+          "main_usage": {
+            "input_tokens": 39869,
+            "output_tokens": 2170,
+            "total_tokens": 42039
+          },
+          "auxiliary_calls": 1,
+          "goal_state": "succeeded",
+          "shutdown": {
+            "owned_containers_absent": true,
+            "state": "stopped",
+            "supervisor_exit_code": 0
+          },
+          "runner_sha256": "81fe78f01353d68be7315564408300bfa1dc0c40ea75c0482cd421cdfb167737",
+          "code_sha256": "d11632528ac276048b71fcb9114bd87c73100b097c0289bf2647634dbce61bc4",
+          "artifact_sha256": "6667222edb9ed5e4c924f7c54e9ea423a11ea68d298921da6f5983498542696b",
+          "input": "source-index",
+          "input_hash": "6aaa611a7624914c68ba1fc2f657090ccf9c13ac46f301e1c213034a89fe2b6c",
+          "native_checks": {
+            "execution_command_observed": true,
+            "execution_result_successful": true,
+            "frozen_input_execution_verified": true,
+            "worker_copy_matches_published_code": true
+          }
+        },
+        {
+          "outcome": "succeeded",
+          "business": true,
+          "native": true,
+          "settled": true,
+          "cleanup": true,
+          "main_usage": {
+            "input_tokens": 42646,
+            "output_tokens": 2670,
+            "total_tokens": 45316
+          },
+          "auxiliary_calls": 1,
+          "goal_state": "succeeded",
+          "shutdown": {
+            "owned_containers_absent": true,
+            "state": "stopped",
+            "supervisor_exit_code": 0
+          },
+          "runner_sha256": "d6e8ca603d208f1923862e9197e62213efd8b889b7426c7042897d6608950800",
+          "code_sha256": "dac6a08013d0c2ec78c57f2f55b06b3b645fc293766c3e4c92531c3c7928fc51",
+          "artifact_sha256": "5c7097040255369c26fda74e9130b678d7254053ea16121a433d2dce9ffccf39",
+          "input": "ticket-queue",
+          "input_hash": "025e9691d9346b9c11f8957af27bd63bfb30fef5cb8bd5462d914a56925be7a8",
+          "native_checks": {
+            "execution_command_observed": true,
+            "execution_result_successful": true,
+            "frozen_input_execution_verified": true,
+            "worker_copy_matches_published_code": true
+          }
+        }
+      ],
+      "cleanup": {
+        "all_confirmed": true,
+        "supervisor_exit_code": 0,
+        "state": "stopped",
+        "owned_containers_absent": true
+      },
+      "fresh_cleanup_verification": {
+        "checks": [
+          {
+            "allocation": "allocation-0",
+            "state": "stopped",
+            "owned_containers_absent": true,
+            "child_group_absent": true,
+            "api_listener_absent": true
+          },
+          {
+            "allocation": "allocation-1",
+            "state": "stopped",
+            "owned_containers_absent": true,
+            "child_group_absent": true,
+            "api_listener_absent": true
+          },
+          {
+            "allocation": "allocation-2",
+            "state": "stopped",
+            "owned_containers_absent": true,
+            "child_group_absent": true,
+            "api_listener_absent": true
+          }
+        ],
+        "external_llm_calls": 0,
+        "source": "final-cleanup-verification.json",
+        "source_sha256": "b12bd473ed18df934bb40f1da9197f43fe483e0e38c63e885a955df18605896f",
+        "scope": "Fresh root check of all three allocations, independent of immutable run receipts; no provider calls"
+      },
+      "original_A_B_receipts_unchanged": true
     }
   ],
   "reviews": {
@@ -409,12 +622,15 @@
       "evidence_origin": "Independent scoped review, as recorded by root"
     },
     "github_approval": {
-      "status": "not_created",
+      "status": "tracked_separately_on_github",
       "pull_request_url": null,
-      "approved_review": false
+      "approved_review": false,
+      "scope": "No GitHub APPROVED review evidence in this snapshot; current PR/checks/merge/review status is recorded on GitHub"
     },
     "final_whole_branch_delivery": {
-      "status": "pending"
+      "status": "code_and_finite_acceptance_verified_github_delivery_tracked_separately",
+      "code_revision": "0f5841ebfcaa14325638cf199d8bb343bb9d1e59",
+      "scope": "Agent review closures and implementation verification documented here; hosted PR/CI/merge states belong to GitHub records"
     },
     "root_tmpfs_permission_scoped_review": {
       "status": "Ready",
@@ -425,12 +641,16 @@
       "actual_docker_run": false,
       "scope": "Explicit root tmpfs mode=711 and strict option inspection; trusted runner boundaries",
       "evidence_origin": "Independent scoped review, as recorded by root"
+    },
+    "test_import_compatibility_scoped_review": {
+      "status": "passed",
+      "independent_focused_tests_passed": 15,
+      "product_code_changed": false,
+      "evidence_origin": "Independent focused review, as recorded by root"
     }
   },
   "remaining_unimplemented_or_unverified": [
     "Real same-effective-identity single-mechanism paired execution adapter and qualified real fixed-N sample",
-    "Fresh native trial C, post-change full suite result and installed checks",
-    "Final revision binding, PR, exact-head hosted CI and merge",
     "Actual email/calendar service credentials, adapters and external receipts",
     "24/72-hour runs and cross-day stability",
     "Hard profile/work disk quota and independent trusted control-kernel release",
@@ -448,5 +668,7 @@
     ],
     "full_artifacts_retained_privately": true
   },
-  "attribution": "This documentation agent inspected retained reports and root review records; it did not rerun full suites, paid models or the actual probe. Provider-free Docker execution is root's evidence; independent reviewers ran focused offline checks."
+  "attribution": "This documentation agent inspected retained reports, logs and root review records; it did not rerun full suites, paid models or actual Docker probes. Real model and Docker execution are root's evidence; independent reviewers ran the stated focused checks.",
+  "external_delivery_tracking": "PR, exact-head hosted CI, merge and any GitHub review approvals are tracked separately in GitHub records.",
+  "causal_analysis_scope": "causal_gain_supported concerns only the preregistered qualified business-success endpoint, conditional on qualified trusted independent pairs. Missing costs do not gate that endpoint; economic gain or cost-effectiveness claims require complete verifiable costs. All three finite pilots retain causal_gain_supported=false."
 }

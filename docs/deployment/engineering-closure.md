@@ -12,7 +12,7 @@
 | 外部效果与 run 幂等混淆 | `workflow_effects` / `workflow_outbox` | 双意图冲突、事务回滚、重复恢复 | 本地 outbox 一次写入；远程效果与投递继续明确 unknown/unavailable |
 | 解释文字被当作根因 | `diagnostics.py` | 独立 Docker 双因素、负对照、原输入重放 | 配置干预的有限支持；模型叙述只是假设 |
 | 未知实验无限重试/关闭配置丢恢复 | 持久实验 reservation/quiescence | 三次尝试、零额度清理、配置移除恢复 | 实际评测次数计预算；清理未知阻止新派发，旧代码/收据保留 |
-| 把相关成功当作因果提升 | `causal_trial.py` | 冻结协议/作用域/单机制/固定 N/全部分母/时间与成本测试 | 协议和分析已实现；真实配对 execution adapter 尚未实现，收益结论需合格、足量的随机任务对 |
+| 把相关成功当作因果提升 | `causal_trial.py` | 冻结协议/作用域/单机制/固定 N/全部分母/时间与成本记录测试 | 协议和业务成功率端点分析已实现；真实配对 execution adapter 尚未实现，端点结论需足量可信独立配对样本；经济收益另需完整成本 |
 | 仅离线测试冒充 Hermes 工作能力 | `scripts/native_work_acceptance.py` | `--paid` 真实 LLM 发现目标、Runs、Docker terminal、业务产物审计 | 三个有限业务样例；不证明所有用户任务或长期收益 |
 | availability 被当成错误识别能力 | `self_model.py` | 正序/反序/常数 AUROC2、类别与 coverage-risk | 保留兼容 availability 字段，另报告质量、分母和范围 |
 | 重试复用旧目标预测 | `metacognition.py` + Ledger | 派发前冻结/陈旧捕获/后验绑定拒绝 | 同范围尝试的历史估计、真实前置复查；不声称内省体验 |
@@ -98,7 +98,7 @@ zhulong-python scripts/native_work_acceptance.py \
 
 不传 `--paid` 仅登记协议、输入和未运行分母，绝不算完成能力验收。每个分配保留独立私有 profile、失败收据、产物、native 数据库和日志；分享时只导出脱敏验证摘要。不能将缺失计费用量写成零费用。
 
-有限 pilot 的新入口在部署启动前将可信 runner 写入原生只读缓存，以完整 SHA 纳入部署保护，并在独立 profile 中只预授权 `python3 /root/.hermes/cache/generated/zhulong-work-runner.py` 这一条精确命令。它读取并执行相同的候选代码与冻结输入字节，不携带参考答案；完整业务验收、原生轨迹审计及宿主 deny/hardline 守卫继续生效。实际 Docker 使用显式 `/root` tmpfs mode=711，owner 0；uid 1000 只能穿越、不可列举/写入该目录，来源与缓存仍只读。正式零 provider/gateway probe 已完成精确执行与清理，新三任务真实验收仍 pending；原内联 runner 和前三个探测的不完整结果保留，详见 [v0.9 验证记录](../research/2026-10-11-v0.9-validation.md)和[审查记录](../research/2026-10-11-v0.9-review.md)。
+有限 pilot 的新入口在部署启动前将可信 runner 写入原生只读缓存，以完整 SHA 纳入部署保护，并在独立 profile 中只预授权 `python3 /root/.hermes/cache/generated/zhulong-work-runner.py` 这一条精确命令。它读取并执行相同的候选代码与冻结输入字节，不携带参考答案；完整业务验收、原生轨迹审计及宿主 deny/hardline 守卫继续生效。实际 Docker 使用显式 `/root` tmpfs mode=711，owner 0；uid 1000 只能穿越、不可列举/写入该目录，来源与缓存仍只读。正式零 provider/gateway probe 已完成精确执行与清理；干净代码 `0f5841ebfcaa14325638cf199d8bb343bb9d1e59` 的新三任务真实验收 C 为 3/3 成功，各项业务/原生审计/静止/清理全 true。原内联 runner 和前三个探测的不完整结果分别保留，完整分母、用量范围与代码绑定见 [v0.9 验证记录](../research/2026-10-11-v0.9-validation.md)和[审查记录](../research/2026-10-11-v0.9-review.md)。
 
 验收报告的 `auxiliary_calls` 只统计插件 `llm_daily` 预算表，native guardian 等额外调用不在该字段内；它不能作为所有模型调用或完整成本的分母。
 
@@ -115,7 +115,7 @@ zhulong-python scripts/native_work_acceptance.py \
 | 24/72 小时与跨日稳定性 | 有界恢复/预算/故障回归、保留的原生验收 | 实际按相应时间运行及故障记录；短 smoke 不能代替 |
 | 自动修改并晋升控制内核 | 代码/config hash 固定、技能候选隔离验证、旧真源保留 | 独立可信构建/测试/发布/回滚服务及产物证明；模型工具目前不能编辑控制内核 |
 | 全局严格货币预算 | run/辅助/诊断次数额度、主用量和成本缺失项 | 提供商可核验的完整主/辅助/训练/迟到账单与费用停止机制；次数上限不是金额硬上限 |
-| 真实因果收益 | paired_fixed_n 协议与合格收据分析；真实配对 execution adapter 未实现 | 真实控制/处理适配器、同有效作用域的随机分配、足量样本、无污染且完整成本；有限业务 pilot 不作收益结论 |
+| 真实因果提升与经济收益 | paired_fixed_n 业务成功率端点协议与合格收据分析；真实配对 execution adapter 未实现 | 业务成功率端点需要真实控制/处理适配器、同有效作用域的随机分配和足量可信独立配对样本；经济收益/成本效益另需完整可核验费用。有限业务 pilot 不作上述结论 |
 | 意识和通用正确性 | 功能元认知与有限不变量 | 可区分理论的可信实验和明确证明对象；不存在可直接发布的“全自我意识”开关 |
 
 早期文档中提及的 dsh/其它宿主、桌面深集成、跨 profile 联邦和公共技能市场原本不在 Hermes 本项目范围，不纳入本版虚构交付。旧版本已修复的 review 问题保留原闭环，不重复列为新发现。
