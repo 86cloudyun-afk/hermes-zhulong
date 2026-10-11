@@ -19,6 +19,17 @@ def digest(value) -> str:
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
+try:
+    from . import refinement
+except ImportError:
+    import refinement
+
+
+def _refine(c,action,lease,now,**payload):
+    if lease is not None:payload={'goal_id':lease.goal_id,'owner':lease.owner,'generation':lease.generation,**payload}
+    return refinement.record(c,action,payload,now)
+
+
 def _protocol(c,event,lease,now,**payload):
     try:
         from .assurance import record_event
@@ -92,6 +103,7 @@ class Ledger:
             except ImportError:
                 import workflow,metacognition,assurance
             for module in (workflow,metacognition,assurance):module.initialize(c)
+            refinement.initialize(c)
 
     @contextmanager
     def _connection(self, write=False):
@@ -152,7 +164,10 @@ class Ledger:
                 from .task_inputs import bind_goal,binding
             except ImportError:
                 from task_inputs import bind_goal,binding
-            if inserted.rowcount:bind_goal(c,goal['id'],candidate['source_id'],source_revision,task_input)
+            if inserted.rowcount:
+                bind_goal(c,goal['id'],candidate['source_id'],source_revision,task_input)
+                _refine(c,'create',None,now,id=goal['id'],dedupe=key,candidate_hash=digest(candidate),source_revision=source_revision,
+                    contract_hash=digest(contract),baseline_hash=digest(baseline),task_input_hash=digest(task_input),deadline=now+deadline_seconds)
             elif task_input is not None:
                 original=binding(c,goal['id'])
                 if original is None:raise ValueError('input_snapshot_legacy_unavailable')
@@ -190,6 +205,7 @@ class Ledger:
             c.execute('UPDATE goals SET owner=?,generation=?,lease_until=? WHERE id=?',(owner,generation,now+lease_seconds,row['id']))
             lease=GoalLease(row['id'],owner,generation,now+lease_seconds)
             _protocol(c,'lease',lease,now,expires_at=lease.expires_at)
+            _refine(c,'claim',None,now,goal_id=lease.goal_id,owner=owner,lease_seconds=lease_seconds)
             return lease
 
     def renew(self,lease,now,lease_seconds):
@@ -197,6 +213,7 @@ class Ledger:
             if not self._owned(c,lease,now):return False
             c.execute('UPDATE goals SET lease_until=? WHERE id=?',(now+lease_seconds,lease.goal_id))
             _protocol(c,'renew',lease,now,expires_at=now+lease_seconds)
+            _refine(c,'renew',lease,now,lease_seconds=lease_seconds)
             return True
 
     def release(self,lease,now):
@@ -204,11 +221,16 @@ class Ledger:
             if not self._owned(c,lease,now):return False
             c.execute('UPDATE goals SET owner=NULL,lease_until=NULL WHERE id=?',(lease.goal_id,))
             _protocol(c,'release',lease,now)
+            _refine(c,'release',lease,now)
             return True
 
     def prepare_submission(self,lease,request,session_key,execution_identity,now,daily_cap,max_active,max_attempts,retention_seconds,*,expected_submission_id=None,monitoring_policy=None,monitoring_capture=None,monitoring_recheck=None):
         body,identity=canonical(request),canonical(execution_identity)
         with self._connection(True) as c:
+            before=refinement.audit(c)
+            if before['status']!='valid_within_scope':
+                c.execute("INSERT OR REPLACE INTO settings VALUES('refinement_last_blocked',?)",(canonical(before),))
+                return {'admitted':False,'reason':'refinement_blocked','refinement':before}
             if not self._owned(c,lease,now):return {'admitted':False,'reason':'stale_lease'}
             goal=c.execute('SELECT * FROM goals WHERE id=?',(lease.goal_id,)).fetchone()
             if goal['submission_id']!=expected_submission_id:return {'admitted':False,'reason':'stale_submission'}
@@ -273,6 +295,16 @@ class Ledger:
             _protocol(c,'admission',lease,now,submission_id=sid,day=day,daily_cap=daily_cap,max_active=max_active,
                 operation_id=self._goal(c,goal)['operation_id'],request_hash=digest(request),
                 intent_hash=digest([goal['contract_hash'],goal['source_revision']]))
+            _refine(c,'prepare',lease,now,submission_id=sid,expected_submission_id=expected_submission_id,
+                request_hash=digest(request),session_hash=digest(session_key),identity_hash=digest(execution_identity),retention_seconds=retention_seconds,
+                daily_cap=daily_cap,max_active=max_active,max_attempts=max_attempts)
+            after=refinement.audit(c)
+            if after['status']!='valid_within_scope':
+                # Explicit rollback: returning from the connection context alone commits.
+                c.rollback()
+                c.execute('BEGIN IMMEDIATE')
+                c.execute("INSERT OR REPLACE INTO settings VALUES('refinement_last_blocked',?)",(canonical(after),))
+                return {'admitted':False,'reason':'refinement_blocked','refinement':after}
             return {'admitted':True,'reason':'prepared','submission':self._submission(c.execute('SELECT * FROM submissions WHERE id=?',(sid,)).fetchone())}
 
     def record_admission(self,lease,submission_id,run_id,host_status,now):
@@ -283,6 +315,7 @@ class Ledger:
             c.execute('UPDATE submissions SET run_id=?,host_status=? WHERE id=?',(run_id,str(host_status)[:64],submission_id))
             c.execute("UPDATE goals SET state='running' WHERE id=?",(lease.goal_id,))
             _protocol(c,'runtime',lease,now,submission_id=submission_id,settled=False)
+            _refine(c,'admit',lease,now,submission_id=submission_id,run_id=run_id,host_status=str(host_status)[:64])
             return True
 
     def transition(self,lease,state,reason,now,execution_settled=None,*,expected_submission_id=None):
@@ -297,6 +330,7 @@ class Ledger:
                 c.execute('UPDATE submissions SET settled=MAX(settled,?),settled_at=CASE WHEN ? THEN COALESCE(settled_at,?) ELSE settled_at END WHERE id=(SELECT submission_id FROM goals WHERE id=?)',
                     (int(execution_settled),int(execution_settled),now,lease.goal_id))
             _protocol(c,'transition',lease,now,submission_id=expected_submission_id,settled=execution_settled,outcome=state)
+            _refine(c,'transition',lease,now,submission_id=expected_submission_id,state=state,settled=execution_settled)
             return True
 
     def record_attempt_result(self,lease,submission_id,evidence,now):
@@ -305,6 +339,7 @@ class Ledger:
             goal=c.execute('SELECT contract_hash FROM goals WHERE id=?',(lease.goal_id,)).fetchone()
             if evidence.get('contract_hash')!=goal[0]:raise ValueError('changed_contract')
             c.execute('UPDATE submissions SET evidence=?,evidence_created=? WHERE id=? AND goal_id=? AND evidence IS NULL',(canonical(evidence),now,submission_id,lease.goal_id))
+            _refine(c,'result',lease,now,submission_id=submission_id,evidence=evidence)
             return True
 
     def finish(self,lease,evidence,outcome,execution_settled,now,*,expected_submission_id=None):
@@ -320,6 +355,7 @@ class Ledger:
                     from workflow import finalizable
                 if evidence.get('verdict') is not True or (not goal['attempts'] and not finalizable(c,goal['id'])):raise ValueError('unverified_success')
             if outcome=='failed' and evidence.get('verdict') is not False:raise ValueError('unverified_failure')
+            requested_outcome=outcome
             receipt=digest([lease.goal_id,outcome,evidence])
             c.execute('INSERT OR IGNORE INTO evidence(goal_id,receipt,outcome,data,created) VALUES(?,?,?,?,?)',(lease.goal_id,receipt,outcome,canonical(evidence),now))
             truth=c.execute("SELECT outcome FROM evidence WHERE goal_id=? AND outcome IN ('succeeded','failed')",(lease.goal_id,)).fetchone()
@@ -329,11 +365,16 @@ class Ledger:
                 (int(execution_settled),int(execution_settled),now,goal['submission_id']))
             _protocol(c,'settlement',lease,now,submission_id=goal['submission_id'],settled=bool(execution_settled),outcome=outcome,
                 verdict=evidence.get('verdict') if type(evidence.get('verdict')) is bool else None)
+            _refine(c,'finish',lease,now,submission_id=goal['submission_id'],evidence=evidence,outcome=requested_outcome,settled=bool(execution_settled))
             return True
 
     def request_cancel(self,goal_id):
         with self._connection(True) as c:
-            return bool(c.execute('UPDATE goals SET cancel_requested=1 WHERE id=?',(goal_id,)).rowcount)
+            changed=bool(c.execute('UPDATE goals SET cancel_requested=1 WHERE id=?',(goal_id,)).rowcount)
+            if changed:
+                import time
+                _refine(c,'cancel',None,time.time(),goal_id=goal_id)
+            return changed
 
     def work_goals(self):
         with self._connection() as c:
@@ -345,6 +386,7 @@ class Ledger:
             if not self._current(c,lease,now,submission_id):return False
             c.execute('UPDATE submissions SET usage=?,runtime=? WHERE id=? AND goal_id=?',
                 (canonical(result.get('usage')),canonical(result.get('runtime',{})),submission_id,lease.goal_id))
+            _refine(c,'runtime',lease,now,submission_id=submission_id)
             return True
 
     def claim_source(self,id,fingerprint,owner,now,lease_seconds,max_attempts):
@@ -407,6 +449,7 @@ class Ledger:
         with self._connection(True) as c:
             c.execute("INSERT INTO settings VALUES('paused',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(canonical(bool(value)),))
             _protocol(c,'pause',None,time.time(),paused=bool(value))
+            _refine(c,'pause',None,time.time(),paused=bool(value))
 
     def paused(self):
         with self._connection() as c:

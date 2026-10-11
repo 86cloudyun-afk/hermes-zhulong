@@ -426,13 +426,16 @@ class Controller:
     def assurance_status(self,run=False):
         try:
             from .assurance import check_status,bounded_check,validate_trace
+            from .refinement import audit
         except ImportError:
             from assurance import check_status,bounded_check,validate_trace
+            from refinement import audit
+        with self.ledger._connection() as c:current=audit(c)
         if run:
             report=bounded_check(ledger=self.ledger)
             with self.ledger._connection() as c:trace=validate_trace(c)
-            return {'bounded_model':report,'implementation_trace':trace}
-        return check_status(self.ledger)
+            return {'bounded_model':report,'implementation_trace':trace,'refinement':current}
+        return {**check_status(self.ledger),'refinement':current}
 
     def diagnostics_status(self):
         return self.diagnostics.summary() if self.diagnostics is not None else {'enabled':False}
