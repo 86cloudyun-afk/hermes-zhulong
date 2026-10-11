@@ -91,7 +91,7 @@ def validate_config(raw,base):
     if not isinstance(raw,dict):raise ValueError('invalid_autonomy_config')
     if type(raw.get('enabled',False)) is not bool:raise ValueError('invalid_enabled')
     if not raw.get('enabled',False):return {'enabled':False,'base':str(base)}
-    allowed={'enabled','mission','workspace_roots','sources','api_url','api_key_env','api_identity_version','api_profile','learning_enabled','executable_skills','workflows','diagnostics','diagnostic_daily_evaluations','monitoring',*DEFAULTS}
+    allowed={'enabled','mission','workspace_roots','sources','api_url','api_key_env','api_identity_version','api_profile','learning_enabled','executable_skills','workflows','diagnostics','diagnostic_daily_evaluations','monitoring','cognition',*DEFAULTS}
     if set(raw)-allowed:raise ValueError('unknown_autonomy_setting')
     policy={**DEFAULTS,**raw,'base':str(Path(base).resolve())}
     if type(policy.get('learning_enabled',True)) is not bool:raise ValueError('invalid_learning_enabled')
@@ -150,6 +150,11 @@ def validate_config(raw,base):
     policy['workflows']=validate_workflows(raw.get('workflows',[]),policy)
     policy['diagnostics']=validate_diagnostics(raw.get('diagnostics',[]),policy)
     policy['monitoring']=validate_monitoring(raw.get('monitoring',{}))
+    try:
+        from .cognition import validate_cognition
+    except ImportError:
+        from cognition import validate_cognition
+    policy['cognition']=validate_cognition(raw.get('cognition'))
     value=raw.get('diagnostic_daily_evaluations',2)
     if type(value) is not int or not 0<=value<=16:raise ValueError('invalid_diagnostic_budget')
     policy['diagnostic_daily_evaluations']=value

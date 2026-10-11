@@ -99,10 +99,10 @@ class Ledger:
                 from task_inputs import initialize
             initialize(c)
             try:
-                from . import workflow,metacognition,assurance
+                from . import workflow,metacognition,assurance,cognition
             except ImportError:
-                import workflow,metacognition,assurance
-            for module in (workflow,metacognition,assurance):module.initialize(c)
+                import workflow,metacognition,assurance,cognition
+            for module in (workflow,metacognition,assurance,cognition):module.initialize(c)
             refinement.initialize(c)
 
     @contextmanager
@@ -150,7 +150,7 @@ class Ledger:
         if metadata is not None:result.update(metadata)
         return result
 
-    def create_goal(self,candidate,source_revision,contract,baseline,now,deadline_seconds,*,source_owner=None,task_input=None):
+    def create_goal(self,candidate,source_revision,contract,baseline,now,deadline_seconds,*,source_owner=None,task_input=None,cognition_frame=None):
         key=digest([candidate['source_id'],source_revision,candidate['contract_id'],contract])
         with self._connection(True) as c:
             if source_owner is not None:
@@ -166,6 +166,12 @@ class Ledger:
                 from task_inputs import bind_goal,binding
             if inserted.rowcount:
                 bind_goal(c,goal['id'],candidate['source_id'],source_revision,task_input)
+                if cognition_frame is not None:
+                    try:
+                        from .cognition import bind_frame
+                    except ImportError:
+                        from cognition import bind_frame
+                    bind_frame(c,goal['id'],cognition_frame,now)
                 _refine(c,'create',None,now,id=goal['id'],dedupe=key,candidate_hash=digest(candidate),source_revision=source_revision,
                     contract_hash=digest(contract),baseline_hash=digest(baseline),task_input_hash=digest(task_input),deadline=now+deadline_seconds)
             elif task_input is not None:
@@ -286,10 +292,16 @@ class Ledger:
                 prediction=metacognition.prepare(c,self._goal(c,goal),execution_identity,request,now,
                     monitoring_policy or {},capture=monitoring_capture,recheck=monitoring_recheck)
             except ValueError:return {'admitted':False,'reason':'monitoring_binding_invalid'}
+            try:
+                from . import cognition
+            except ImportError:
+                import cognition
+            cognition.validate_request(c,goal['id'],request)
             sid=uuid.uuid4().hex
             c.execute('INSERT INTO submissions(id,goal_id,attempt,request,session_key,execution_identity,created,retention_seconds,forecast) VALUES(?,?,?,?,?,?,?,?,?)',
                 (sid,goal['id'],goal['attempts']+1,body,session_key,identity,now,retention_seconds,prediction['probability']))
             metacognition.record(c,sid,prediction)
+            cognition.prepared(c,goal['id'],sid,request,now)
             c.execute('INSERT INTO run_budget(day,runs) VALUES(?,1) ON CONFLICT(day) DO UPDATE SET runs=runs+1',(day,))
             c.execute("UPDATE goals SET attempts=attempts+1,submission_id=?,state='submitting' WHERE id=?",(sid,goal['id']))
             _protocol(c,'admission',lease,now,submission_id=sid,day=day,daily_cap=daily_cap,max_active=max_active,
@@ -389,21 +401,32 @@ class Ledger:
             _refine(c,'runtime',lease,now,submission_id=submission_id)
             return True
 
+    @staticmethod
+    def _source_prior(c,id,fingerprint,now):
+        row=c.execute('SELECT * FROM sources WHERE id=?',(id,)).fetchone()
+        prior=json.loads(row['outcome']) if row and row['fingerprint']==fingerprint else {}
+        if not isinstance(prior,dict):prior={}
+        if prior.get('status')=='planning' and prior.get('accounting')!='completed_plans' and prior.get('until',0)<=now:
+            prior['attempts']=max(0,prior.get('attempts',0)-1)
+        return prior
+
+    @classmethod
+    def _source_eligible(cls,c,id,fingerprint,now,max_attempts):
+        prior=cls._source_prior(c,id,fingerprint,now)
+        return not ((prior.get('status')=='planning' and prior.get('until',0)>now)
+                    or prior.get('status')=='processed' or prior.get('attempts',0)>=max_attempts
+                    or prior.get('next_retry',0)>now)
+
+    @classmethod
+    def _claim_source(cls,c,id,fingerprint,owner,now,lease_seconds,max_attempts):
+        if not cls._source_eligible(c,id,fingerprint,now,max_attempts):return False
+        prior=cls._source_prior(c,id,fingerprint,now)
+        outcome={'status':'planning','owner':owner,'until':now+lease_seconds,'attempts':prior.get('attempts',0),'accounting':'completed_plans'}
+        c.execute('INSERT INTO sources VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint,outcome=excluded.outcome,updated=excluded.updated',(id,fingerprint,canonical(outcome),now))
+        return True
+
     def claim_source(self,id,fingerprint,owner,now,lease_seconds,max_attempts):
-        with self._connection(True) as c:
-            row=c.execute('SELECT * FROM sources WHERE id=?',(id,)).fetchone()
-            prior=json.loads(row['outcome']) if row and row['fingerprint']==fingerprint else {}
-            if not isinstance(prior,dict):prior={}
-            if prior.get('status')=='planning' and prior.get('until',0)>now:return False
-            attempts=prior.get('attempts',0)
-            # v0.4 counted claims. Only the expired in-flight legacy claim is
-            # refundable; completed failures remain counted through migration.
-            if prior.get('status')=='planning' and prior.get('accounting')!='completed_plans':attempts=max(0,attempts-1)
-            if prior.get('status')=='processed' or attempts>=max_attempts:return False
-            if prior.get('next_retry',0)>now:return False
-            outcome={'status':'planning','owner':owner,'until':now+lease_seconds,'attempts':attempts,'accounting':'completed_plans'}
-            c.execute('INSERT INTO sources VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint,outcome=excluded.outcome,updated=excluded.updated',(id,fingerprint,canonical(outcome),now))
-            return True
+        with self._connection(True) as c:return self._claim_source(c,id,fingerprint,owner,now,lease_seconds,max_attempts)
 
     def renew_source(self,id,fingerprint,owner,now,lease_seconds):
         with self._connection(True) as c:

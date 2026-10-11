@@ -192,11 +192,12 @@ class Commands:
         elif action=='experience':result=self.a.experience_status()
         elif action=='skills':result=self.a.skills_status()
         elif action=='workflows':result=self.a.workflows.summary()
+        elif action=='cognition':result=self.a.cognition_status()
         elif action=='diagnostics':result=self.a.diagnostics_status()
         elif action=='assurance':result=self.a.assurance_status(run=True)
         elif action in ('status','tick','pause','resume'):result=getattr(self.a,action)()
         elif action=='cancel' and len(args)==2:result=self.a.cancel(args[1])
-        else:return '用法：/zhulong autonomy [status|goals|experience|skills|workflows|diagnostics|assurance|tick|pause|resume|cancel <id>]'
+        else:return '用法：/zhulong autonomy [status|goals|experience|skills|workflows|diagnostics|cognition|assurance|tick|pause|resume|cancel <id>]'
         return json.dumps(result,ensure_ascii=False,indent=2)
 
     def _help(self) -> str:
@@ -210,8 +211,8 @@ class Commands:
             "  /zhulong reflect [run]        — 反思 digest 信息/生成\n"
             "  /zhulong probes [run]         — 探针历史/立即运行\n"
             "  /zhulong model                — 证据型自我模型（只读）\n"
-            "  /zhulong autonomy [status|goals|experience|skills|workflows|diagnostics|assurance|tick|pause|resume|cancel <id>]\n"
-            "  zhulong_autonomy actions: status|goals|tick|experience|skills|workflows|diagnostics|assurance"
+            "  /zhulong autonomy [status|goals|experience|skills|workflows|diagnostics|cognition|assurance|tick|pause|resume|cancel <id>]\n"
+            "  zhulong_autonomy actions: status|goals|tick|experience|skills|workflows|diagnostics|cognition|assurance"
         )
 
 
