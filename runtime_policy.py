@@ -18,7 +18,8 @@ HOST_REVISION='73162b00eefde3794bed0afb53d84a19c0eed230'
 PLUGIN_FILES=('plugin.yaml','__init__.py','storage.py','sensor.py','commands.py',
     'calibrate.py','reflect.py','probes.py','autonomy_store.py','autonomy_checks.py',
     'hermes_runs.py','self_model.py','autonomy.py','runtime_channel.py','experience_store.py','experience.py',
-              'skill_store.py','skill_evaluator.py','skill_learning.py','task_inputs.py','skill_replay.py')
+              'skill_store.py','skill_evaluator.py','skill_learning.py','task_inputs.py','skill_replay.py',
+              'work_reference.py','workflow.py','diagnostics.py','metacognition.py','assurance.py','causal_trial.py')
 DOCKER_ENV_KEYS=('DOCKER_CONTEXT','DOCKER_TLS','DOCKER_TLS_VERIFY','DOCKER_CERT_PATH')
 CACHE_PATHS=('cache/documents','cache/images','cache/audio','cache/videos','cache/screenshots',
     'cache/web','cache/delegation','cache/spillover','cache/generated','images','attachments','composer-pastes')
@@ -80,7 +81,7 @@ def validate_worker_policy(m,policy):
         path=Path(source['path'])
         if not path.is_relative_to(Path(m['work'])):raise ValueError('source_outside_work')
         for contract in source['contracts'].values():
-            if contract['type'] not in {'file_contains','json_equals'}:raise ValueError('host_code_verification_forbidden')
+            if contract['type'] not in {'file_contains','json_equals','json_reference'}:raise ValueError('host_code_verification_forbidden')
             if contract['path'] in sources:raise ValueError('source_output_overlap')
     return policy
 

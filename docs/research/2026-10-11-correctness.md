@@ -88,3 +88,7 @@ JSON 记录实际 Git HEAD；在未来版本运行时必须比较实现差异，
 ## 6. 交付与明确未完成范围
 
 可提交的是本报告、`access-index.json`、`publication_probe.py`、`publication-probe.json`；源 PDF/HTML、下载辅助脚本、提取文本与 stdout 日志保持 scratch。没有提交产品改动，没有启动形式证明器，没有宣称普遍正确性、实际生产竞态、因果提升或意识成立。PCC/Rice 原刊访问受限已逐项记录，未绕过访问拒绝。
+
+## 后续工程入口（v0.9）
+
+有限 BFS 模型检查、错误变体反例与真实事务轨迹的当前保证范围见 [工程清单](../deployment/engineering-closure.md)；实现范围与验收设计见 [研究落地规格](../superpowers/specs/2026-10-11-frontiers-engineering-design.md)。本报告的研究时点、实验结果和未运行提案保留原记录。

@@ -19,6 +19,15 @@ def digest(value) -> str:
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
+def _protocol(c,event,lease,now,**payload):
+    try:
+        from .assurance import record_event
+    except ImportError:
+        from assurance import record_event
+    if lease is not None:payload={'goal_id':lease.goal_id,'owner':lease.owner,'generation':lease.generation,**payload}
+    record_event(c,event,payload,now)
+
+
 @dataclass(frozen=True)
 class GoalLease:
     goal_id: str
@@ -71,11 +80,18 @@ class Ledger:
             columns={r[1] for r in c.execute('PRAGMA table_info(submissions)')}
             for name in ('usage','runtime'):
                 if name not in columns:c.execute(f'ALTER TABLE submissions ADD COLUMN {name} TEXT')
+            for name in ('evidence_created','settled_at'):
+                if name not in columns:c.execute(f'ALTER TABLE submissions ADD COLUMN {name} REAL')
             try:
                 from .task_inputs import initialize
             except ImportError:
                 from task_inputs import initialize
             initialize(c)
+            try:
+                from . import workflow,metacognition,assurance
+            except ImportError:
+                import workflow,metacognition,assurance
+            for module in (workflow,metacognition,assurance):module.initialize(c)
 
     @contextmanager
     def _connection(self, write=False):
@@ -114,6 +130,12 @@ class Ledger:
         except ImportError:
             from task_inputs import binding
         result['task_input']=binding(c,row['id'])
+        try:
+            from .workflow import binding as workflow_binding
+        except ImportError:
+            from workflow import binding as workflow_binding
+        metadata=workflow_binding(c,row['id'])
+        if metadata is not None:result.update(metadata)
         return result
 
     def create_goal(self,candidate,source_revision,contract,baseline,now,deadline_seconds,*,source_owner=None,task_input=None):
@@ -166,21 +188,25 @@ class Ledger:
             row=rows[0]
             generation=row['generation']+1
             c.execute('UPDATE goals SET owner=?,generation=?,lease_until=? WHERE id=?',(owner,generation,now+lease_seconds,row['id']))
-            return GoalLease(row['id'],owner,generation,now+lease_seconds)
+            lease=GoalLease(row['id'],owner,generation,now+lease_seconds)
+            _protocol(c,'lease',lease,now,expires_at=lease.expires_at)
+            return lease
 
     def renew(self,lease,now,lease_seconds):
         with self._connection(True) as c:
             if not self._owned(c,lease,now):return False
             c.execute('UPDATE goals SET lease_until=? WHERE id=?',(now+lease_seconds,lease.goal_id))
+            _protocol(c,'renew',lease,now,expires_at=now+lease_seconds)
             return True
 
     def release(self,lease,now):
         with self._connection(True) as c:
             if not self._owned(c,lease,now):return False
             c.execute('UPDATE goals SET owner=NULL,lease_until=NULL WHERE id=?',(lease.goal_id,))
+            _protocol(c,'release',lease,now)
             return True
 
-    def prepare_submission(self,lease,request,session_key,execution_identity,now,daily_cap,max_active,max_attempts,retention_seconds,*,expected_submission_id=None):
+    def prepare_submission(self,lease,request,session_key,execution_identity,now,daily_cap,max_active,max_attempts,retention_seconds,*,expected_submission_id=None,monitoring_policy=None,monitoring_capture=None,monitoring_recheck=None):
         body,identity=canonical(request),canonical(execution_identity)
         with self._connection(True) as c:
             if not self._owned(c,lease,now):return {'admitted':False,'reason':'stale_lease'}
@@ -194,6 +220,14 @@ class Ledger:
             if goal['cancel_requested']:return {'admitted':False,'reason':'cancelled'}
             if goal['state']!='ready':return {'admitted':False,'reason':'not_ready'}
             if goal['attempts']>=max_attempts:return {'admitted':False,'reason':'max_attempts'}
+            try:
+                from .workflow import admission_reason
+                from . import metacognition
+            except ImportError:
+                from workflow import admission_reason
+                import metacognition
+            blocked=admission_reason(c,goal['id'])
+            if blocked:return {'admitted':False,'reason':blocked}
             try:
                 from .task_inputs import valid_binding
             except ImportError:
@@ -226,11 +260,19 @@ class Ledger:
             day=datetime.fromtimestamp(now,timezone.utc).date().isoformat()
             used=c.execute('SELECT runs FROM run_budget WHERE day=?',(day,)).fetchone()
             if daily_cap<=0 or (used and used[0]>=daily_cap):return {'admitted':False,'reason':'daily_cap'}
+            try:
+                prediction=metacognition.prepare(c,self._goal(c,goal),execution_identity,request,now,
+                    monitoring_policy or {},capture=monitoring_capture,recheck=monitoring_recheck)
+            except ValueError:return {'admitted':False,'reason':'monitoring_binding_invalid'}
             sid=uuid.uuid4().hex
             c.execute('INSERT INTO submissions(id,goal_id,attempt,request,session_key,execution_identity,created,retention_seconds,forecast) VALUES(?,?,?,?,?,?,?,?,?)',
-                (sid,goal['id'],goal['attempts']+1,body,session_key,identity,now,retention_seconds,json.loads(goal['candidate']).get('confidence')))
+                (sid,goal['id'],goal['attempts']+1,body,session_key,identity,now,retention_seconds,prediction['probability']))
+            metacognition.record(c,sid,prediction)
             c.execute('INSERT INTO run_budget(day,runs) VALUES(?,1) ON CONFLICT(day) DO UPDATE SET runs=runs+1',(day,))
             c.execute("UPDATE goals SET attempts=attempts+1,submission_id=?,state='submitting' WHERE id=?",(sid,goal['id']))
+            _protocol(c,'admission',lease,now,submission_id=sid,day=day,daily_cap=daily_cap,max_active=max_active,
+                operation_id=self._goal(c,goal)['operation_id'],request_hash=digest(request),
+                intent_hash=digest([goal['contract_hash'],goal['source_revision']]))
             return {'admitted':True,'reason':'prepared','submission':self._submission(c.execute('SELECT * FROM submissions WHERE id=?',(sid,)).fetchone())}
 
     def record_admission(self,lease,submission_id,run_id,host_status,now):
@@ -240,15 +282,21 @@ class Ledger:
             if not row or (row['run_id'] is not None and row['run_id']!=run_id):return False
             c.execute('UPDATE submissions SET run_id=?,host_status=? WHERE id=?',(run_id,str(host_status)[:64],submission_id))
             c.execute("UPDATE goals SET state='running' WHERE id=?",(lease.goal_id,))
+            _protocol(c,'runtime',lease,now,submission_id=submission_id,settled=False)
             return True
 
     def transition(self,lease,state,reason,now,execution_settled=None,*,expected_submission_id=None):
         if state not in STATES:raise ValueError('invalid_state')
         with self._connection(True) as c:
             if not self._current(c,lease,now,expected_submission_id):return False
+            if state in ('succeeded','failed'):
+                truth=c.execute("SELECT outcome FROM evidence WHERE goal_id=? AND outcome IN ('succeeded','failed')",(lease.goal_id,)).fetchone()
+                if truth is None or truth['outcome']!=state:raise ValueError('terminal_transition_requires_verified_truth')
             c.execute('UPDATE goals SET state=?,reason=? WHERE id=?',(state,str(reason)[:240],lease.goal_id))
             if execution_settled is not None:
-                c.execute('UPDATE submissions SET settled=MAX(settled,?) WHERE id=(SELECT submission_id FROM goals WHERE id=?)',(int(execution_settled),lease.goal_id))
+                c.execute('UPDATE submissions SET settled=MAX(settled,?),settled_at=CASE WHEN ? THEN COALESCE(settled_at,?) ELSE settled_at END WHERE id=(SELECT submission_id FROM goals WHERE id=?)',
+                    (int(execution_settled),int(execution_settled),now,lease.goal_id))
+            _protocol(c,'transition',lease,now,submission_id=expected_submission_id,settled=execution_settled,outcome=state)
             return True
 
     def record_attempt_result(self,lease,submission_id,evidence,now):
@@ -256,7 +304,7 @@ class Ledger:
             if not self._current(c,lease,now,submission_id):return False
             goal=c.execute('SELECT contract_hash FROM goals WHERE id=?',(lease.goal_id,)).fetchone()
             if evidence.get('contract_hash')!=goal[0]:raise ValueError('changed_contract')
-            c.execute('UPDATE submissions SET evidence=? WHERE id=? AND goal_id=? AND evidence IS NULL',(canonical(evidence),submission_id,lease.goal_id))
+            c.execute('UPDATE submissions SET evidence=?,evidence_created=? WHERE id=? AND goal_id=? AND evidence IS NULL',(canonical(evidence),now,submission_id,lease.goal_id))
             return True
 
     def finish(self,lease,evidence,outcome,execution_settled,now,*,expected_submission_id=None):
@@ -265,14 +313,22 @@ class Ledger:
             if not self._current(c,lease,now,expected_submission_id):return False
             goal=c.execute('SELECT * FROM goals WHERE id=?',(lease.goal_id,)).fetchone()
             if evidence.get('contract_hash')!=goal['contract_hash']:raise ValueError('changed_contract')
-            if outcome=='succeeded' and (evidence.get('verdict') is not True or not goal['attempts']):raise ValueError('unverified_success')
+            if outcome=='succeeded':
+                try:
+                    from .workflow import finalizable
+                except ImportError:
+                    from workflow import finalizable
+                if evidence.get('verdict') is not True or (not goal['attempts'] and not finalizable(c,goal['id'])):raise ValueError('unverified_success')
             if outcome=='failed' and evidence.get('verdict') is not False:raise ValueError('unverified_failure')
             receipt=digest([lease.goal_id,outcome,evidence])
             c.execute('INSERT OR IGNORE INTO evidence(goal_id,receipt,outcome,data,created) VALUES(?,?,?,?,?)',(lease.goal_id,receipt,outcome,canonical(evidence),now))
             truth=c.execute("SELECT outcome FROM evidence WHERE goal_id=? AND outcome IN ('succeeded','failed')",(lease.goal_id,)).fetchone()
             if truth is not None:outcome=truth['outcome']
             c.execute('UPDATE goals SET state=?,reason=?,owner=NULL,lease_until=NULL WHERE id=?',(outcome,str(evidence.get('reason',''))[:240],lease.goal_id))
-            c.execute('UPDATE submissions SET settled=MAX(settled,?) WHERE id=?',(int(execution_settled),goal['submission_id']))
+            c.execute('UPDATE submissions SET settled=MAX(settled,?),settled_at=CASE WHEN ? THEN COALESCE(settled_at,?) ELSE settled_at END WHERE id=?',
+                (int(execution_settled),int(execution_settled),now,goal['submission_id']))
+            _protocol(c,'settlement',lease,now,submission_id=goal['submission_id'],settled=bool(execution_settled),outcome=outcome,
+                verdict=evidence.get('verdict') if type(evidence.get('verdict')) is bool else None)
             return True
 
     def request_cancel(self,goal_id):
@@ -347,7 +403,10 @@ class Ledger:
         with self._connection(True) as c:c.execute('INSERT INTO sources VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint,outcome=excluded.outcome,updated=excluded.updated',(id,fingerprint,canonical(outcome),now))
 
     def set_pause(self,value):
-        with self._connection(True) as c:c.execute("INSERT INTO settings VALUES('paused',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(canonical(bool(value)),))
+        import time
+        with self._connection(True) as c:
+            c.execute("INSERT INTO settings VALUES('paused',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(canonical(bool(value)),))
+            _protocol(c,'pause',None,time.time(),paused=bool(value))
 
     def paused(self):
         with self._connection() as c:
@@ -355,10 +414,15 @@ class Ledger:
             return bool(row and json.loads(row[0]))
 
     def model_records(self):
+        try:
+            from .metacognition import predictions
+        except ImportError:
+            from metacognition import predictions
         with self._connection() as c:
             return {'goals':[self._goal(c,r) for r in c.execute('SELECT * FROM goals').fetchall()],
                     'submissions':[self._submission(r) for r in c.execute('SELECT * FROM submissions').fetchall()],
-                    'evidence':[{**dict(r),'data':json.loads(r['data'])} for r in c.execute('SELECT * FROM evidence').fetchall()]}
+                    'evidence':[{**dict(r),'data':json.loads(r['data'])} for r in c.execute('SELECT * FROM evidence').fetchall()],
+                    'predictions':predictions(c)}
 
     def save_model(self,snapshot):
         with self._connection(True) as c:

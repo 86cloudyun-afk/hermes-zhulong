@@ -57,7 +57,7 @@ class Commands:
         m = self.c.metrics()
         brier = f"{m['brier']:.3f}" if m["brier"] is not None else "—"
         lines = [
-            "🐉 烛龙 · 自主核心 v0.4",
+            "🐉 烛龙 · 自主核心 v0.9",
             f"今日事件：{s['today']} ｜ 累计：{s['total']}",
             f"校准账：已结 {m['n_resolved']} ｜ 未结 {m['pending']} ｜ 弃答 {m['abstain']} ｜ Brier {brier}",
         ]
@@ -191,14 +191,17 @@ class Commands:
             result={'goals':public_goals(self.a.ledger)}
         elif action=='experience':result=self.a.experience_status()
         elif action=='skills':result=self.a.skills_status()
+        elif action=='workflows':result=self.a.workflows.summary()
+        elif action=='diagnostics':result=self.a.diagnostics_status()
+        elif action=='assurance':result=self.a.assurance_status(run=True)
         elif action in ('status','tick','pause','resume'):result=getattr(self.a,action)()
         elif action=='cancel' and len(args)==2:result=self.a.cancel(args[1])
-        else:return '用法：/zhulong autonomy [status|goals|experience|skills|tick|pause|resume|cancel <id>]'
+        else:return '用法：/zhulong autonomy [status|goals|experience|skills|workflows|diagnostics|assurance|tick|pause|resume|cancel <id>]'
         return json.dumps(result,ensure_ascii=False,indent=2)
 
     def _help(self) -> str:
         return (
-            "🐉 烛龙（Zhulong）· 观测/校准/自主核心 v0.6\n"
+            "🐉 烛龙（Zhulong）· 观测/校准/自主核心 v0.9\n"
             "  /zhulong status               — 概况\n"
             "  /zhulong tail N               — 最近 N 条事件\n"
             "  /zhulong calibrate            — 校准账报告\n"
@@ -207,7 +210,8 @@ class Commands:
             "  /zhulong reflect [run]        — 反思 digest 信息/生成\n"
             "  /zhulong probes [run]         — 探针历史/立即运行\n"
             "  /zhulong model                — 证据型自我模型（只读）\n"
-            "  /zhulong autonomy [status|goals|experience|skills|tick|pause|resume|cancel <id>]"
+            "  /zhulong autonomy [status|goals|experience|skills|workflows|diagnostics|assurance|tick|pause|resume|cancel <id>]\n"
+            "  zhulong_autonomy actions: status|goals|tick|experience|skills|workflows|diagnostics|assurance"
         )
 
 

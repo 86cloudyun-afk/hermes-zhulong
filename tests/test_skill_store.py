@@ -3,8 +3,11 @@ import importlib.util
 import json
 import sys
 import tempfile
+import threading
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from autonomy_store import Ledger, digest
@@ -77,6 +80,83 @@ class SkillStoreTests(unittest.TestCase):
         for change in [{'cleanup_confirmed': False}, {'task_digest': 'wrong'}, {'passed': 1}, {'cases': []}, {'code_hash': 'wrong'}]:
             self.assertFalse(self.store.finish(job, dict(self.report(), **change), 1004))
         self.assertEqual(self.store.summary()['states'], {'candidate': 1})
+
+    def test_pause_before_publication_preserves_paid_candidate_until_resume(self):
+        self.attempt('failure');self.store.sync(1002);job=self.store.claim(1002)
+        self.store.begin(job,1002);self.store.freeze(job,CODE,1003)
+        frozen=(job['code'],job['token'],job['task'])
+        Ledger(self.ledger.path).set_pause(True)
+        self.assertFalse(self.store.finish(job,self.report(),1004))
+        self.assertEqual(self.store.summary()['states'],{'candidate':1})
+        self.assertEqual((job['code'],job['token'],job['task']),frozen)
+        Ledger(self.ledger.path).set_pause(False)
+        self.assertTrue(self.store.finish(job,self.report(),1005))
+
+    def test_publication_before_pause_is_retained_and_negative_settlement_allowed(self):
+        goal,_,binding=self.publish()
+        self.ledger.set_pause(True)
+        self.assertEqual(self.store.retrieve(goal,self.identity)[0]['id'],binding['id'])
+        self.ledger.set_pause(False)
+        self.attempt('failure-2',now=1020);self.store.sync(1022);job=self.store.claim(1022)
+        self.store.begin(job,1022);self.store.freeze(job,CODE,1023)
+        Ledger(self.ledger.path).set_pause(True)
+        self.assertTrue(self.store.finish(job,self.report(verdict=False),1024))
+        self.assertEqual(self.store.summary()['states'],{'active':1,'rejected':1})
+
+    def test_paused_regression_retires_head_and_defers_positive_rollback(self):
+        goal,_,first=self.publish('v1')
+        _,_,second=self.publish('v2',now=1020,code=CODE+'# v2\n')
+        self.attempt('regression',bindings=[second],now=1040)
+        self.ledger.set_pause(True);self.store.sync(1042)
+        self.assertEqual(self.store.retrieve(goal,self.identity),[])
+        self.ledger.set_pause(False);self.store.sync(1043)
+        self.assertEqual(self.store.retrieve(goal,self.identity)[0]['id'],first['id'])
+
+    def test_pause_transaction_commits_before_waiting_publication(self):
+        self.attempt('failure');self.store.sync(1002);job=self.store.claim(1002)
+        self.store.begin(job,1002);self.store.freeze(job,CODE,1003)
+        other=Ledger(self.ledger.path);attempting=threading.Event();outcome=[];errors=[]
+        def publish():
+            attempting.set()
+            try:outcome.append(self.store.finish(job,self.report(),1004))
+            except BaseException as error:errors.append(error)
+        # Hold the pause write transaction while a different connection tries to publish.
+        with other._connection(True) as c:
+            c.execute("INSERT INTO settings VALUES('paused','true') ON CONFLICT(key) DO UPDATE SET value='true'")
+            worker=threading.Thread(target=publish);worker.start()
+            self.assertTrue(attempting.wait(2))
+        worker.join(3)
+        self.assertFalse(worker.is_alive());self.assertEqual(errors,[])
+        self.assertEqual(outcome,[False]);self.assertEqual(self.store.summary()['states'],{'candidate':1})
+
+    def test_publication_transaction_commits_before_waiting_pause(self):
+        self.attempt('failure');self.store.sync(1002);job=self.store.claim(1002)
+        self.store.begin(job,1002);self.store.freeze(job,CODE,1003)
+        acquired=threading.Event();release=threading.Event();pause_started=threading.Event()
+        outcome=[];errors=[];original=self.ledger._connection
+        @contextmanager
+        def controlled(write=False):
+            with original(write) as c:
+                if write:
+                    acquired.set()
+                    if not release.wait(3):raise AssertionError('publication_control_timeout')
+                yield c
+        def publish():
+            try:outcome.append(self.store.finish(job,self.report(),1004))
+            except BaseException as error:errors.append(error)
+        def pause():
+            pause_started.set()
+            try:Ledger(self.ledger.path).set_pause(True)
+            except BaseException as error:errors.append(error)
+        with patch.object(self.ledger,'_connection',controlled):
+            publisher=threading.Thread(target=publish);publisher.start()
+            self.assertTrue(acquired.wait(2))
+            pauser=threading.Thread(target=pause);pauser.start()
+            self.assertTrue(pause_started.wait(2));release.set()
+            publisher.join(3);pauser.join(3)
+        self.assertFalse(publisher.is_alive());self.assertFalse(pauser.is_alive())
+        self.assertEqual(errors,[]);self.assertEqual(outcome,[True])
+        self.assertTrue(self.ledger.paused());self.assertEqual(self.store.summary()['states'],{'active':1})
 
     def test_restart_recovers_frozen_code_without_new_generation(self):
         self.attempt('origin'); self.store.sync(1002)

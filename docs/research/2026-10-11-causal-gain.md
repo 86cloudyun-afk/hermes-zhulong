@@ -130,3 +130,7 @@ zhulong-python docs/research/experiments/autonomy_frontiers/causal_gain_demo.py 
 每个source：`id` 是S1–S7；`authors/title/publication/primary_url` 为书目；`requested_full_text_url/retrieved_full_text_url` 区分原请求和重定向终点；`http_status/content_type/bytes/sha256` 是获取事实及字节绑定；`scratch_cache_file` 仅指本次scratch全文缓存，不承诺未来环境存在；`read_sections` 是实际阅读范围；`protocol_application` 和 `transfer_limit` 区分迁移出的工程建议与论文没有证明的内容。探针输出中的 `error/response_excerpt` 保存访问失败原因，不是正文证据。
 
 评测边界裁定：首轮冻结复用而非在线更新，代价是不能评价持续学习；固定同 scope 而非跨域迁移，代价是结论范围窄；单一固定 N 主终点，代价是需等完整样本及足够资源；全量失败入分母，代价是成功率可能较漂亮日志下降但更接近真实运营；完整成本而非主执行token代理，代价是需补齐辅助与迟到计费观测。
+
+## 后续工程入口（v0.9）
+
+固定 N 协议/分析、真实 Hermes 有限业务 pilot 入口及尚缺的真实配对执行 adapter 见 [工程清单](../deployment/engineering-closure.md)；实现范围与验收设计见 [研究落地规格](../superpowers/specs/2026-10-11-frontiers-engineering-design.md)。本报告的研究时点、实验结果和未运行提案保留原记录。
