@@ -19,7 +19,7 @@
 - 权限、固定验收契约、任务输入、预算、租约、取消与恢复不可由认知实验降低。
 - 未知、审计不完整、超时与接口不可用保持明确状态，不转换成成功、失败或零成本。
 - 研究报告分别列出实际功能证据、未运行实验和无法识别的主观体验；不生成 consciousness score。
-- 托管环境沿用当前隔离 checkout 的功能分支，不建立额外 worktree；安装脚本的完整模块列表必须同步更新。
+- 托管环境沿用当前隔离 checkout 的功能分支，不建立额外 worktree；scripts/install.sh、runtime_policy.PLUGIN_FILES 和云安装脚本的完整模块列表必须同步更新。
 
 ## A. 限容量认知工作空间
 
@@ -40,6 +40,8 @@ Controller 必须在真正调用 Planner 前进行容量选择，Planner 只获�
 每个由 Planner 创建的 goal 绑定当时帧；execution intent 和 attempt monitor 捕获同一历史绑定的 consumer packet。executor mask 只遮新增 workspace packet；固定任务输入、contract、source_path 及合法工具访问保留。monitor mask 只遮新增 packet，已有独立 metacognition 权限和重检语义不改变。receipt 明确 `delivered_context_only`；既有 API 没有 hidden activation、attention map 或物理状态访问，相关能力返回 unavailable。
 
 功能实验预先冻结预测与条件：容量外来源不进入 Planner；持续干扰下 adaptive 能轮换而 constant 会遗漏尾部来源；遮断 planner 通路改变依赖该事实的受控决策并可恢复；指定消费者遮断不影响另外两个 packet；重启和 TTL 不伪造最新知识。真实 Hermes 注册/入口/请求绑定须验证。受控消费者结果只支持该通路的功能作用，native context delivery 不等于模型实际使用，更不等于主观体验。
+
+mask 随帧冻结，遮断/恢复实验使用预定的不同帧与相同 source/revision/input；比较消费者语义内容和决策，保留不同帧/政策/hash 的干预 provenance。不能在原帧上改政策，也不能宣称干预后的全部 packet 字节相同。
 
 ## B. 独立生产状态对应检查
 

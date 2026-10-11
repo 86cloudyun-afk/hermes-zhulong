@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "baseline": "cda80862312977463c48aa02bda00353169d3c41",
+  "recorded_at_utc": "2026-10-11T04:18:54.766835+00:00",
+  "status": "design_stage_hypotheses_unrun",
+  "freeze_scope": "Design-stage predictions derive from the supplied preimplementation memos and approved design. This package freezes reporting criteria before evaluating the new product mechanisms; it is not an independently timestamped proof of implementation order or a registered paid trial.",
+  "design_document": "../../../superpowers/specs/2026-10-11-cognition-refinement-design.md",
+  "design_sha256": "3f0e20e6d7991f446ea20f5816d16aa42bfc144d5b1aa6c16b0f709cc4ce039c",
+  "predictions": [
+    {
+      "id": "C1",
+      "hypothesis": "Planner receives at most K selected source observations; unselected source facts cannot enter through self-model or experience context.",
+      "endpoint": "Actual planner request source membership and payload digest; candidate validation rejects out-of-selection source or contract.",
+      "falsifier": "Unselected facts are delivered, or candidate accepted for an unselected source."
+    },
+    {
+      "id": "C2",
+      "hypothesis": "With M stable continuously available actionable sources, K<M, and no drift or side effects removing eligibility, adaptive least-recent selection covers every source within ceil(M/K) rounds; constant stable ordering leaves tail sources unselected.",
+      "endpoint": "Mechanical selection coverage, frozen ordered source IDs, identical K and rounds.",
+      "falsifier": "Adaptive omits a source within the bound or depends on incoming queue permutation."
+    },
+    {
+      "id": "C3",
+      "hypothesis": "Interventions are immutable within each frame. Compare separate predeclared normal/target-mask/normal frames with identical selected source IDs, revisions and inputs: only the targeted consumer loses incremental workspace semantic content, other consumers retain facts and baseline inputs, sham changes no semantic content, and restore reproduces unmasked semantic content and controlled decision.",
+      "endpoint": "Semantic consumer payload after excluding frame/policy/intervention provenance, actual exposure binding, selected source/revision/input membership, fixed task input/contract hashes, and controlled decisions; full packet hashes may differ with provenance.",
+      "falsifier": "Historical frame is mutated, another consumer facts or baseline input/contract changes, target semantic exposure is unchanged, or restored semantic content/controlled decision differs under matched inputs."
+    },
+    {
+      "id": "C4",
+      "hypothesis": "A controlled decision depending solely on a selected fact changes under planner mask and returns under restore; matched independent decision remains unchanged.",
+      "endpoint": "Provider-free synthetic routing decision with frozen nonce fixture and independent oracle; native task benefit separately unrun.",
+      "falsifier": "Mask alters logs only, a bypass exposes the nonce, restore uses extra budget, or independent task is affected."
+    },
+    {
+      "id": "C5",
+      "hypothesis": "Restart preserves immutable frame/goal/consumer identities; TTL expiry or source revision drift cannot authorize a new goal from old facts, while historical binding remains usable for recovery.",
+      "endpoint": "Frame/receipt digests, current-plan rejection, historical recovery behavior.",
+      "falsifier": "Restart overwrites binding, stale planning succeeds, or expired context blocks cancellation or recovery."
+    },
+    {
+      "id": "C6",
+      "hypothesis": "Selection forecasts are frozen before the predicted selection and scored against mechanical outcomes, including misses; unavailable and drift exclusions remain explicit.",
+      "endpoint": "Prediction/result ordering, denominator, coverage and deterministic accuracy or Brier where probabilistic forecast is actually defined.",
+      "falsifier": "Prediction contains future result data or misses disappear from denominator. Prediction success alone does not establish predictive attention control."
+    },
+    {
+      "id": "R1",
+      "hypothesis": "Supported Ledger and Workflow lifecycle transitions reconstruct the covered authoritative state independently in one SQLite snapshot.",
+      "endpoint": "Current typed-journal audit on create/claim/renew/release/prepare/runtime/evidence/finish/cancel/pause and workflow writes.",
+      "falsifier": "A legal path mismatches, an uncovered extra row is silently ignored, or checker imports production decision functions."
+    },
+    {
+      "id": "R2",
+      "hypothesis": "An unjournaled mutation to a covered budget, goal lease/state, submission identity/evidence or final truth produces a concrete actual/expected counterexample.",
+      "endpoint": "Explicit covered field and event/row identity in counterexample.",
+      "falsifier": "Audit remains valid, or expected state is copied from the corrupted post-state."
+    },
+    {
+      "id": "R3",
+      "hypothesis": "Counterexample/unavailable blocks new admission and every positive activation, including fallback, in the mutation transaction without budget reservation or provider call; cancellation/recovery/negative retirement remain allowed.",
+      "endpoint": "Committed state, journal, submission/budget counts and activation state before/after; recovery progress.",
+      "falsifier": "Blocked action causes a positive side effect, stale audit grants action, or safety recovery is blocked."
+    },
+    {
+      "id": "R4",
+      "hypothesis": "Two Ledger connections cannot double-spend a single allowed admission; event and authoritative mutation share rollback; concurrent audit sees one consistent snapshot.",
+      "endpoint": "Actual SQLite concurrent reservations, counts, sequence and snapshot identity.",
+      "falsifier": "Duplicate accepted reservation, orphan event/state after rollback, or mixed-snapshot false mismatch."
+    },
+    {
+      "id": "R5",
+      "hypothesis": "Legacy checkpoint is complete and bounded/paged; unsupported schema, missing/corrupt journal and resource exhaustion return counterexample or unavailable rather than valid.",
+      "endpoint": "Coverage anchor/counts plus max_events/max_bytes status; initialized checkpoint cannot be rewritten to erase mismatch.",
+      "falsifier": "Dropped page, silent truncation, malformed input accepted, or checkpoint refresh hides mutation."
+    }
+  ],
+  "future_scientific_trial_requires": [
+    "Fixed N and assignments, held-out tasks, qualified scope/model/identity, primary endpoint, analysis and stop rules frozen before calls",
+    "Retain every assigned failed, unknown, stopped and unrun allocation",
+    "Report native delivery, synthetic routing, task utility and subjective claims separately"
+  ],
+  "subjective_consciousness": "not_established",
+  "general_correctness_theorem": false,
+  "design_revision_note": "design_sha256 identifies the captured design revision, not an assertion that the evolving design document still has that hash. Original wording is retained in explicit amendment provenance when internal pre-result design review clarifies a condition; no outcome-driven hypothesis revision is claimed.",
+  "freeze_type": "internal_engineering_predictions",
+  "design_commit": "b9b23397939335188ccab2e8a1a145bb24eb6fe6",
+  "design_commit_file_sha256": "663ceb2366c3316305fde1d004ab9704ded34d1a4194d888b94e1b6a7fb5d406",
+  "external_scientific_preregistration": false,
+  "preimplementation_review_note": "Parent task records subsequent specification edits as independent design-review corrections before feature implementation (atomic TTL/binding, all-source selection, journal marker, explicit scope, rollback and historical receipts), not result-driven hypothesis changes. Captured design SHA is retained honestly.",
+  "design_stage_amendments": [
+    {
+      "id": "C3",
+      "recorded_at_utc": "2026-10-11T04:23:17.653957+00:00",
+      "stage": "internal design clarification before implementation results; not outcome-driven",
+      "reason": "Mask/policy are immutable per frame. Normal/mask/restore must use distinct predeclared matched frames; full packet identity includes intervention provenance and cannot be required equal. Compare semantic payload and decision instead.",
+      "original_prediction": {
+        "id": "C3",
+        "hypothesis": "Masking one consumer changes only its incremental workspace packet; a sham mask changes no canonical payload; restore reproduces the unmasked packet for the same immutable frame.",
+        "endpoint": "Planner/executor/monitor packet hashes and actual exposure bindings; fixed task input and contract hashes.",
+        "falsifier": "Mask changes another consumer or baseline contract/input, leaves targeted packet unchanged, or restored packet differs."
+      },
+      "external_registration": false
+    }
+  ]
+}

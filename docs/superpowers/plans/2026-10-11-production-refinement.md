@@ -31,7 +31,7 @@
 
 ### Task 1: Actual state correspondence and transactional gates
 
-**Files:** Create `refinement.py`, `tests/test_refinement.py`; modify `autonomy_store.py`, `workflow.py`, `skill_store.py`, `autonomy.py`, `scripts/install.sh`.
+**Files:** Create `refinement.py`, `tests/test_refinement.py`; modify `autonomy_store.py`, `workflow.py`, `skill_store.py`, `autonomy.py`, `scripts/install.sh`, `runtime_policy.py`. Existing covering tests may replace unsupported synthetic SQL fixtures with the corresponding supported Ledger lifecycle; they must preserve original behavioral assertions.
 
 **Interfaces:** Produces `initialize(c)`, `record(c, action, payload, now)`, `audit(c, *, max_events=100000, max_bytes=33554432)` and a current Controller refinement status inside assurance. Typed operation names/payloads are local to the module and its explicit mutation hooks; document the mapping in module docstring. Later cognition work must not change covered ledger fields without an appropriate event.
 

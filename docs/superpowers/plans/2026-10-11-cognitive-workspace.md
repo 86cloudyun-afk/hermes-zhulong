@@ -32,7 +32,7 @@
 
 ### Task 1: Real capacity selection and bound consumer delivery
 
-**Files:** Create `cognition.py`, `tests/test_cognition.py`; modify `autonomy.py`, `autonomy_store.py`, `autonomy_checks.py`, `metacognition.py`, `__init__.py`, `scripts/install.sh`.
+**Files:** Create `cognition.py`, `tests/test_cognition.py`; modify `autonomy.py`, `autonomy_store.py`, `autonomy_checks.py`, `metacognition.py`, `__init__.py`, `commands.py`, `scripts/install.sh`, `runtime_policy.py`.
 
 **Interfaces:** Consume the existing Ledger and refinement hooks unchanged; produce `validate_cognition(raw)`, `initialize(c)`, `Workspace(ledger, policy, identity)` with `select(observations, now)`, `planner_view(frame, observations, now)`, `bind_goal(goal_id, frame, now, *, connection=None)`, `execution_packet(goal_id)`, `monitor_packet(goal_id)`, `summary()`. Extend `Ledger.create_goal` with an optional cognition frame; bind and recheck TTL/source/revision/input hash in the same transaction as goal creation. Packets use JSON dictionaries with schema/frame identity/source metadata/visibility and delivery-only limitations. Exact internal table fields can follow repository conventions while meeting the spec.
 
@@ -41,5 +41,7 @@
 - [ ] Step 3: Implement bounded frame selection with persisted selection history and preselection forecast, strict configuration and consumer receipts. Integrate real planning input/context filtering and bind accepted goals before any execution. Deliver frozen packets in request and monitor provenance. Expose read-only `zhulong_autonomy action=cognition`; add module to installer, avoid side-channel raw facts.
 
   Frame policy/mask freezes historical packets; dedupe preserves original goal binding; legacy/manual goals expose unavailable, workflow children explicitly historical/inherited or unavailable. Omit non-source-scoped domains/contexts as well as commitments/hypotheses/experience. Recompute observations before planner_view. Receipts distinguish constructed/delivered/prepared/actual-call boundaries and prepared requests bind submission ID/hash. Test these boundaries.
+
+  The `/zhulong autonomy cognition` command must expose the same read-only summary. Planner masking must remove source facts in all delivered fields, including any task_input data; preserve input/contract only on original validation/execution paths. Controlled comparisons use separate frozen frames with matching source/revision/input, compare semantic contents after excluding intervention provenance, and retain masks on historical frames.
 - [ ] Step 4: Run cognition/autonomy/metacognition/plugin/refinement tests and full suite. Provider-free controlled consumer experiments are functional evidence; do not describe them as a live model causal gain or consciousness measurement.
 - [ ] Step 5: Self-review and commit only task-owned files; report exact commands and limitations. Independent task review checks spec and quality before completion.
