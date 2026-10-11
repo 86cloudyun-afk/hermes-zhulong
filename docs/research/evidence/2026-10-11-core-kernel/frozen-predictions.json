@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "frozen_utc": "2026-10-11T06:21:54.260548+00:00",
+  "baseline": "705a3f7aabfd89f42ea362da4ee03f5c3d856ecc",
+  "pre_outcome": true,
+  "scope": "v0.11 finite kernel study; native protocol/control hashes frozen separately after product review, before paid launch",
+  "hypotheses": [
+    {
+      "id": "A1",
+      "claim": "Future observations independently settle forecasts before current learning/selection, including empty and drift cases",
+      "falsifier": "future leakage, duplicated settlement or missing denominator",
+      "endpoint": "actual Controller metadata journal and planner deliveries"
+    },
+    {
+      "id": "A2",
+      "claim": "Prior focus/freshness model changes actual routing under discriminating cases, preserving fixed-population fairness",
+      "falsifier": "model control absent or fairness/admission violation",
+      "endpoint": "matched adaptive/constant/permuted held-out provider-free study"
+    },
+    {
+      "id": "A3",
+      "claim": "Adaptive routing improves declared held-out freshness/delivery in controlled disturbances",
+      "falsifier": "no improvement or restoration failure",
+      "endpoint": "independent disturbance schedule, retain null; no subjective consciousness implication"
+    },
+    {
+      "id": "B1",
+      "claim": "Checker accepts nonidentical equivalent ASTs and rejects malformed/incorrect complete covers",
+      "falsifier": "accepted wrong relation, unsupported opcode/type/coverage or forged report",
+      "endpoint": "typed checker + all 876010 numeric row cross-check"
+    },
+    {
+      "id": "B2",
+      "claim": "Actual protected interpreter executes the same bound bundle and frozen input",
+      "falsifier": "tampered admission accepted, worker receipt without native transcript or differing executed hashes",
+      "endpoint": "atomic admission + one certified native ticket allocation"
+    },
+    {
+      "id": "C1",
+      "claim": "Real paired adapter enforces one-factor scope, one deadline and complete six-cell denominator",
+      "falsifier": "confounding, forged proof axis, reset deadline or dropped failure/unknown",
+      "endpoint": "three actual native pairs, N=3 integration only"
+    },
+    {
+      "id": "C2",
+      "claim": "Cohort retains original schedule, actual elapsed timestamps and ambiguous-launch reconciliation",
+      "falsifier": "clock compression called soak, duplicate relaunch or erased pending/failed cells",
+      "endpoint": "provider-free lifecycle tests plus separately registered observation-only actual-time cohort"
+    }
+  ],
+  "nonclaims": [
+    "subjective experience established",
+    "arbitrary-program universal correctness",
+    "mechanically formalized checker soundness",
+    "general causal long-term benefit",
+    "24/72-hour completion before elapsed time",
+    "complete billing from partial counters"
+  ]
+}
