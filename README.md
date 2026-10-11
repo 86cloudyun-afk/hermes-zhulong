@@ -47,7 +47,7 @@ hermes plugins enable zhulong    # 加入 allow-list
 /zhulong autonomy skills              # 可执行技能版本与状态
 /zhulong autonomy workflows           # 持久步骤、依赖与效果状态
 /zhulong autonomy diagnostics         # 有界干预诊断与证据等级
-/zhulong autonomy cognition           # 工作空间帧、选择、预测与交付收据
+/zhulong autonomy cognition           # 工作空间配置、帧/绑定数量与交付计数
 /zhulong autonomy assurance           # 当前状态对应审计 + 有限模型/轨迹检查
 /zhulong autonomy tick                # 推进一次有界循环
 /zhulong autonomy pause               # 暂停新合成/派发，继续对账

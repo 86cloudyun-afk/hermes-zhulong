@@ -86,7 +86,7 @@
 /zhulong autonomy cognition
 ```
 
-`assurance` 命令运行固定界模型检查、旧 recorded trace 验证及新的当前 refinement 审计；`cognition` 查看认知帧、选择预测和交付收据。普通 status 执行当前 refinement audit，有限模型部分仍展示已有结果。v0.9 历史默认模型取 2 个目标、2 个租约代次、预算 2、深度 8、同时 1 个 run，历史枚举为 1236 个状态、3811 个转移，在该界内未发现反例；历史八种守卫错误变体均有反例。有限模型不覆盖任意文件/网络/外部效果、诊断预算或无限执行。
+`assurance` 命令运行固定界模型检查、旧 recorded trace 验证及新的当前 refinement 审计；`cognition` 查看配置、帧/绑定数量和交付通道计数。普通 status 执行当前 refinement audit，有限模型部分仍展示已有结果。v0.9 历史默认模型取 2 个目标、2 个租约代次、预算 2、深度 8、同时 1 个 run，历史枚举为 1236 个状态、3811 个转移，在该界内未发现反例；历史八种守卫错误变体均有反例。有限模型不覆盖任意文件/网络/外部效果、诊断预算或无限执行。
 
 插件保持 11 个 hooks、4 个工具和 1 个命令入口。`zhulong_autonomy` 的 9 个 actions 是 `status`、`goals`、`tick`、`experience`、`skills`、`workflows`、`diagnostics`、`assurance`、`cognition`，没有直接评分或改验收接口。`/zhulong autonomy` 另提供 `pause`、`resume` 和 `cancel <id>`。
 
