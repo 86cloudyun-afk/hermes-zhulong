@@ -199,21 +199,29 @@ class CohortLedger:
         return not reasons,sorted(reasons)
 
     def _state(self,c,now):
+        # Readback is an actual clock observation too. Persist it so a later
+        # rollback/reboot cannot erase history or reopen a closed window.
+        clocks=[r['payload']['clock'] for r in self.journal.rows(c) if 'clock' in r['payload']]
+        if not clocks or clocks[-1]!=now:
+            self.journal.add(c,'clock_observation',uuid.uuid4().hex,dict(clock=now))
+            clocks.append(now)
+        highwater=max([self.protocol['origin']['utc'],now['utc']]+[clock['utc'] for clock in clocks])
         receipts={r['key']:r['payload'] for r in self.journal.rows(c,'measurement')}
         claims={r['payload']['cell']:r['payload'] for r in self.journal.rows(c,'claim')}
         continuous,reasons=self._continuity(c,now);origin=self.protocol['origin']
         elapsed=None
-        if now['boot_id']==origin['boot_id'] and now['monotonic']>=origin['monotonic'] and abs(now['utc']-origin['utc']-(now['monotonic']-origin['monotonic']))<=self.protocol['clock_tolerance']:
+        clock_valid=not (set(reasons)-{'observation_gap'})
+        if clock_valid and now['boot_id']==origin['boot_id'] and now['monotonic']>=origin['monotonic'] and abs(now['utc']-origin['utc']-(now['monotonic']-origin['monotonic']))<=self.protocol['clock_tolerance']:
             elapsed=now['monotonic']-origin['monotonic']
         rows=[];counts={k:0 for k in ('not_due','unrun','missed','observed','late','unknown')}
         for row in self.journal.rows(c,'allocation'):
             cell=row['payload'];receipt=receipts.get(row['key'])
-            state=receipt['state'] if receipt else ('not_due' if now['utc']<cell['opens_utc'] else 'missed' if now['utc']>cell['closes_utc'] else 'unrun')
+            state=receipt['state'] if receipt else ('missed' if highwater>cell['closes_utc'] else 'not_due' if now['utc']<cell['opens_utc'] else 'unrun')
             if not receipt and row['key'] in claims:state='unknown'
             rows.append(dict(id=row['key'],**cell,state=state,receipt=receipt));counts[state]+=1
         return dict(schema=1,protocol_hash=self.journal.anchor['protocol_hash'],units=len(self.protocol['units']),
                     allocated_measurements=len(rows),paid_allocations=0,states=counts,measurements=rows,
-                    observed_clock=now,actual_elapsed_seconds=elapsed,clock_continuity=continuous,clock_reasons=reasons,
+                    observed_clock=now,clock_highwater_utc=highwater,actual_elapsed_seconds=elapsed,clock_valid=clock_valid,clock_continuity=continuous,clock_reasons=reasons,
                     continuous_liveness_supported=False,causal_gain_supported=False,
                     claim='Actual observation-only follow-up; no continuous service, useful-work or causal-benefit assertion')
 

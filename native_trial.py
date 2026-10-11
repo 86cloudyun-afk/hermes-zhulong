@@ -5,6 +5,7 @@ The three-pair pilot supports integration only; provider billing may remain unkn
 """
 from __future__ import annotations
 import copy
+from contextlib import contextmanager
 import fcntl
 import hashlib
 import json
@@ -177,6 +178,11 @@ class FrozenTrial:
             arms=[dict(id=arm,scope=scope,mechanisms=dict(planner_visible=arm==ARMS[1]),mechanism_version='planner-context-v1',artifact_sha256=artifacts[arm]) for arm in ARMS],
             inputs=[dict(id=f['id'],input_hash=digest(f['data']),reference_id=f['reference_id'],reference_version=1) for f in fixtures],
             declared_controls=controls,host=str(host),image=image,
+            runtime_identity_rule=dict(version=1,allowed=[dict(provider='deepseek',model='deepseek-flash')],
+                comparison='exact_native_agent_runtime_identity',response_model_equivalence='unasserted',
+                basis='Pinned api_server_runs._served_runtime reads actual agent.model/provider and _finish persists runtime; api_server._turn_runtime_metadata uses the same actual pair; no alias remapping is authorized',
+                basis_sha256=host_info['files']['gateway/platforms/api_server.py'],
+                runs_basis_sha256=host_info['files']['gateway/platforms/api_server_runs.py']),
             launcher=[str(Path(hermes_command).resolve())] if hermes_command else [sys.executable,str(host/'hermes')],
             oracle=dict(schema=1,byte_sha256=file_sha(oracle),canonical_sha256=digest(answers),author_scope=answers['method'],written_utc=answers['written_utc']),
             input_artifacts=[dict(id=f['id'],byte_sha256=hashlib.sha256(canonical(f['data']).encode()).hexdigest(),canonical_sha256=digest(f['data'])) for f in fixtures],
@@ -291,11 +297,19 @@ class FrozenTrial:
         if cleanup.get('confirmed') is True:
             with self.journal.transaction() as c:captures=[r['payload'] for r in self.journal.rows(c,'cleanup_capture')]
             if not any(x['allocation_id']==allocation_id and x['cleanup_sha256']==digest(cleanup) for x in captures):raise ValueError('untrusted_cleanup_snapshot')
+        cleanup_verdict=cleanup.get('confirmed')
+        if cleanup_verdict is True:
+            try:
+                origin=self._event('cleanup_origin',allocation_id)
+                if origin is None or cleanup.get('origin')!=origin or cleanup.get('within_grace') is not True:raise ValueError('cleanup_timing_unconfirmed')
+                observed=stamp(cleanup['observed'])
+                if Deadline(origin,self.protocol['cleanup_grace_seconds'],clock=lambda:observed).remaining()<=0:raise ValueError('cleanup_observed_late')
+            except (ValueError,KeyError,TypeError):cleanup_verdict=None
         a=self.allocation(allocation_id);e=self.endpoint(allocation_id)
         if e is None:raise ValueError('endpoint_snapshot_missing')
         arm=next(x for x in self.protocol['arms'] if x['id']==a['arm']);f=self.fixture(a)
         bind={k:a[k] for k in ('arm','input_hash','scope_hash')};bind['allocation_id']=a['id']
-        receipt=native._blank_receipt(a);receipt.update(business=e.get('business'),native=e.get('native'),settled=e.get('settled'),cleanup=cleanup.get('confirmed'),
+        receipt=native._blank_receipt(a);receipt.update(business=e.get('business'),native=e.get('native'),settled=e.get('settled'),cleanup=cleanup_verdict,
             main_usage=e.get('main_usage'),configured_model='deepseek-flash',observed_model=e.get('observed_model'),underlying_model_version='unknown',
             endpoint_sha256=digest(e),qualifiers=e.get('reasons',[]),auxiliary_calls=None,billing=None)
         qualified=e.get('arm_qualified') is True and e.get('timely') is True
@@ -304,7 +318,7 @@ class FrozenTrial:
         proofs={'business':dict(bind,verdict=receipt['business'],reference_id=f['reference_id'],reference_version=1,reference_checker_sha256=self.protocol['versions']['reference_checker_sha256'],oracle_sha256=self.protocol['oracle']['byte_sha256']),
                 'native':dict(bind,verdict=receipt['native'],evidence_sha256=digest(e.get('native_evidence'))),
                 'quiet':dict(bind,scope='Registered Ledger and Runs settlement observed by endpoint; OS/container absence is separate cleanup',settled=receipt['settled'],started_at=e['origin']['utc'],completed_at=max(e['origin']['utc'],e['observed']['utc']),deadline_at=e['origin']['utc']+180),
-                'cleanup':dict(bind,confirmed=cleanup.get('confirmed'),evidence_sha256=digest(cleanup)),
+                'cleanup':dict(bind,confirmed=cleanup_verdict,evidence_sha256=digest(cleanup)),
                 'arm':dict(bind,arm_hash=digest(arm),identity_hash=digest(arm['scope']['identity']),mechanism_version=arm['mechanism_version'],artifact_sha256=arm['artifact_sha256'],actual=e.get('controls'))}
         if qualified:
             receipt.update({key+'_receipt':value for key,value in proofs.items()});receipt['proof_hashes']={key:digest(value) for key,value in proofs.items()}
@@ -354,6 +368,8 @@ class FrozenTrial:
                 # Runtime metadata is not a provider response version assertion.
                 result['response_observed_model']=None
                 if runtime.get('provider') not in (None,'deepseek'):raise ValueError('actual_provider_changed')
+                runtime_qualified={k:runtime.get(k) for k in ('provider','model')} in self.protocol['runtime_identity_rule']['allowed']
+                if runtime.get('model') is not None and not runtime_qualified:result['reasons'].append('actual_model_changed')
                 frame_row=c.execute('SELECT f.frame,f.frame_hash FROM cognition_bindings b JOIN cognition_frames f USING(frame_id) WHERE b.goal_id=?',(goal['id'],)).fetchone()
                 receipts=[json.loads(r[0]) for r in c.execute('SELECT receipt FROM cognition_receipts')]
                 try:
@@ -389,6 +405,11 @@ class FrozenTrial:
                     rows=c.execute('SELECT fingerprint,status_json FROM run_idempotency WHERE idempotency_key=? AND run_id=?',(sub['id'],sub['run_id'])).fetchall()
                 if len(rows)!=1 or rows[0]['fingerprint']!=digest({'body':sub['request'],'gateway_session_key':sub['session_key']}):raise ValueError('native_run_binding_missing')
                 status=strict_json(rows[0]['status_json'])
+                runs_runtime=status.get('runtime')
+                if runs_runtime:
+                    if not isinstance(runs_runtime,dict) or any(runs_runtime.get(k)!=runtime.get(k) for k in ('provider','model')):
+                        runtime_qualified=False
+                        raise ValueError('runs_runtime_identity_mismatch')
                 terminal=status.get('run_id')==sub['run_id'] and status.get('status') in ('completed','failed','cancelled','interrupted')
                 result['settled']=True if terminal and sub['settled'] is True else None
                 result['runs_status_sha256']=digest(status)
@@ -409,7 +430,7 @@ class FrozenTrial:
             except (OSError,ValueError,KeyError) as exc:result['reasons'].append(error_code(exc,'actual_worker_unavailable'))
             if result['observed_model'] is None:result['reasons'].append('native_runtime_model_unknown')
             if runtime.get('provider') is None:result['reasons'].append('native_runtime_provider_unknown')
-            if result['planner_qualified'] is True and worker is not None and 'worker_boundary' in result and runtime.get('provider')=='deepseek' and isinstance(result['observed_model'],str):result['arm_qualified']=True
+            if result['planner_qualified'] is True and worker is not None and 'worker_boundary' in result and runtime_qualified:result['arm_qualified']=True
         except (OSError,ValueError,RuntimeError,sqlite3.Error,KeyError,TypeError) as exc:result['reasons'].append(error_code(exc,'native_evidence_unavailable'))
         return result
 
@@ -522,18 +543,24 @@ class FrozenTrial:
                     if state.get('state') in ('stopped','failed') or not self._event('process',a['id']):break
                     time.sleep(min(.2,deadline.remaining()))
             result.update(self._cleanup_observation(a,deadline))
-            result['within_grace']=deadline.remaining()>0
+            result['observed']=host_clock()
+            if deadline.remaining()<=0:
+                result['late_observation']={k:v for k,v in result.items() if k not in ('origin','reasons')}
+                raise TimeoutError('cleanup_observed_late')
+            result['within_grace']=True
         except (OSError,ValueError,TimeoutError,subprocess.SubprocessError) as exc:
             result['reasons'].append(error_code(exc,'cleanup_unavailable'))
+            if result.get('confirmed') is True:
+                result.setdefault('late_observation',{k:v for k,v in result.items() if k not in ('origin','reasons','late_observation')})
             # Late local reconciliation gets a bounded status/stop read; it does
             # not replenish the original grace or qualify its cleanup endpoint.
             try:
-                late=Deadline.start(10)
+                late=Deadline(host_clock(),10)
                 late.call(lambda remaining:subprocess.run([sys.executable,str(ROOT/'scripts/runtime.py'),'stop','--deployment',str(manifest)],capture_output=True,check=True,timeout=min(remaining,3)))
                 result['late_reconciliation']=self._cleanup_observation(a,late)
             except (OSError,ValueError,TimeoutError,subprocess.SubprocessError):result['late_reconciliation']={'confirmed':None}
             result['confirmed']=None;result['within_grace']=False
-        result['observed']=host_clock()
+        result.setdefault('observed',host_clock())
         self._append('cleanup_capture',uuid.uuid4().hex,dict(allocation_id=a['id'],cleanup_sha256=digest(result)))
         self.append_reconciliation(a['id'],dict(kind='cleanup',**result))
         return result
@@ -600,7 +627,17 @@ class FrozenTrial:
         if any(value is not None and key not in receipts for key,value in current.items()):raise ValueError('untrusted_trial_receipt')
         if repair and any(value.get('settled') is not True or value.get('cleanup') is not True for value in receipts.values()):self.ledger.stop('unconfirmed_execution_quiescence')
 
+    @contextmanager
+    def _lifecycle_owner(self):
+        with (self.root/'execute.lock').open('a') as lock:
+            try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError:raise ValueError('trial_executor_already_owned') from None
+            yield
+
     def reconcile(self):
+        with self._lifecycle_owner():return self._reconcile_owned()
+
+    def _reconcile_owned(self):
         self.verify_frozen();self._repair_receipts()
         for a in self.allocations:
             intent=self._event('launch_intent',a['id'])
@@ -614,12 +651,10 @@ class FrozenTrial:
 
     def execute(self,*,paid=False):
         if not paid:raise ValueError('explicit_paid_required')
-        with (self.root/'execute.lock').open('a') as lock:
-            try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-            except BlockingIOError:raise ValueError('trial_executor_already_owned') from None
+        with self._lifecycle_owner():
             self.verify_frozen();self._repair_receipts()
             # Any ambiguous previous launch is recovery-only for this invocation.
-            if any(self._event('launch_intent',a['id']) and not self._event('receipt',a['id']) for a in self.allocations):return self.reconcile()
+            if any(self._event('launch_intent',a['id']) and not self._event('receipt',a['id']) for a in self.allocations):return self._reconcile_owned()
             prior_model=None
             for a in self.allocations:
                 if self.ledger.summary()['protocol_stopped']:break

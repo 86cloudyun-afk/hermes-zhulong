@@ -36,6 +36,44 @@ class CohortTests(unittest.TestCase):
         self.assertEqual(r['states']['missed'],2);self.assertEqual(r['states']['observed'],4)
         saved=copy.deepcopy(r['measurements']);self.clock.advance(60);r=c.report()
         self.assertEqual([x for x in r['measurements'] if x['receipt']],[x for x in saved if x['receipt']])
+    def test_missed_windows_never_reopen_after_same_boot_clock_rollback(self):
+        c=self.registered();c.observe(owner='first');self.clock.advance(25);before=c.observe(owner='later')
+        self.assertEqual(before['states']['missed'],2)
+        self.clock.advance(-18);after=c.observe(owner='rollback')
+        self.assertEqual(after['states']['missed'],2);self.assertEqual(after['states']['observed'],4)
+        self.assertIsNone(after['actual_elapsed_seconds']);self.assertIn('monotonic_rollback',after['clock_reasons'])
+        self.assertEqual(after['allocated_measurements'],10)
+        resumed=self.m.CohortLedger(self.root,clock=self.clock).report()
+        self.assertEqual(resumed['states']['missed'],2);self.assertIsNone(resumed['actual_elapsed_seconds'])
+
+    def test_report_clock_highwater_survives_restart_without_measurement(self):
+        c=self.registered();c.observe();self.clock.advance(25);before=c.report()
+        self.assertEqual(before['states']['missed'],2)
+        self.clock.advance(-18);c=self.m.CohortLedger(self.root,clock=self.clock)
+        after=c.observe(owner='resume')
+        self.assertEqual(after['states']['missed'],2);self.assertEqual(after['states']['observed'],2)
+        self.assertIsNone(after['actual_elapsed_seconds'])
+
+    def test_clock_invalid_finish_never_records_observed_or_elapsed(self):
+        c=self.registered();cell=c.report()['measurements'][0]['id'];claim=c.claim(cell,'owner')
+        self.clock.advance(1);c.report();self.clock.advance(-.5)
+        result=c.finish(claim)
+        self.assertEqual(result['state'],'unknown');self.assertIsNone(result['actual_elapsed_seconds'])
+        self.assertIn('monotonic_rollback',result['clock_reasons'])
+
+    def test_boot_change_remains_invalid_after_restart_and_clock_restoration(self):
+        c=self.registered();c.observe();self.clock.advance(1);self.clock.boot='boot-b';c.report()
+        self.clock.boot='boot-a';self.clock.advance(5)
+        c=self.m.CohortLedger(self.root,clock=self.clock);r=c.observe(owner='resume')
+        self.assertIsNone(r['actual_elapsed_seconds']);self.assertIn('boot_changed',r['clock_reasons'])
+        self.assertEqual(r['states']['observed'],2);self.assertEqual(r['states']['unknown'],2)
+
+    def test_gap_alone_preserves_actual_elapsed_without_continuity_claim(self):
+        c=self.registered();c.observe();self.clock.advance(25);r=c.observe()
+        self.assertEqual(r['actual_elapsed_seconds'],25)
+        self.assertEqual(r['clock_reasons'],['observation_gap']);self.assertFalse(r['clock_continuity'])
+        self.assertEqual(r['states']['observed'],4)
+
     def test_claim_collision_expiry_requires_reconciliation_not_replay(self):
         c=self.registered();cell=c.report()['measurements'][0]['id']
         claim=c.claim(cell,'one',lease=1)

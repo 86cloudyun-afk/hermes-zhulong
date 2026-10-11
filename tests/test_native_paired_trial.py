@@ -106,9 +106,9 @@ class PairedTests(unittest.TestCase):
         r=trial.summary();self.assertEqual(r['unknown'],1);self.assertEqual(r['unrun'],1)
         self.assertTrue(r['protocol_stopped']);self.assertEqual(r['billing_unknown'],2);self.assertEqual(r['missing_auxiliary_calls'],2)
 
-    def execution_artifacts(self,*,wrong_business=False):
+    def execution_artifacts(self,*,wrong_business=False,trial=None,allocation=None):
         self.assertTrue(callable(getattr(self.m.FrozenTrial,'qualify_artifacts',None)),'trusted artifact qualification missing')
-        trial=self.freeze();a=trial.allocations[0];prepared=trial.prepare(a['id'])
+        trial=trial or self.freeze();a=allocation or trial.allocations[0];prepared=trial.prepare(a['id'])
         from autonomy import Controller
         from autonomy_checks import Verifier
         from autonomy_store import Ledger
@@ -271,6 +271,43 @@ class PairedTests(unittest.TestCase):
         r=trial.qualify_artifacts(a['id']);self.assertTrue(r['arm_qualified']);self.assertTrue(r['native']);self.assertTrue(r['business'])
         self.assertIsNone(r['response_observed_model']);self.assertEqual(r['observed_model'],'deepseek-flash')
 
+    def test_runtime_model_wrong_first_and_consistent_wrong_cells_never_qualify(self):
+        trial=self.freeze()
+        for a in trial.allocations:
+            trial,a,profile,sub=self.execution_artifacts(trial=trial,allocation=a);self.worker_artifact(trial,a)
+            with closing(sqlite3.connect(profile/'zhulong/autonomy.db')) as c,c:
+                c.execute('UPDATE submissions SET runtime=? WHERE id=?',(canonical({'provider':'deepseek','model':'unregistered-other-model'}),sub['id']))
+            result=trial.qualify_artifacts(a['id'])
+            self.assertIsNone(result['arm_qualified']);self.assertIn('actual_model_changed',result['reasons'])
+            self.assertEqual(result['observed_model'],'unregistered-other-model');self.assertIsNone(result['response_observed_model'])
+        rule=trial.protocol['runtime_identity_rule']
+        self.assertEqual(rule['allowed'],[{'provider':'deepseek','model':'deepseek-flash'}])
+        self.assertEqual(rule['basis_sha256'],trial.protocol['versions']['host_files']['gateway/platforms/api_server.py'])
+
+    def test_persisted_runs_runtime_disagreement_rejects_qualified_submission(self):
+        trial,a,profile,sub=self.execution_artifacts();self.worker_artifact(trial,a)
+        with closing(sqlite3.connect(profile/'runs_idempotency.db')) as c,c:
+            row=c.execute('SELECT status_json FROM run_idempotency').fetchone();status=json.loads(row[0])
+            status['runtime']={'provider':'deepseek','model':'unregistered-other-model'}
+            c.execute('UPDATE run_idempotency SET status_json=?',(canonical(status),))
+        result=trial.qualify_artifacts(a['id'])
+        self.assertIsNone(result['arm_qualified']);self.assertIn('runs_runtime_identity_mismatch',result['reasons'])
+
+    def test_wrong_runtime_model_stops_before_next_allocation(self):
+        trial,a,profile,sub=self.execution_artifacts();self.worker_artifact(trial,a)
+        with closing(sqlite3.connect(profile/'zhulong/autonomy.db')) as c,c:
+            c.execute('UPDATE submissions SET runtime=? WHERE id=?',(canonical({'provider':'deepseek','model':'unregistered-other-model'}),sub['id']))
+        def local_execution(*args,**kwargs):
+            self.assertEqual(args[4]['id'],a['id'],'second native allocation launched')
+            endpoint=trial.capture_endpoint(a['id'],self.m.Deadline(trial._event('endpoint_origin',a['id'])['origin'],180,clock=self.clock));trial.freeze_endpoint(a['id'],endpoint)
+            origin=self.clock();trial._append('cleanup_origin',a['id'],origin)
+            cleanup=dict(confirmed=True,within_grace=True,origin=origin,observed=origin)
+            trial._append('cleanup_capture','local',dict(allocation_id=a['id'],cleanup_sha256=digest(cleanup)))
+            return trial.record_result(a['id'],cleanup)
+        with patch.object(self.m.native,'execute_allocation',side_effect=local_execution):report=trial.execute(paid=True)
+        self.assertTrue(report['protocol_stopped']);self.assertEqual(report['unrun'],1)
+        self.assertFalse(report['allocations'][0]['receipt']['paired_qualified'])
+
     def test_wrong_actual_worker_image_cannot_qualify_even_with_bound_hash(self):
         trial,a,profile,sub=self.execution_artifacts();self.worker_artifact(trial,a,image='other@sha256:'+'b'*64)
         r=trial.qualify_artifacts(a['id']);self.assertIsNone(r['arm_qualified']);self.assertIn('actual_worker_image_changed',r['reasons'])
@@ -312,6 +349,54 @@ class PairedTests(unittest.TestCase):
         summary=trial.summary();self.assertTrue(summary['allocations'][0]['receipt']['paired_qualified'])
         self.assertFalse(summary['causal_gain_supported']);self.assertIn('small_n',summary['paired_analysis']['disqualifications'])
         self.assertNotIn('declared_controls',summary['protocol']);self.assertNotIn('oracle',summary['protocol'])
+
+    def test_cleanup_crossing_grace_during_final_absence_read_stays_unknown(self):
+        import subprocess
+        trial,a,profile,sub=self.execution_artifacts();self.worker_artifact(trial,a)
+        Deadline=self.m.Deadline
+        endpoint=trial.capture_endpoint(a['id'],Deadline(trial._event('endpoint_origin',a['id'])['origin'],180,clock=self.clock));trial.freeze_endpoint(a['id'],endpoint)
+        owner={'pid':99999991,'start_ticks':1};child={'pid':99999992,'start_ticks':1}
+        trial._append('process',a['id'],{'identity':owner,'clock':self.clock()})
+        self.m.durable_json(profile.parent/'service/status.json',{'state':'stopped','supervisor_identity':owner,'child_identity':child})
+        trial._append('cleanup_origin',a['id'],self.clock())
+        def delayed_absence(pid):self.clock.advance(41);return None
+        with patch.object(self.m,'Deadline',side_effect=lambda origin,seconds:Deadline(origin,seconds,clock=self.clock)),patch.object(self.m,'host_clock',self.clock),patch.object(self.m.subprocess,'run',return_value=subprocess.CompletedProcess([],0,stdout='',stderr='')),patch('runtime_channel.process_identity',side_effect=delayed_absence):
+            cleanup=trial._cleanup(a)
+        self.assertIsNone(cleanup['confirmed']);self.assertFalse(cleanup['within_grace'])
+        receipt=trial.record_result(a['id'],cleanup)
+        self.assertIsNone(receipt['cleanup']);self.assertEqual(receipt['outcome'],'unknown')
+        self.assertFalse(trial.summary()['allocations'][0]['receipt']['paired_qualified'])
+        self.assertTrue(trial.summary()['protocol_stopped'])
+
+    def test_authenticated_cleanup_still_requires_registered_observation_timing(self):
+        trial=self.freeze();a=trial.allocations[0];origin=self.clock()
+        trial.freeze_endpoint(a['id'],dict(origin=origin,observed=origin,business=None,native=None,settled=None,arm_qualified=None))
+        trial._append('cleanup_origin',a['id'],origin)
+        self.clock.advance(121)
+        cleanup=dict(confirmed=True,within_grace=True,origin=origin,observed=self.clock())
+        trial._append('cleanup_capture','late',dict(allocation_id=a['id'],cleanup_sha256=digest(cleanup)))
+        receipt=trial.record_result(a['id'],cleanup)
+        self.assertIsNone(receipt['cleanup']);self.assertTrue(trial.summary()['protocol_stopped'])
+
+    def test_reconcile_live_owner_has_no_endpoint_receipt_or_cleanup_sideeffects(self):
+        import fcntl
+        trial=self.freeze();a=trial.allocations[0];trial.prepare(a['id']);trial.launch_intent(a['id'])
+        with trial.journal.transaction() as c:before=trial.journal.rows(c)
+        with (trial.root/'execute.lock').open('a') as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with patch.object(trial,'_cleanup',side_effect=AssertionError('live owner cleanup forbidden')):
+                with self.assertRaisesRegex(ValueError,'already_owned'):trial.reconcile()
+        with trial.journal.transaction() as c:self.assertEqual(trial.journal.rows(c),before)
+        self.assertIsNone(trial.endpoint(a['id']));self.assertEqual(trial.summary()['unrun'],2)
+        with patch.object(trial,'_cleanup',return_value={'confirmed':None}):report=trial.reconcile()
+        self.assertEqual(report['unknown'],1);self.assertEqual(report['unrun'],1)
+
+    def test_execute_ambiguous_recovery_under_own_lock_never_relaunches(self):
+        trial=self.freeze();a=trial.allocations[0];trial.prepare(a['id']);trial.launch_intent(a['id'])
+        with patch.object(trial,'_cleanup',return_value={'confirmed':None}),patch.object(self.m.native,'execute_allocation',side_effect=AssertionError('relaunch forbidden')):
+            report=trial.execute(paid=True)
+        self.assertEqual(report['unknown'],1);self.assertEqual(report['unrun'],1)
+        self.assertTrue(report['protocol_stopped'])
 
     def test_endpoint_journal_failure_still_attempts_scoped_cleanup(self):
         trial=self.freeze();a=trial.allocations[0];trial.prepare(a['id']);controls=trial.inspect_controls(a['id'])
