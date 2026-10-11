@@ -319,3 +319,156 @@ print(json.dumps({'exact_literal':True,'readonly_generated_cache':True,'hardline
 
 
 if __name__ == '__main__': unittest.main()
+
+
+class CertifiedNativeWorkTests(unittest.TestCase):
+    def setUp(self):
+        from scripts import native_work_acceptance
+        self.m=native_work_acceptance
+        self.assertTrue(callable(getattr(self.m,'prepare_certified_runner',None)),'protected certified runner missing')
+        from test_certified_ticket import bundle
+        from autonomy_store import canonical,digest,Ledger
+        from autonomy_checks import validate_config,observe_sources,Verifier
+        from autonomy import Controller
+        from self_model import SelfModel
+        from test_autonomy import Planner,Runs
+        tmp=tempfile.TemporaryDirectory();self.addCleanup(tmp.cleanup);self.root=Path(tmp.name)
+        self.work=self.root/'work';self.work.mkdir();self.bundle=bundle()
+        self.fixture=self.m.business_inputs(2)[1]
+        (self.work/'facts.json').write_text(canonical(self.fixture['data']))
+        self.input_hash=digest(self.fixture['data'])
+        self.profile=self.root/'deployment/profile';(self.profile/'zhulong').mkdir(parents=True)
+        (self.root/'deployment/service').mkdir()
+        self.manifest=self.root/'deployment/deployment.json'
+        raw=self.m.work_policy(self.work,self.fixture,program_bundle=self.bundle)
+        raw.update(enabled=True,workspace_roots=[str(self.work)],api_url='http://127.0.0.1:8642',api_identity_version='test-v1')
+        config=self.profile/'config.yaml';self.m.atomic_json(config,{'terminal':{'backend':'docker'},'approvals':{'mode':'smart'}})
+        plugin_config=self.profile/'zhulong/config.json';self.m.atomic_json(plugin_config,{'autonomy':raw})
+        self.m.atomic_json(self.manifest,{'root':str(self.manifest.parent),'work':str(self.work),
+              'hashes':{str(p):self.m.digest_bytes(p.read_bytes()) for p in (config,plugin_config)}})
+        self.prepared=self.m.prepare_certified_runner(self.manifest,self.input_hash,self.bundle)
+        self.policy=validate_config(raw,self.profile/'zhulong');self.ledger=Ledger(self.profile/'zhulong/autonomy.db')
+        self.controller=Controller(self.ledger,self.policy,Planner(),Runs(),Verifier(self.policy),SelfModel(self.ledger,self.profile/'zhulong'),clock=lambda:1000)
+        obs=observe_sources(self.policy)[0];self.snapshot=obs['task_input']
+        g=self.ledger.create_goal({'source_id':obs['id'],'contract_id':'result','domain':'code','objective':'tickets','reason':'missing','confidence':.5},
+              obs['revision'],self.policy['sources'][0]['contracts']['result'],{'verdict':False},1000,600,task_input=self.snapshot)
+        lease=self.ledger.claim('test',1000,50,(g['id'],))
+        admitted=self.ledger.prepare_submission(lease,self.controller._request(g),'session',self.controller.execution_identity,1000,1,1,1,86400)
+        self.assertTrue(admitted['admitted'],admitted)
+        self.ledger.record_admission(lease,admitted['submission']['id'],'run','completed',1001)
+        self.sub=self.ledger.get_goal(g['id'])['submission']
+
+    def execute(self):
+        return subprocess.run(['python3','-I',str(self.profile/self.m.CERTIFIED_RUNNER_RELATIVE)],cwd=self.work,capture_output=True,timeout=15)
+
+    def transcript(self,command=None,receipt=None,background=False):
+        import sqlite3
+        from contextlib import closing
+        from autonomy_store import canonical,digest
+        if receipt is None:
+            result=self.execute();self.assertEqual(result.returncode,0,result.stderr);receipt=result.stdout.decode()
+        with closing(sqlite3.connect(self.profile/'runs_idempotency.db')) as c,c:
+            c.execute('CREATE TABLE IF NOT EXISTS run_idempotency(idempotency_key TEXT,run_id TEXT,fingerprint TEXT,status_json TEXT)')
+            c.execute('DELETE FROM run_idempotency')
+            c.execute('INSERT INTO run_idempotency VALUES(?,?,?,?)',(self.sub['id'],'run',digest({'body':self.sub['request'],'gateway_session_key':'session'}),canonical({'session_id':'session','run_id':'run','status':'completed'})))
+        with closing(sqlite3.connect(self.profile/'state.db')) as c,c:
+            c.execute('CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY,session_id TEXT,role TEXT,content TEXT,tool_calls TEXT,tool_call_id TEXT)')
+            c.execute('DELETE FROM messages')
+            call=[{'id':'call','function':{'name':'terminal','arguments':{'command':command or self.m.CERTIFIED_RUNNER_COMMAND,'background':background}}}]
+            c.execute('INSERT INTO messages VALUES(1,?,?,?,?,?)',('session','assistant',None,canonical(call),None))
+            c.execute('INSERT INTO messages VALUES(2,?,?,?,?,?)',('session','tool',canonical({'exit_code':0,'error':None,'output':receipt}),None,'call'))
+
+    def test_fixed_interpreter_executes_without_workspace_python_and_manifest_hashes_all_files(self):
+        from work_reference import reference_output
+        (self.work/'.zhulong-work.py').write_text("raise RuntimeError('MUST NOT RUN')")
+        result=self.execute();self.assertEqual(result.returncode,0,result.stderr)
+        receipt=json.loads(result.stdout);expected=reference_output('ticket_priority_v1',self.fixture['data'])
+        self.assertEqual(receipt['value'],expected);self.assertEqual(json.loads((self.work/'result.json').read_text()),expected)
+        self.assertEqual(receipt['output_hash'],self.m.digest_bytes((self.work/'result.json').read_bytes()))
+        self.assertEqual(receipt['input_hash'],self.input_hash)
+        manifest=self.m.read_json(self.manifest)
+        for name in ('zhulong-certified-runner.py','certified_ticket.py','zhulong-ticket-bundle.json','zhulong-ticket-scope.json'):
+            path=self.profile/'cache/generated'/name
+            self.assertEqual(path.stat().st_mode&0o222,0);self.assertEqual(manifest['hashes'][str(path)],self.m.digest_bytes(path.read_bytes()))
+        self.assertEqual(self.m.read_json(self.profile/'config.yaml')['command_allowlist'],[self.m.CERTIFIED_RUNNER_COMMAND])
+        self.assertNotIn('.zhulong-work.py',self.policy['mission'])
+
+    def test_changed_input_or_kernel_fails_before_artifact(self):
+        (self.work/'facts.json').write_text('{}');result=self.execute()
+        self.assertNotEqual(result.returncode,0);self.assertFalse((self.work/'result.json').exists())
+        from autonomy_store import canonical
+        (self.work/'facts.json').write_text(canonical(self.fixture['data']))
+        kernel=self.profile/'cache/generated/certified_ticket.py';kernel.chmod(0o644);kernel.write_text('raise RuntimeError("changed")')
+        result=self.execute();self.assertNotEqual(result.returncode,0);self.assertFalse((self.work/'result.json').exists())
+
+    def test_actual_admitted_request_foreground_and_artifact_audit(self):
+        self.transcript()
+        audit=self.m.audit_native_certified(self.manifest,self.sub)
+        self.assertTrue(audit['execution_command_observed']);self.assertTrue(audit['admitted_request_binding_verified'])
+        self.assertEqual(audit['submission_id'],self.sub['id']);self.assertEqual(audit['input_hash'],self.input_hash)
+        (self.work/'result.json').write_text('{}')
+        with self.assertRaises(RuntimeError):self.m.audit_native_certified(self.manifest,self.sub)
+
+    def test_arbitrary_python_fake_receipt_and_background_cannot_prove_execution(self):
+        for command,receipt,bg in (('python3 .zhulong-work.py',None,False),(None,'{}',False),(None,None,True)):
+            self.transcript(command,receipt,bg)
+            with self.assertRaises(RuntimeError):self.m.audit_native_certified(self.manifest,self.sub)
+
+    def test_audit_rejects_forged_admitted_bundle_and_identity(self):
+        import copy
+        from autonomy_store import canonical
+        from test_certified_ticket import program
+        self.transcript()
+        forged=copy.deepcopy(self.sub);intent=json.loads(forged['request']['input'])
+        intent['acceptance_contract']['program_bundle']['program']=program(True);forged['request']['input']=canonical(intent)
+        with self.assertRaises(RuntimeError):self.m.audit_native_certified(self.manifest,forged)
+        forged=copy.deepcopy(self.sub);forged['execution_identity']['profile']='other'
+        with self.assertRaises(RuntimeError):self.m.audit_native_certified(self.manifest,forged)
+
+    def test_installer_rejects_other_bundle_and_non_ticket_fixture(self):
+        from test_certified_ticket import program
+        import copy
+        other=copy.deepcopy(self.bundle);other['program']=program(True)
+        with self.assertRaises(ValueError):self.m.prepare_certified_runner(self.manifest,self.input_hash,other)
+        with self.assertRaises(ValueError):self.m.work_policy(self.work,self.m.business_inputs(1)[0],program_bundle=self.bundle)
+
+    def test_real_later_admission_of_different_bundle_cannot_match_installed_runner(self):
+        import certified_bindings
+        from autonomy_store import GoalLease,canonical
+        from autonomy_checks import observe_sources
+        from test_certified_ticket import program
+        old=self.ledger.get_goal(self.sub['goal_id'])
+        lease=GoalLease(old['id'],old['owner'],old['generation'],old['lease_until'])
+        self.ledger.finish(lease,{'contract_hash':old['contract_hash'],'verdict':False},'failed',True,1002,expected_submission_id=self.sub['id'])
+        self.policy['sources'][0]['contracts']['result']['program_bundle']['program']=program(True)
+        certified_bindings.configure(self.ledger,self.policy['sources'],self.controller.execution_identity)
+        obs=observe_sources(self.policy)[0]
+        g=self.ledger.create_goal(old['candidate'],obs['revision'],self.policy['sources'][0]['contracts']['result'],{'verdict':False},1003,600,task_input=obs['task_input'])
+        lease=self.ledger.claim('later',1003,50,(g['id'],))
+        result=self.ledger.prepare_submission(lease,self.controller._request(g),'session',self.controller.execution_identity,1003,2,1,1,86400)
+        self.assertTrue(result['admitted'],result)
+        self.ledger.record_admission(lease,result['submission']['id'],'run','completed',1004)
+        self.sub=self.ledger.get_goal(g['id'])['submission']
+        self.assertEqual(json.loads(self.sub['request']['input'])['acceptance_contract']['program_bundle']['program'],program(True))
+        self.transcript()
+        with self.assertRaises(RuntimeError):self.m.audit_native_certified(self.manifest,self.sub)
+
+    def test_certified_literal_is_accepted_by_pinned_native_guard_without_relaxing_floors(self):
+        wrapper=Path('/workspace/.cloud-onboarding/bin/zhulong-python')
+        host=Path('/workspace/.cloud-onboarding/dependencies/hermes-agent')
+        if not wrapper.is_file() or not host.is_dir():self.skipTest('pinned native host unavailable')
+        script="""import os,sys
+os.environ['HERMES_HOME']=sys.argv[1]
+sys.path.insert(0,sys.argv[2])
+from tools import approval
+from tools.approval_floors import _command_matches_permanent_allowlist
+literal=sys.argv[3]
+assert approval.load_permanent_allowlist()=={literal}
+assert _command_matches_permanent_allowlist(literal)
+assert approval.check_dangerous_command(literal,'docker',has_host_access=True)['approved'] is True
+assert not _command_matches_permanent_allowlist(literal+'; echo forged')
+assert not _command_matches_permanent_allowlist('python3 .zhulong-work.py')
+assert approval.check_dangerous_command('rm -rf /','docker',has_host_access=True)['approved'] is False
+"""
+        result=subprocess.run([str(wrapper),'-c',script,str(self.profile),str(host),self.m.CERTIFIED_RUNNER_COMMAND],capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stderr)
