@@ -1,6 +1,6 @@
 # Machine-formalization roadmap for the actual interval-certificate kernel
 
-2026-10-11 UTC. Scope: the planned `certified_ticket.py` APIs `verify_ticket_certificate` and `execute_ticket_program`, the JSON AST grammar in the independently retained design memo and [accepted specification](../superpowers/specs/2026-10-11-core-evidence-kernel-design.md), and the scratch checker's `affine`, `condition`, `text`, and `check`. Production implementation has not started at this research checkpoint, so the function mapping below is planned and must be updated against the final implementation. This follow-up changes no product code and runs no installation, provider, proof tool, or test.
+2026-10-11 UTC. Scope: the planned `certified_ticket.py` APIs `verify_ticket_certificate` and `execute_ticket_program`, the JSON AST grammar in the independently retained design memo and [accepted specification](../superpowers/specs/2026-10-11-core-evidence-kernel-design.md), and the scratch checker's `affine`, `condition`, `text`, and `check`. This original research checkpoint preceded production implementation. The [actual implementation mapping](2026-10-11-formalization-actual-mapping.md) now records the independently reviewed `d2ce6b0` kernel and supersedes hypothetical function/grammar/wrapper choices below; all Lean definitions and theorems remain proposed, uncompiled obligations. This follow-up changes no product code and runs no installation, provider, proof tool, or test.
 
 **v0.11 remains a custom checked-certificate implementation with a reviewed soundness argument. It is not machine-proven.** The next worthwhile formal artifact proves soundness of the certificate-checking algorithm for this exact language, then its fixed list wrapper. A theorem about the ticket-score formula alone would not prove that the actual certificate checker admits only correct programs.
 
@@ -31,7 +31,7 @@ Define an indexed typed syntax with result sorts `Int`, `Bool`, and `Priority`, 
 integer constant, severity, age, priority-context score reference,
 n-ary integer add, constant-times-expression multiply, integer min,
 Boolean blocked, integer >= comparison,
-typed if, and priority constants urgent/high/normal.
+typed Int/Priority if (Boolean if is rejected), and priority constants urgent/high/normal.
 ```
 
 Make a score reference unconstructible in score context. `Program` consists of a score-context integer expression and a priority-context priority expression. The three priorities are an inductive type, not arbitrary strings. Typed syntax prevents invalid unreachable branches, mixed Boolean/integer expressions, callbacks, and recursive score references independently of certificate decisions.
@@ -99,9 +99,9 @@ The derivation may return `none` on a nonuniform cell. Soundness does not requir
 
 Define `Cell` with exact severity/blocked values, integer lower/upper bounds, claimed affine coefficients, and claimed priority. Raw decoding enforces real integer coefficients and actual Boolean tags; typed mathematical values alone do not establish Python's `type(x) is int` rule.
 
-`checkCell` validates bounds, symbolic derivation, witness equality, and independent business obligations. Define `referenceAffine` only for cells wholly below 168 or wholly at/above 168. Prove it equals `specScore` over that cell. Compare derived coefficients directly with this representation if production does so.
+`checkCell` validates bounds, symbolic derivation, witness equality, and independent business obligations. Define `referenceAffine` only for cells wholly below 168 or wholly at/above 168. Prove it equals `specScore` over that cell. The shipped checker compares whole-cell values using zero extrema of the affine difference; it does not require equal coefficient pairs on a singleton.
 
-If production instead uses endpoint equality, the formal algorithm must do the same and prove `affine_endpoint_eq`: equality at both endpoints gives equality throughout; singleton intervals need their own case and do not imply equal coefficient pairs. Reject intervals crossing the reference `min` boundary unless the implementation explicitly proves another sound representation. Do not formalize coefficient comparison while falsely calling a different endpoint-based Python checker verified.
+The formal algorithm must implement the shipped zero-extrema equality and prove `affine_endpoint_eq`: equality at both endpoints gives equality throughout; singleton intervals need their own case and do not imply equal coefficient pairs. Reject intervals crossing the reference `min` boundary unless the implementation explicitly proves another sound representation. Do not formalize coefficient comparison while falsely calling a different endpoint-based Python checker verified.
 
 For priority, prove the accepted relational obligations imply `specPriority`: urgent requires minimum score >=500; high requires minimum >=300 and maximum <500; normal requires maximum <300. These are obligations over the entire interval, not a supplied Boolean witness or an assertion about one sample age.
 
@@ -123,7 +123,7 @@ Define ticket IDs as finite sequences of Unicode scalar values with lexicographi
 
 Define output rows with exactly `id`, `score`, and `priority` fields, retaining the input ID. The order is lexicographic on `(-score,id)`. Prove that this comparison is a total, antisymmetric, transitive order. No locale, normalization, case folding, or different Unicode-byte order may enter the Python bridge.
 
-Prefer a fixed insertion sort if that is the shipped wrapper. Prove `insert_perm`, `insert_sorted`, `sort_perm`, and `sort_sorted` by induction; termination decreases the remaining list or sorted-prefix length. Prove `mapRows_preserves_ids` and that every mapped row satisfies the row specification. Define the independent full business specification relationally:
+The shipped wrapper uses append-and-shift insertion sort; prove its gap invariant and `insertLoop_refines_insert` before using the functional insertion-sort theorem. Prove `insert_perm`, `insert_sorted`, `sort_perm`, and `sort_sorted` by induction; termination decreases the remaining list or sorted-prefix length. Prove `mapRows_preserves_ids` and that every mapped row satisfies the row specification. Define the independent full business specification relationally:
 
 ```text
 output rows are exactly a permutation of the correctly transformed input rows,
@@ -134,7 +134,7 @@ and the JSON output contains exactly the tickets field and exact row fields.
 
 Then prove `runTickets_satisfies_spec`. Unique input IDs give distinct keys even at equal scores, allowing a `sorted_output_unique` theorem that establishes the one deterministic business result without defining the specification by calling the candidate's sorting function.
 
-If production uses Python `sorted`, the Lean insertion-sort theorem alone does not verify it. Either change the runtime to the same proved algorithm and justify its Python correspondence, prove the relevant library implementation, or disclose Python sorting as trusted and use only its documented sorted-permutation contract as a bridge assumption. The last option gives a conditional full-task theorem, not formal verification of Timsort.
+Python `sorted` is used for certificate-cell ordering, while the output wrapper is the append-and-shift loop; both correspondence obligations remain distinct. Either change the runtime to the same proved algorithm and justify its Python correspondence, prove the relevant library implementation, or disclose Python sorting as trusted and use only its documented sorted-permutation contract as a bridge assumption. The last option gives a conditional full-task theorem, not formal verification of Timsort.
 
 A separate syntactic-cost theorem can bound AST steps by node count, mapping by row count, and insertion-sort comparisons by a quadratic list bound. Exact wall-clock time and big-integer bit costs require a separate cost model. Accepted AST literal/depth bounds constrain intermediate bit sizes, but must be proved from the actual grammar if used to promise a resource bound.
 
