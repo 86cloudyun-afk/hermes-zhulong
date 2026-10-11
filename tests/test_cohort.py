@@ -1,12 +1,13 @@
 """Simulated lifecycle tests. These are not real elapsed follow-up evidence."""
 import copy
-from contextlib import closing
+from contextlib import closing,contextmanager
 import importlib.util
 import json
 from pathlib import Path
 import shutil
 import sqlite3
 import tempfile
+import threading
 import unittest
 
 
@@ -26,6 +27,64 @@ class CohortTests(unittest.TestCase):
         p=self.m.observation_protocol(['control','treatment'],checkpoints=[0,6,24,48,72],late_tolerance=2,max_gap=10)
         p.update(changes)
         return self.m.CohortLedger.register(self.root,p,clock=self.clock)
+    def delayed_transaction_action(self,ledger,action,*,transaction_number=1):
+        # Pause before the real lock, so another caller can legitimately commit
+        # a newer clock. No transaction, stored value or clock is forged.
+        entered=threading.Event();release=threading.Event();original=ledger.journal.transaction
+        errors=[];results=[];calls=0
+        @contextmanager
+        def scheduled(**kwargs):
+            nonlocal calls
+            if threading.current_thread().name=='delayed-observer':
+                calls+=1
+                if calls==transaction_number:
+                    entered.set()
+                    if not release.wait(5):raise RuntimeError('test scheduling timeout')
+            with original(**kwargs) as connection:yield connection
+        ledger.journal.transaction=scheduled
+        def run():
+            try:results.append(action())
+            except BaseException as exc:errors.append(exc)
+        thread=threading.Thread(target=run,name='delayed-observer');thread.start()
+        def cleanup():release.set();thread.join(5);ledger.journal.transaction=original
+        self.addCleanup(cleanup)
+        self.assertTrue(entered.wait(5),'delayed operation did not reach journal boundary')
+        def complete():
+            release.set();thread.join(5)
+            self.assertFalse(thread.is_alive(),'delayed operation remained blocked')
+            self.assertEqual(errors,[])
+            return results[0]
+        return complete
+
+    def test_concurrent_reports_preserve_actual_clock_order(self):
+        c=self.registered();c.observe();complete=self.delayed_transaction_action(c,c.report)
+        self.clock.advance(1);newer=c.report();older=complete();final=c.report()
+        self.assertTrue(newer['clock_valid']);self.assertTrue(older['clock_valid']);self.assertTrue(final['clock_valid'])
+        self.assertEqual(final['actual_elapsed_seconds'],1);self.assertEqual(final['clock_reasons'],[])
+
+    def test_concurrent_report_does_not_stop_bounded_watcher(self):
+        c=self.registered();c.observe();complete=self.delayed_transaction_action(c,c.report)
+        self.clock.advance(1);waits=[]
+        def wait(seconds):
+            if not waits:complete()
+            waits.append(seconds);self.clock.advance(seconds)
+        final=c.watch(wait=wait,poll_seconds=1)
+        self.assertGreater(len(waits),1);self.assertTrue(final['clock_valid'])
+        self.assertEqual(final['actual_elapsed_seconds'],74);self.assertEqual(final['states']['observed'],10)
+        self.assertEqual(final['paid_allocations'],0);self.assertEqual(final['allocated_measurements'],10)
+
+    def test_watch_start_and_tick_sample_after_concurrent_report_commits(self):
+        # Watch's first two transactions reconcile/report; the next two write
+        # start and first tick. Exercise both event capture boundaries.
+        for transaction_number in (3,4):
+            with self.subTest(transaction_number=transaction_number):
+                self.root=Path(self.tmp.name)/str(transaction_number);self.clock=Clock()
+                c=self.registered();c.observe()
+                complete=self.delayed_transaction_action(c,lambda:c.watch(wait=self.clock.advance,poll_seconds=1),transaction_number=transaction_number)
+                self.clock.advance(1);self.assertTrue(c.report()['clock_valid']);final=complete()
+                self.assertTrue(final['clock_valid']);self.assertEqual(final['actual_elapsed_seconds'],74)
+                self.assertEqual(final['states']['observed'],10);self.assertEqual(final['clock_reasons'],[])
+
     def test_original_denominator_pending_and_no_paid_allocations(self):
         c=self.registered();r=c.report()
         self.assertEqual(r['units'],2);self.assertEqual(r['allocated_measurements'],10)

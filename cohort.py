@@ -226,8 +226,9 @@ class CohortLedger:
                     claim='Actual observation-only follow-up; no continuous service, useful-work or causal-benefit assertion')
 
     def report(self):
-        now=stamp(self.clock())
-        with self.journal.transaction() as c:return self._state(c,now)
+        # Capture order must match durable insertion order. Sampling before the
+        # lock would turn ordinary concurrent readback into a false rollback.
+        with self.journal.transaction() as c:return self._state(c,stamp(self.clock()))
 
     def _save_report(self,report):
         directory=self.root/'reports';directory.mkdir(mode=0o700,exist_ok=True)
@@ -238,8 +239,8 @@ class CohortLedger:
 
     def claim(self,cell,owner,*,lease=30):
         if not isinstance(owner,str) or not re.fullmatch('[A-Za-z0-9_-]{1,100}',owner) or type(lease) not in (int,float) or not 0<lease<=120:raise ValueError('invalid_observer_claim')
-        now=stamp(self.clock())
         with self.journal.transaction() as c:
+            now=stamp(self.clock())
             claims=[r['payload'] for r in self.journal.rows(c,'claim') if r['payload']['cell']==cell]
             if claims:
                 latest=claims[-1]
@@ -253,8 +254,8 @@ class CohortLedger:
         # This observer measures its own actual clock only. A caller cannot supply
         # success, elapsed time, liveness or any provider execution evidence.
         if evidence is not None:raise ValueError('caller_observation_verdict_forbidden')
-        now=stamp(self.clock())
         with self.journal.transaction() as c:
+            now=stamp(self.clock())
             stored=[r['payload'] for r in self.journal.rows(c,'claim') if r['key']==claim.get('cell')]
             if stored!=[claim]:raise ValueError('observer_claim_changed')
             if now['boot_id']!=claim['clock']['boot_id'] or not claim['clock']['monotonic']<=now['monotonic']<claim['expires_monotonic']:raise ValueError('claim_reconciliation_required')
@@ -271,8 +272,8 @@ class CohortLedger:
         return self._save_report(self.report())
 
     def reconcile(self):
-        now=stamp(self.clock())
         with self.journal.transaction() as c:
+            now=stamp(self.clock())
             measured={r['key'] for r in self.journal.rows(c,'measurement')}
             for row in self.journal.rows(c,'claim'):
                 claim=row['payload']
@@ -287,15 +288,16 @@ class CohortLedger:
         with (self.root/'watch.lock').open('a') as lock:
             try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
             except BlockingIOError:raise ValueError('watcher_already_owned') from None
-            self.reconcile();now=stamp(self.clock());p=self.protocol
+            self.reconcile();p=self.protocol
             with self.journal.transaction() as c:
+                now=stamp(self.clock())
                 generation=len(self.journal.rows(c,'watch_start'))+1
                 self.journal.add(c,'watch_start',str(generation),dict(owner=owner,generation=generation,clock=now))
             upper=p['origin']['utc']+p['checkpoints'][-1]+p['late_tolerance']
             mono_upper=p['origin']['monotonic']+p['checkpoints'][-1]+p['late_tolerance']
             while True:
-                now=stamp(self.clock())
                 with self.journal.transaction() as c:
+                    now=stamp(self.clock())
                     self.journal.add(c,'watch_tick',uuid.uuid4().hex,dict(clock=now,generation=generation))
                 report=self.observe(owner=owner)
                 if (now['boot_id']!=p['origin']['boot_id'] or report['actual_elapsed_seconds'] is None or now['utc']>=upper or now['monotonic']>=mono_upper):break
