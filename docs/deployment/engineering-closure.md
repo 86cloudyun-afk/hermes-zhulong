@@ -164,3 +164,10 @@ zhulong-python scripts/native_work_acceptance.py \
 | 意识和通用正确性 | 功能元认知、部分工作空间、前瞻控制、工单 DSL 证书、有限不变量与当前状态对应检查 | 主观体验 unknown/not_established；完整 GWT/AST、HOT quality space、RPT/PP/IIT 底层检验、检查器机器证明／Python 对应及无界通用 theorem 仍未建立，不提供意识概率或通用正确性保证 |
 
 早期文档中提及的 dsh/其它宿主、桌面深集成、跨 profile 联邦和公共技能市场原本不在 Hermes 本项目范围，不纳入本版虚构交付。旧版本已修复的 review 问题保留原闭环，不重复列为新发现。
+
+
+## v0.11 实际核心证据续记
+
+修复后的实际 pinned Hermes／Docker suite 为 575/575 全通过、零跳过；宿主 smoke 与 paused gateway 启动／停止检查均为零外部模型调用。首次认证 N=1 成功，首次三对六格配对研究停在 unknown=1／unrun=5，均保留各自原协议和完整分母；前瞻修复后的新批次另行预登记，不能追补旧格。详细检查点与结果见 [v0.11 验证记录](../research/2026-10-11-v0.11-validation.md)。
+
+形式 typed 模型的一般 `rowCertificateSound` 已经 Lean kernel 检查并由独立审查者干净重放，83 项公开定理闭包的基础公理均披露。此项完成模型层检查器定理；Python／JSON、列表输出和原生执行桥仍未机械证明，部署检查器继续报告 `reviewed_argument_not_machine_formalized`。可复现源码和[独立 CI 入口](../../formal/ticket-kernel/README.integration.md)已通过包装审查和 root 实际重建，GitHub Actions 执行仍待验收。72 小时真实时钟观察保留原注册和截止时间；到期状态、持续服务和因果长期收益分别判断，主观意识仍未证实。

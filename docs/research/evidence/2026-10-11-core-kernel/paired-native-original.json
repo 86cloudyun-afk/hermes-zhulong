@@ -123,5 +123,6 @@
   "prospective_fix": "Pending separate reviewed implementation and distinct pre-outcome batch; never refill or pool this original batch.",
   "causal_gain_supported": false,
   "full_billing": null,
-  "analysis_interpretation": "No complete or qualified pairs. Retained effect=0, ties=3 and p=1 are incomplete-batch algorithm placeholders; they are not observed matched ties, an effect estimate or evidence of no effect."
+  "analysis_interpretation": "No complete or qualified pairs. Retained effect=0, ties=3 and p=1 are incomplete-batch algorithm placeholders; they are not observed matched ties, an effect estimate or evidence of no effect.",
+  "independent_cleanup_status_hash_encoding": "SHA-256 of canonical JSON (sorted keys, compact separators, UTF-8), not raw file bytes; original cleanup observation is retained unchanged."
 }

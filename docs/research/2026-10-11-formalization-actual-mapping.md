@@ -4,7 +4,7 @@ Read-only checkpoint: repository HEAD `6d3a6f60cb1ee794ee6da0bef7ba5099bbd4c16e`
 
 ## Exact implementation-to-Lean mapping
 
-The theorem names below are proposed obligations, not existing proofs. A pure typed Lean core should model the actual operations; a separate correspondence obligation connects this core to the Python facade and protected native bridge.
+The theorem names below are proposed obligations from this historical mapping checkpoint. A later [typed-core milestone](evidence/2026-10-11-core-kernel/formal-model-proof.json) now proves computed-checker row soundness, derivation and exact coverage; the Python facade, decoding, output wrapper and runtime correspondence remain unproved. A pure typed Lean core should model the actual operations; a separate correspondence obligation connects this core to the Python facade and protected native bridge.
 
 | Actual function | Planned formal definition / theorem obligation |
 |---|---|
