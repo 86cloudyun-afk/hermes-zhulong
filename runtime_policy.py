@@ -28,7 +28,7 @@ OTHER_PLATFORMS=('local','telegram','discord','whatsapp','whatsapp_cloud','slack
     'wecom_callback','weixin','bluebubbles','qqbot','yuanbao','relay')
 TMPFS_POLICY={'/tmp':'rw,nosuid,size=512m','/var/tmp':'rw,noexec,nosuid,size=256m',
     '/run':'rw,noexec,nosuid,size=64m','/home':'rw,exec,size=1g',
-    '/root':'rw,exec,size=1g','/workspace':'rw,exec,size=10g'}
+    '/root':'rw,exec,size=1g,mode=711','/workspace':'rw,exec,size=10g'}
 
 
 def overlaps(a,b):
@@ -97,7 +97,10 @@ def native_config(m,policy,boot_id='preflight'):
         'docker_shm_size':'64m','container_cpu':0,'container_memory':0,'container_disk':0,
         # The pinned host treats any :/workspace-prefixed bind as a workspace
         # mount and omits its default tmpfs. Provision the exact checked mount.
+        # The image's /root is 0700; uid1000 needs traversal to the native RO
+        # cache mounts. Keep root-owned /root unlistable and unwritable.
         'docker_extra_args':['--read-only','--tmpfs','/workspace:'+TMPFS_POLICY['/workspace'],
+            '--tmpfs','/root:'+TMPFS_POLICY['/root'],
             '--cpus','1','--memory','512m','--memory-swap','512m',
             '--pids-limit','128','--label','zhulong.runtime='+m['deployment_id'],
             '--label','zhulong.boot='+boot_id]}

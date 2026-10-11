@@ -1,0 +1,452 @@
+{
+  "schema": "zhulong-v0.9-engineering-validation-summary-v1",
+  "study_date": "2026-10-11",
+  "status": "pending_final_runner_acceptance",
+  "repository": {
+    "baseline_revision": "dd28648e3d730aca47cb0e7da8509b5737a3e6c3",
+    "integrated_revision": "e3ed5fb94ea848dce5a5d58dc239b43be78857a0",
+    "review_fixed_revision": "00dd66bab946263a85f383546fed41ab0db0920c",
+    "final_revision": null,
+    "final_revision_status": "pending",
+    "protected_runner_snapshot": {
+      "revision_binding": "Working-tree modification after review_fixed_revision; final commit pending",
+      "implementation_sha256": "49b4745f481989b6d39cf9c4ed5fd33c6368ff1f72690d3115b3da1d9bd26961",
+      "tests_sha256": "be7f719d3fd70c290aadbf9ca9a76a4e231349f736919dce621b86295a8256d3",
+      "runtime_policy_sha256": "6e53cc3e32a87f4dfa7200cebdfa800dcd9d1dd04de09ccd3f36f6b517342826",
+      "runtime_policy_tests_sha256": "c25a105af79e04cdf4171210659df1ae3b41694305c701e5433be6314f37a47e"
+    }
+  },
+  "runtime": {
+    "hermes_revision": "73162b00eefde3794bed0afb53d84a19c0eed230",
+    "python": "3.14.7",
+    "image": "python@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1",
+    "provider": "deepseek",
+    "model_alias": "deepseek-flash",
+    "underlying_model_revision_verified": false
+  },
+  "checks": {
+    "root_native_host_docker_suite": {
+      "status": "passed",
+      "revision": "00dd66bab946263a85f383546fed41ab0db0920c",
+      "tests": 361,
+      "passed": 361,
+      "skipped": 0,
+      "failed": 0,
+      "errors": 0,
+      "exit_code": 0,
+      "seconds": 119.234,
+      "scope": "After both whole-branch Important fixes, before protected runner changes",
+      "source": "full-suite-review-fixed.log",
+      "source_sha256": "2312db7a50dcb34ef9b43c56b470fedc63602a2c2d598da0b30c9cc040c2502a"
+    },
+    "installed_suite": {
+      "status": "passed_with_explicit_skips",
+      "tests": 361,
+      "passed": 343,
+      "skipped": 18,
+      "failed": 0,
+      "errors": 0,
+      "exit_code": 0,
+      "seconds": 36.074,
+      "scope": "Review-fixed revision before protected runner changes; skipped cases are unverified by this command",
+      "source": "install-v09.log",
+      "source_sha256": "0648643634fdf819f38daf8f95aab1158b47b88b96423809cb4df72264c688b8"
+    },
+    "host_smoke": {
+      "status": "passed",
+      "version": "0.9.0",
+      "hooks": 11,
+      "tools": 4,
+      "commands": 1,
+      "journal": "passed",
+      "privacy": "passed",
+      "calibration": "passed",
+      "digest": "passed",
+      "sqlite_integrity": "ok",
+      "external_llm_calls": 0,
+      "source": "host-smoke-review-fixed.json",
+      "source_sha256": "c026295fe20d4add2f7476dc45ba56bb2643becb88ce15f4dca76161f6a30e61"
+    },
+    "installation_hash_parity": {
+      "status": "matched",
+      "modules": 27,
+      "compared": [
+        "repository source",
+        "installed modules",
+        "protection marker SHA"
+      ],
+      "evidence_origin": "Root session recheck; does not imply protected runner functional acceptance"
+    },
+    "protected_runner_focused": {
+      "status": "passed",
+      "tests": 42,
+      "passed": 42,
+      "failed": 0,
+      "errors": 0,
+      "seconds": 0.923,
+      "scope": "Current protected runner working-tree snapshot; not its post-change full suite",
+      "source": "zhulong-r3-green-trusted-runner.log",
+      "source_sha256": "add4766dab9e5e4aa11a9f4e9500a1ce7532fafbf702413da890c41445782e8f"
+    },
+    "protected_runner_actual_docker_probe": {
+      "status": "passed",
+      "retained_probe_id": "trusted-runner-offline-20261011-r3-root711-verified",
+      "exit_code": 0,
+      "ok": true,
+      "owned_containers_absent": true,
+      "external_llm_calls": 0,
+      "gateway_launches": 0,
+      "candidate_override_in_probe": false,
+      "protected_controls_verified": true,
+      "exact_literal_native_approval": true,
+      "exact_literal_execution": {
+        "command": "python3 /root/.hermes/cache/generated/zhulong-work-runner.py",
+        "exit_code": 0,
+        "foreground": true,
+        "code_hash": "8551a02369139a1c3ea27ec3ac7224bc5931a987b266b0363d4f682c959c5320",
+        "input_hash": "298ee97c56b82ff81c674e5aa6f9f92af223c7d070e4d5a15bbde7bd3d73e951",
+        "artifact_sha256": "f624e229314ec86a99ab7b2d2205c9d736f8efb4d60eb2b00e92a08462e3da33",
+        "code_input_output_match": true
+      },
+      "protected_runner_sha256": "9a99dfcff7fd93d98d0203081d2da78df5f20bd9c47573dce9069f48eafb6ff9",
+      "actual_facts_mount_readonly": true,
+      "actual_generated_cache_mount_readonly": true,
+      "denied_action_checks": {
+        "code_readable": true,
+        "controller_absent": true,
+        "docker_socket_absent": true,
+        "facts_write_denied": true,
+        "provider_key_absent": true,
+        "root_mode_711": true,
+        "root_not_listable": true,
+        "root_searchable": true,
+        "runner_readable": true,
+        "runner_write_denied": true
+      },
+      "docker_boundary": {
+        "bind_disk_quota": "not_enforced",
+        "bind_mounts": 15,
+        "cpu": 1,
+        "memory_bytes": 536870912,
+        "memory_plus_swap_bytes": 536870912,
+        "network": "none",
+        "pids": 128,
+        "readonly_root": true,
+        "shm_bytes": 67108864,
+        "tmpfs_checked": true,
+        "uid": 1000
+      },
+      "fixed_tmpfs_root": "rw,exec,size=1g,mode=711",
+      "root_owner_uid": 0,
+      "worker_root_directory_write_denied": true,
+      "root_owner_and_write_evidence_origin": "Root verified mode=711 owned by uid 0 with uid 1000 worker; other permission floors unchanged",
+      "implementation_sha256": {
+        "runtime_policy.py": "6e53cc3e32a87f4dfa7200cebdfa800dcd9d1dd04de09ccd3f36f6b517342826",
+        "runtime_supervisor.py": "e425240e831fdd349fbcf87d2a208e678ba1ed164b6775463aa004e09ad74d8a",
+        "scripts/native_work_acceptance.py": "49b4745f481989b6d39cf9c4ed5fd33c6368ff1f72690d3115b3da1d9bd26961",
+        "scripts/skill_smoke_evidence.py": "532dd695f62b61e97af2e3c8a231c43a759c530c81104084cd2d1ce45263c2b7"
+      },
+      "artifact_sha256": {
+        "probe.py": "78cd61a62328cf495bbccbe782e4e2473fa1a8841c95afe0ba3a63958bdaa19d",
+        "report.json": "caa7b4fa7fd35891be04bda09268728ea08f60f291abdb8cb9363aa619dd91c2",
+        "probe.log": "9c768c3d4ea50bf7e00b7d24a2ddd006ac1b06ab076e404c336e319367605dd0"
+      },
+      "scope": "Probe of the authorized bounded JSON-input/output entry and Docker boundary; not paid native business acceptance or causal evidence",
+      "success_claimed": true,
+      "paid_business_acceptance_claimed": false
+    },
+    "protected_runner_final_full_suite": {
+      "status": "running_pending_result",
+      "tests": null,
+      "passed": null,
+      "skipped": null
+    },
+    "protected_runner_final_installed_suite": {
+      "status": "pending",
+      "tests": null,
+      "passed": null,
+      "skipped": null
+    },
+    "protected_runner_probe_history": [
+      {
+        "id": "trusted-runner-offline-20261011-r3",
+        "report_sha256": "d62bfb9913709e43c791ac2281924df8b5172fab4d04dd9c3aff5ff5cf90f4ad",
+        "recorded_ok": false,
+        "recorded_owned_containers_absent": false,
+        "counted_as_formal_pass": false,
+        "original_record_preserved": true
+      },
+      {
+        "id": "trusted-runner-offline-20261011-r3-diagnostic",
+        "report_sha256": "0b08dba386853cedf89fd980e68bdd0e357756a19b9acc9603ef319cb419868a",
+        "recorded_ok": false,
+        "recorded_owned_containers_absent": true,
+        "counted_as_formal_pass": false,
+        "original_record_preserved": true
+      },
+      {
+        "id": "trusted-runner-offline-20261011-r3-root711-experiment",
+        "report_sha256": "8d3a8550d0081367093fc593682d617d9f05d1473767621908dd105ea1d83bc9",
+        "recorded_ok": true,
+        "recorded_owned_containers_absent": null,
+        "counted_as_formal_pass": false,
+        "subsequent_independent_cleanup_confirmed": true,
+        "original_record_preserved": true
+      }
+    ],
+    "protected_runner_probe_history_scope": "Earlier failed, diagnostic, and experimental cleanup-race reports retained. Independent cleanup was confirmed after the experimental race; this does not overwrite original outcomes. Only root711-verified is counted as a formal pass."
+  },
+  "assurance": {
+    "status": "no_counterexample_within_bounds",
+    "states": 1236,
+    "transitions": 3811,
+    "model_version": 1,
+    "protocol_version": 1,
+    "model_hash": "f544b6806dcb2a7b58cc1f8e55dac6a01df05940ad59257cb9d8d31baf68645c",
+    "bounds": {
+      "goals": 2,
+      "generations": 2,
+      "budget": 2,
+      "depth": 8,
+      "max_active": 1,
+      "clock": "one abstract instant",
+      "publication_heads": 1,
+      "operation_ids": 1
+    },
+    "invariants": [
+      "budget",
+      "quiet_before_admission",
+      "lease_fencing",
+      "operation_intent",
+      "pause_admission",
+      "pause_publication",
+      "unknown_not_failure",
+      "submission_binding",
+      "active_capacity"
+    ],
+    "mutation_count": 8,
+    "mutations_with_counterexamples": 8,
+    "general_proof": false,
+    "limitations": [
+      "Finite depth and domains only",
+      "Ledger Run admission budget; diagnostic budgets excluded",
+      "No opaque effects, network or filesystem model",
+      "Trace validity covers recorded events after instrumentation only"
+    ],
+    "source": "assurance-actual.json",
+    "source_sha256": "88caba3262fead436d073296a658f9096a3d9c54801ffb8fab0b721ef49632ef"
+  },
+  "native_trials": [
+    {
+      "id": "A",
+      "retained_report_id": "native-e3ed5fb-20261011-0148",
+      "plugin_revision": "e3ed5fb94ea848dce5a5d58dc239b43be78857a0",
+      "report_sha256": "5d74363b0df727cda8b671d45d61f553fdd6d628de2b9a63b477f500476356c3",
+      "mode": "finite_usefulness_pilot",
+      "paid_authorized": true,
+      "actual_provider_calls": 0,
+      "provider_activity_evidence": "Root retained progress record: setup/preflight failed before provider calls",
+      "allocated": 3,
+      "succeeded": 0,
+      "failed": 0,
+      "unknown": 1,
+      "unrun": 2,
+      "protocol_stopped": true,
+      "stop_reason": "unconfirmed_execution_quiescence",
+      "missing_main_usage": 3,
+      "known_main_tokens": null,
+      "auxiliary_calls": 0,
+      "missing_auxiliary_calls": 2,
+      "billing_unknown": 3,
+      "causal_gain_supported": false,
+      "outcomes": [
+        {
+          "input": "workload",
+          "outcome": "unknown",
+          "error_code": "native_preflight_failed",
+          "business": null,
+          "native": null,
+          "settled": null,
+          "cleanup": null
+        },
+        {
+          "input": "source-index",
+          "outcome": "unrun"
+        },
+        {
+          "input": "ticket-queue",
+          "outcome": "unrun"
+        }
+      ],
+      "subsequent_reconciliation": "Owned workers/evaluators manually reconciled before B; original trial receipts remain unchanged",
+      "auxiliary_calls_scope": "Plugin llm_daily budget table only; excludes native guardian and other host-level model calls. Not a count of all auxiliary provider calls."
+    },
+    {
+      "id": "B",
+      "retained_report_id": "native-00dd66b-20261011-0200",
+      "plugin_revision": "00dd66bab946263a85f383546fed41ab0db0920c",
+      "report_sha256": "18a31f2856a619410c03b1ecd6ca9a4ee269e3db0c266933c6322a4c0b25ef96",
+      "mode": "finite_usefulness_pilot",
+      "paid_authorized": true,
+      "allocated": 3,
+      "succeeded": 2,
+      "failed": 1,
+      "unknown": 0,
+      "unrun": 0,
+      "protocol_stopped": false,
+      "stop_reason": null,
+      "missing_main_usage": 1,
+      "missing_token_counts": 1,
+      "known_main_tokens": 79915,
+      "known_main_tokens_scope": "Two successful allocations only; not total trial usage or cost",
+      "auxiliary_calls": 3,
+      "missing_auxiliary_calls": 0,
+      "missing_auxiliary_usage": 3,
+      "missing_auxiliary_billing": 3,
+      "missing_training_usage": 3,
+      "missing_training_billing": 3,
+      "billing_unknown": 3,
+      "causal_gain_supported": false,
+      "outcomes": [
+        {
+          "input": "workload",
+          "outcome": "succeeded",
+          "business": true,
+          "native": true,
+          "settled": true,
+          "cleanup": true,
+          "goal_state": "succeeded",
+          "main_tokens": 46863,
+          "attempts": 1
+        },
+        {
+          "input": "source-index",
+          "outcome": "failed",
+          "business": false,
+          "native": false,
+          "settled": true,
+          "cleanup": true,
+          "goal_state": "blocked",
+          "reason": "runtime_requires_approval",
+          "artifact_reason": "artifact_absent",
+          "host_status": "cancelled",
+          "host_finish_reason": "interrupted_by_user",
+          "main_tokens": null
+        },
+        {
+          "input": "ticket-queue",
+          "outcome": "succeeded",
+          "business": true,
+          "native": true,
+          "settled": true,
+          "cleanup": true,
+          "goal_state": "succeeded",
+          "main_tokens": 33052,
+          "attempts": 1
+        }
+      ],
+      "cleanup": {
+        "all_confirmed": true,
+        "supervisor_exit_code": 0,
+        "state": "stopped",
+        "owned_containers_absent": true
+      },
+      "auxiliary_calls_scope": "Plugin llm_daily budget table only; excludes native guardian and other host-level model calls. Not a count of all auxiliary provider calls."
+    },
+    {
+      "id": "C",
+      "status": "pending",
+      "runner": "protected exact command in a newly authorized deployment",
+      "expected_allocations": 3,
+      "allocated": null,
+      "succeeded": null,
+      "failed": null,
+      "unknown": null,
+      "unrun": null,
+      "plugin_revision": null,
+      "report_sha256": null,
+      "known_main_tokens": null,
+      "billing_unknown": null,
+      "success_claimed": false,
+      "causal_gain_supported": false
+    }
+  ],
+  "reviews": {
+    "component_reviews": {
+      "status": "closed_in_scope",
+      "critical": 0,
+      "important_found": 4,
+      "important_closed": 4,
+      "issues": [
+        "mechanically unsupported terminal transitions",
+        "removed diagnostics configuration cleanup gate",
+        "cancelled pending child admission",
+        "pilot continuation after unconfirmed quiescence"
+      ],
+      "evidence_origin": "Independent scoped re-review reports and retained progress ledger"
+    },
+    "whole_branch_review": {
+      "reviewed_revision": "e3ed5fb94ea848dce5a5d58dc239b43be78857a0",
+      "critical": 0,
+      "important_found": 2,
+      "issues": [
+        "typed unknown pilot receipt persistence",
+        "initially satisfied workflow parent loop"
+      ],
+      "fix_revision": "00dd66bab946263a85f383546fed41ab0db0920c",
+      "scoped_re_review": "Ready",
+      "important_closed": 2,
+      "independent_focused_tests_passed": 10,
+      "evidence_origin": "Same independent reviewer scoped re-review, as recorded by root"
+    },
+    "protected_runner_scoped_review": {
+      "status": "Ready",
+      "critical": 0,
+      "important": 0,
+      "independent_focused_tests_passed": 42,
+      "paid_calls": false,
+      "actual_docker_run": false,
+      "evidence_origin": "Independent scoped review, as recorded by root"
+    },
+    "github_approval": {
+      "status": "not_created",
+      "pull_request_url": null,
+      "approved_review": false
+    },
+    "final_whole_branch_delivery": {
+      "status": "pending"
+    },
+    "root_tmpfs_permission_scoped_review": {
+      "status": "Ready",
+      "critical": 0,
+      "important": 0,
+      "independent_focused_tests_passed": 50,
+      "paid_calls": false,
+      "actual_docker_run": false,
+      "scope": "Explicit root tmpfs mode=711 and strict option inspection; trusted runner boundaries",
+      "evidence_origin": "Independent scoped review, as recorded by root"
+    }
+  },
+  "remaining_unimplemented_or_unverified": [
+    "Real same-effective-identity single-mechanism paired execution adapter and qualified real fixed-N sample",
+    "Fresh native trial C, post-change full suite result and installed checks",
+    "Final revision binding, PR, exact-head hosted CI and merge",
+    "Actual email/calendar service credentials, adapters and external receipts",
+    "24/72-hour runs and cross-day stability",
+    "Hard profile/work disk quota and independent trusted control-kernel release",
+    "Subjective consciousness or general correctness proof"
+  ],
+  "privacy": {
+    "exported": "Selected aggregate counts, bounded checks, revisions and artifact hashes only",
+    "excluded": [
+      "credentials",
+      "private configuration",
+      "business payloads",
+      "candidate code",
+      "native transcripts",
+      "raw tool output"
+    ],
+    "full_artifacts_retained_privately": true
+  },
+  "attribution": "This documentation agent inspected retained reports and root review records; it did not rerun full suites, paid models or the actual probe. Provider-free Docker execution is root's evidence; independent reviewers ran focused offline checks."
+}

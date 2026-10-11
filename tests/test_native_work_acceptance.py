@@ -43,11 +43,154 @@ class NativeWorkTests(unittest.TestCase):
             self.assertNotIn('expected_output', json.dumps(request))
             self.assertLessEqual(len(request['mission']), 2000)
             self.assertIn('.zhulong-work.py', request['mission'])
-            self.assertIn('ZHULONG_SKILL_SMOKE', request['mission'])
+            self.assertIn('python3 /root/.hermes/cache/generated/zhulong-work-runner.py',request['mission'])
+            self.assertNotIn('<<',request['mission'])
             self.assertEqual(request['run_deadline_seconds'], 180)
             self.assertEqual(request['max_attempts'], 1)
             self.assertEqual(request['daily_runs'], 1)
             self.assertEqual(request['sources'][0]['contracts']['result']['type'], 'json_reference')
+
+    def runner_deployment(self):
+        profile=self.root/'deployment/profile';profile.mkdir(parents=True)
+        (self.root/'deployment/service').mkdir()
+        config=profile/'config.yaml'
+        self.m.atomic_json(config,{'approvals':{'mode':'smart','deny':['rm *']},'terminal':{'backend':'docker'}})
+        manifest=self.root/'deployment/deployment.json'
+        self.m.atomic_json(manifest,{'root':str(manifest.parent),'hashes':{str(config):self.m.digest_bytes(config.read_bytes())}})
+        return manifest,profile,config
+
+    def test_trusted_runner_is_protected_and_only_one_literal_is_allowlisted(self):
+        manifest,profile,config=self.runner_deployment()
+        self.assertTrue(callable(getattr(self.m,'prepare_trusted_runner',None)),'protected runner setup missing')
+        result=self.m.prepare_trusted_runner(manifest,'a'*64)
+        runner=profile/'cache/generated/zhulong-work-runner.py'
+        self.assertTrue(runner.is_file())
+        self.assertEqual(runner.stat().st_mode&0o222,0)
+        updated=self.m.read_json(config)
+        self.assertEqual(updated['command_allowlist'],['python3 /root/.hermes/cache/generated/zhulong-work-runner.py'])
+        self.assertEqual(updated['approvals'],{'mode':'smart','deny':['rm *']})
+        hashes=self.m.read_json(manifest)['hashes']
+        self.assertEqual(hashes[str(runner)],self.m.digest_bytes(runner.read_bytes()))
+        self.assertEqual(hashes[str(config)],self.m.digest_bytes(config.read_bytes()))
+        self.assertEqual(result['runner_sha256'],hashes[str(runner)])
+        from runtime_policy import CACHE_PATHS
+        self.assertIn('cache/generated',CACHE_PATHS)
+
+    def test_trusted_runner_reads_code_and_input_once_and_preserves_strict_receipt(self):
+        self.assertTrue(callable(getattr(self.m,'trusted_runner_body',None)),'trusted runner body missing')
+        code=b'import json,sys\nprint(json.dumps({"total":sum(json.load(sys.stdin)["hours"])}))\n'
+        payload=b'{"hours":[3,7]}'
+        body=self.m.trusted_runner_body(hashlib.sha256(payload).hexdigest())
+        reads=[];launches=[]
+        def read(path):
+            reads.append(path.name);return code if path.name=='.zhulong-work.py' else payload
+        def launch(args,**kwargs):
+            launches.append((args,kwargs));return SimpleNamespace(stdout=b'{"total":10}')
+        with patch.object(Path,'read_bytes',read),patch.object(Path,'write_text'), \
+             patch.object(subprocess,'run',side_effect=launch),patch('builtins.print') as printer:
+            exec(body,{})
+        self.assertEqual(reads,['.zhulong-work.py','facts.json'])
+        self.assertEqual(launches[0][0],['python3','-I','-c',code.decode()])
+        self.assertEqual(launches[0][1]['input'],payload)
+        self.assertEqual(launches[0][1]['timeout'],10)
+        value=json.loads(printer.call_args.args[0])
+        self.assertEqual(set(value),{'code_hash','input_hash','value'})
+        self.assertEqual(value['value'],{'total':10})
+
+    def test_trusted_runner_rejects_changed_input_and_duplicate_output(self):
+        self.assertTrue(callable(getattr(self.m,'trusted_runner_body',None)),'trusted runner body missing')
+        source=self.root/'facts.json';source.write_text('{"hours":[3,7]}')
+        runner=self.root/'runner.py';runner.write_text(self.m.trusted_runner_body(hashlib.sha256(source.read_bytes()).hexdigest()))
+        program=self.root/'.zhulong-work.py';program.write_text('print('+repr('{"total":10,"total":99}')+')')
+        result=subprocess.run(['python3',str(runner)],cwd=self.root,capture_output=True,timeout=15)
+        self.assertNotEqual(result.returncode,0);self.assertFalse((self.root/'result.json').exists())
+        program.write_text('print('+repr('{"total":10}')+')');source.write_text('{}')
+        result=subprocess.run(['python3',str(runner)],cwd=self.root,capture_output=True,timeout=15)
+        self.assertNotEqual(result.returncode,0);self.assertFalse((self.root/'result.json').exists())
+
+    def test_runner_and_config_tamper_are_rejected_by_existing_supervisor(self):
+        manifest,profile,config=self.runner_deployment()
+        self.m.prepare_trusted_runner(manifest,'a'*64)
+        work=self.root/'work';work.mkdir();(work/'facts.json').write_text('{}')
+        m=self.m.read_json(manifest)
+        m.update(version=1,deployment_id='unit-runtime',work=str(work),host=str(self.root/'host'),
+                 plugin_root=str(self.root/'plugin'),image='python@sha256:'+'a'*64,command=['/bin/true'],
+                 port=8642,max_launches=1,startup_seconds=120,shutdown_seconds=60,progress_seconds=120)
+        policy={'workspace_roots':[str(work)],'sources':[{'path':str(work/'facts.json'),
+                'contracts':{'result':{'type':'file_contains','path':str(work/'result'),'text':'done'}}}]}
+        (manifest.parent/'api.key').write_text('unit-only-not-a-credential')
+        from runtime_supervisor import Supervisor
+        supervisor=Supervisor(m,policy,preflight=lambda:True,cleanup_workers=lambda:0)
+        supervisor.verify_controls()
+        runner=profile/'cache/generated/zhulong-work-runner.py'
+        original=runner.read_bytes();runner.chmod(0o644);runner.write_text('changed runner')
+        with self.assertRaisesRegex(ValueError,'protected_file_changed'):supervisor.verify_controls()
+        runner.write_bytes(original)
+        config.write_text('{}')
+        with self.assertRaisesRegex(ValueError,'protected_file_changed'):supervisor.verify_controls()
+
+    def test_new_literal_native_audit_requires_actual_code_and_input_binding(self):
+        fixture_path=Path(__file__).with_name('test_skill_smoke_evidence.py')
+        fixture_spec=importlib.util.spec_from_file_location('zhulong_native_audit_fixture',fixture_path)
+        fixture_module=importlib.util.module_from_spec(fixture_spec)
+        fixture_spec.loader.exec_module(fixture_module)
+        from autonomy_store import canonical
+        fixture=fixture_module.NativeSkillEvidenceTests(methodName='test_full_successful_command_and_code_hash_are_required')
+        fixture.setUp();self.addCleanup(fixture.doCleanups)
+        snapshot=fixture.frozen_input()
+        fixture.program=fixture.root/'.zhulong-work.py'
+        code='import json,sys\nprint(json.dumps({"sum":sum(json.load(sys.stdin)["observations"])}))\n'
+        fixture.program.write_text(code)
+        fixture.binding={'code':code,'code_hash':hashlib.sha256(code.encode()).hexdigest()}
+        (fixture.root/'facts.json').write_text(canonical(snapshot['data']))
+        runner=fixture.root/'runner.py';runner.write_text(self.m.trusted_runner_body(snapshot['input_hash']))
+        executed=subprocess.run(['python3',str(runner)],cwd=fixture.root,capture_output=True,timeout=15)
+        self.assertEqual(executed.returncode,0,executed.stderr)
+        literal='python3 /root/.hermes/cache/generated/zhulong-work-runner.py'
+        fixture.calls(literal,{'exit_code':0,'error':None,'output':executed.stdout.decode()})
+        audit=self.m.audit_native_skill(fixture.root,fixture.sub,fixture.binding,literal,fixture.program,{'sum':6},task_input=snapshot)
+        self.assertTrue(audit['execution_command_observed']);self.assertTrue(audit['frozen_input_execution_verified'])
+        fixture.program.write_text(code+'# changed after receipt\n')
+        with self.assertRaisesRegex(RuntimeError,'code_hash_mismatch'):
+            self.m.audit_native_skill(fixture.root,fixture.sub,fixture.binding,literal,fixture.program,{'sum':6},task_input=snapshot)
+        fixture.program.write_text(code)
+        bad=dict(snapshot,input_hash='0'*64)
+        with self.assertRaisesRegex(RuntimeError,'input_binding_mismatch'):
+            self.m.audit_native_skill(fixture.root,fixture.sub,fixture.binding,literal,fixture.program,{'sum':6},task_input=bad)
+
+    def test_pinned_native_allowlist_mount_and_guard_floors_offline(self):
+        wrapper=Path('/workspace/.cloud-onboarding/bin/zhulong-python')
+        host=Path('/workspace/.cloud-onboarding/dependencies/hermes-agent')
+        if not wrapper.is_file() or not host.is_dir():self.skipTest('pinned native host unavailable')
+        manifest,profile,config=self.runner_deployment();self.m.prepare_trusted_runner(manifest,'a'*64)
+        script="""import json,os,sys
+from pathlib import Path
+os.environ['HERMES_HOME']=sys.argv[1]
+sys.path.insert(0,sys.argv[2])
+from tools import approval
+from tools.approval_floors import _command_matches_permanent_allowlist
+from tools.environments.docker import _readonly_skill_mount_args
+literal='python3 /root/.hermes/cache/generated/zhulong-work-runner.py'
+assert approval.load_permanent_allowlist()=={literal}
+assert _command_matches_permanent_allowlist(literal)
+for other in (literal+'; echo extra',literal+' --extra','python3 /root/.hermes/cache/generated/other.py'):
+    assert not _command_matches_permanent_allowlist(other)
+assert approval.check_dangerous_command(literal,'docker',has_host_access=True)['approved'] is True
+blocked=approval.check_dangerous_command('rm -rf /','docker',has_host_access=True)
+assert blocked['approved'] is False and blocked['hardline'] is True
+mount=str(Path(sys.argv[1])/'cache/generated')+':/root/.hermes/cache/generated:ro'
+assert mount in _readonly_skill_mount_args()
+config=Path(sys.argv[1])/'config.yaml'
+data=json.loads(config.read_text());data['approvals']['deny']=[literal];config.write_text(json.dumps(data))
+blocked=approval.check_dangerous_command(literal,'docker',has_host_access=True)
+assert blocked['approved'] is False and blocked['user_deny'] is True
+print(json.dumps({'exact_literal':True,'readonly_generated_cache':True,'hardline':True,'user_deny':True,'provider_calls':0}))
+"""
+        result=subprocess.run([str(wrapper),'-c',script,str(profile),str(host)],cwd=host,capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stderr)
+        evidence=json.loads(result.stdout)
+        self.assertEqual(evidence['provider_calls'],0)
+        self.assertTrue(all(evidence[k] for k in ('exact_literal','readonly_generated_cache','hardline','user_deny')))
 
     def test_completed_polls_the_actual_ledger_api(self):
         from autonomy_store import Ledger
@@ -108,7 +251,8 @@ class NativeWorkTests(unittest.TestCase):
             self.m.atomic_json(profile/'zhulong/config.json',{'autonomy':raw})
             self.m.atomic_json(root/'service/health.json',{'boot_id':'fixture','progress':{'thread_alive':True}})
             self.m.atomic_json(root/'service/status.json',{'state':'stopped'})
-            self.m.atomic_json(root/'deployment.json',{'deployment_id':'fixture'})
+            config=profile/'config.yaml';self.m.atomic_json(config,{'approvals':{'mode':'smart','deny':['rm *']}})
+            self.m.atomic_json(root/'deployment.json',{'deployment_id':'fixture','root':str(root),'hashes':{str(config):self.m.digest_bytes(config.read_bytes())}})
             return root/'deployment.json'
         active={}
         def wait(predicate,timeout,process):

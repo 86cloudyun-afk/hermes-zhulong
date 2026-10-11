@@ -98,6 +98,10 @@ zhulong-python scripts/native_work_acceptance.py \
 
 不传 `--paid` 仅登记协议、输入和未运行分母，绝不算完成能力验收。每个分配保留独立私有 profile、失败收据、产物、native 数据库和日志；分享时只导出脱敏验证摘要。不能将缺失计费用量写成零费用。
 
+有限 pilot 的新入口在部署启动前将可信 runner 写入原生只读缓存，以完整 SHA 纳入部署保护，并在独立 profile 中只预授权 `python3 /root/.hermes/cache/generated/zhulong-work-runner.py` 这一条精确命令。它读取并执行相同的候选代码与冻结输入字节，不携带参考答案；完整业务验收、原生轨迹审计及宿主 deny/hardline 守卫继续生效。实际 Docker 使用显式 `/root` tmpfs mode=711，owner 0；uid 1000 只能穿越、不可列举/写入该目录，来源与缓存仍只读。正式零 provider/gateway probe 已完成精确执行与清理，新三任务真实验收仍 pending；原内联 runner 和前三个探测的不完整结果保留，详见 [v0.9 验证记录](../research/2026-10-11-v0.9-validation.md)和[审查记录](../research/2026-10-11-v0.9-review.md)。
+
+验收报告的 `auxiliary_calls` 只统计插件 `llm_daily` 预算表，native guardian 等额外调用不在该字段内；它不能作为所有模型调用或完整成本的分母。
+
 该脚本只运行 `finite_usefulness_pilot`：真实 LLM 从变化输入中发现目标，经 Hermes Runs 和 Docker 工具生成产物，再机械验收与审计原生轨迹。执行或清理未确认时停止后续分配，保留未运行分母。它不能运行 `paired_fixed_n`；后者目前仅有 `causal_trial.py` 的协议、分配账本、外部可信收据资格检查和固定 N 分析，需要另行实现真实同作用域、单机制控制/处理 execution adapter。设计中“由同一工具另行开展足量随机试验”的目标仍未完成。
 
 ## 仍需外部条件或持续验证的项目

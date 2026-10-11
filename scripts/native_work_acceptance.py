@@ -32,6 +32,9 @@ from work_reference import reference_output, reference_instructions
 import task_inputs
 
 
+TRUSTED_RUNNER_RELATIVE = 'cache/generated/zhulong-work-runner.py'
+TRUSTED_RUNNER_COMMAND = 'python3 /root/.hermes/'+TRUSTED_RUNNER_RELATIVE
+
 def business_inputs(count=3):
     if type(count) is not int or not 1 <= count <= 3: raise ValueError('allocations_must_be_1_to_3')
     return [
@@ -61,9 +64,54 @@ def work_command(source, output, input_hash):
     return command
 
 
+def trusted_runner_body(input_hash):
+    """Existing bounded runner as a protected file; never includes an answer."""
+    if not isinstance(input_hash,str) or not re.fullmatch('[0-9a-f]{64}',input_hash):
+        raise ValueError('invalid_frozen_input_hash')
+    wrapped = work_command(Path('facts.json'),Path('result.json'),input_hash)
+    body = wrapped.split('\n',1)[1].rsplit('\nZHULONG_SKILL_SMOKE',1)[0]
+    old = "expected=hashlib.sha256(program.read_bytes()).hexdigest()\ncode=program.read_bytes()"
+    if body.count(old) != 1: raise ValueError('trusted_runner_template_changed')
+    return body.replace(old,"code=program.read_bytes()\nexpected=hashlib.sha256(code).hexdigest()")+'\n'
+
+
+def prepare_trusted_runner(manifest, input_hash):
+    """Prepare this new deployment before startup; preserve native guard floors.
+
+    Hermes' permanent command allowlist is a top-level list. The pinned host
+    evaluates hardline/runtime-deletion/user-deny floors before this exact
+    literal match. Its generated-cache Docker bind is already read-only.
+    """
+    body=trusted_runner_body(input_hash);manifest=Path(manifest).resolve()
+    m=read_json(manifest);root=manifest.parent;profile=root/'profile'
+    if m.get('root') != str(root) or not isinstance(m.get('hashes'),dict):
+        raise ValueError('trusted_runner_deployment_binding_missing')
+    if read_json(root/'service/launches.json').get('used',0) or (root/'gateway.log').exists():
+        raise ValueError('trusted_runner_requires_unstarted_deployment')
+    config_path=profile/'config.yaml'
+    if m['hashes'].get(str(config_path)) != digest_bytes(config_path.read_bytes()):
+        raise ValueError('trusted_runner_config_hash_changed')
+    config=read_json(config_path)
+    if config.get('command_allowlist',[]) not in ([],[TRUSTED_RUNNER_COMMAND]):
+        raise ValueError('trusted_runner_existing_allowlist_conflict')
+    runner=profile/TRUSTED_RUNNER_RELATIVE
+    if runner.parent.resolve() != runner.parent: raise ValueError('trusted_runner_cache_symlink')
+    runner.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+    with runner.open('x',encoding='utf-8') as stream:
+        stream.write(body);stream.flush();os.fsync(stream.fileno())
+    runner.chmod(0o444)
+    config['command_allowlist']=[TRUSTED_RUNNER_COMMAND]
+    atomic_json(config_path,config)
+    m['hashes'][str(runner)]=digest_bytes(runner.read_bytes())
+    m['hashes'][str(config_path)]=digest_bytes(config_path.read_bytes())
+    atomic_json(manifest,m)
+    return {'command':TRUSTED_RUNNER_COMMAND,'runner_sha256':m['hashes'][str(runner)],
+            'approval_scope':'One authorized bounded JSON-input/output program entry; other actions retain native approval requirements'}
+
+
 def work_policy(work, fixture):
     source_id = 'business-' + fixture['id']; fields = sorted(fixture['data'])
-    command = work_command(Path('facts.json'), Path('result.json'), digest(fixture['data']))
+    command = TRUSTED_RUNNER_COMMAND
     mission = (reference_instructions(fixture['reference_id'])+'\nWrite .zhulong-work.py reading stdin JSON and emitting the result JSON. Then issue EXACTLY this foreground terminal command once, with no extra commands:\n'+command)
     if len(mission) > 2000: raise ValueError('trusted_mission_too_long')
     return {'mission': mission,
@@ -124,6 +172,8 @@ def execute_allocation(base, host, image, fixture, allocation, hermes_command=No
     manifest = create_deployment(base/'deployment', work, host, image,
                                  launcher+['gateway', 'run', '--no-supervise'], work_policy(work, fixture), port=port, max_launches=1)
     deployment = manifest.parent; profile = deployment/'profile'
+    prepared = prepare_trusted_runner(manifest,allocation['input_hash'])
+    receipt.update(runner_sha256=prepared['runner_sha256'],approval_scope=prepared['approval_scope'])
     ledger = Ledger(profile/'zhulong/autonomy.db'); ledger.set_pause(True)
     process = None; goal_id = None
     runtime = [sys.executable, str(ROOT/'scripts/runtime.py')]
@@ -143,7 +193,7 @@ def execute_allocation(base, host, image, fixture, allocation, hermes_command=No
             observation = observe_sources(policy)[0]; snapshot = observation.get('task_input')
             if not snapshot or snapshot['input_hash'] != allocation['input_hash']: raise RuntimeError('frozen_input_missing')
             contract = policy['sources'][0]['contracts']['result']; baseline = Verifier(policy).capture(contract, task_input=snapshot)
-            command = work_command(Path('facts.json'), Path('result.json'), snapshot['input_hash'])
+            command = TRUSTED_RUNNER_COMMAND
             ledger.set_pause(False)
             def discovered():
                 matches = [item for item in ledger.goals() if item['source_id'] == observation['id'] and item['contract_id'] == 'result']
