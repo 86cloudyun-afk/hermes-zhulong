@@ -222,7 +222,7 @@ class ActualWorkerCaptureTests(unittest.TestCase):
         from runtime_channel import process_identity
         from runtime_policy import child_environment
         from native_worker_capture import real_docker_identity
-        fixture=fixtures.PairedTests();fixture.setUp();self.addCleanup(fixture.doCleanups)
+        fixture=fixtures.PairedTests();fixture.actual_host=True;fixture.setUp();self.addCleanup(fixture.doCleanups)
         class ActualClock:
             @property
             def utc(self):return time.time()
@@ -278,7 +278,7 @@ finally:
 '''
         docker=real_docker_identity()['path'];ids=[]
         try:
-            result=subprocess.run([sys.executable,'-c',script,str(fixtures.HOST),sub['session_key'],fixture.m.native.TRUSTED_RUNNER_COMMAND],env=env,capture_output=True,text=True,timeout=150)
+            result=subprocess.run([sys.executable,'-c',script,str(fixture.host),sub['session_key'],fixture.m.native.TRUSTED_RUNNER_COMMAND],env=env,capture_output=True,text=True,timeout=150)
             self.assertEqual(result.returncode,0,result.stderr[-3000:]);actual=json.loads(result.stdout.strip().splitlines()[-1]);ids=actual['workers']
             with trial.journal.transaction() as c:records=trial.journal.rows(c,'worker')
             self.assertEqual(len(records),3)
@@ -286,7 +286,9 @@ finally:
             self.assertEqual({r['payload']['container_id'] for r in records if r['payload']['purpose']=='session'},set(ids))
             with closing(sqlite3.connect(profile/'state.db')) as c,c:
                 c.execute("UPDATE messages SET content=? WHERE role='tool'",(json.dumps({'exit_code':0,'error':None,'output':json.dumps(actual['receipts'][-1])}),))
-            proof=trial.qualify_artifacts(a['id']);self.assertTrue(proof['arm_qualified'],proof['reasons'])
+            deadline=fixture.m.Deadline(trial._event('endpoint_origin',a['id'])['origin'],180)
+            proof=trial.capture_endpoint(a['id'],deadline)  # Real unpatched production _audit child.
+            self.assertTrue(proof['timely'],proof['reasons']);self.assertTrue(proof['arm_qualified'],proof['reasons'])
             self.assertEqual(proof['worker_boundary']['container_id'],ids[-1])
         finally:
             # Scope every removal to this explicit test deployment, even if a

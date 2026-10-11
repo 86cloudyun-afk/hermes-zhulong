@@ -11,22 +11,39 @@ from unittest.mock import patch
 from autonomy_store import canonical,digest
 from test_cohort import Clock
 
-HOST=Path('/workspace/.cloud-onboarding/dependencies/hermes-agent')
 IMAGE='python:3.11-slim@sha256:'+'a'*64
 
 
 class PairedTests(unittest.TestCase):
+    actual_host=False
     def setUp(self):
         self.assertIsNotNone(importlib.util.find_spec('native_trial'),'paired native adapter missing')
         import native_trial
         self.m=native_trial;self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.root=Path(self.tmp.name);self.clock=Clock()
+        from native_trial_fixture import configured_host,install_unit_host
+        self.host=configured_host() if self.actual_host else install_unit_host(self)
         self.fixture={'id':'empty-work','reference_id':'workload_summary_v1','data':{'tasks':[]}}
         self.expected={'task_count':0,'total_minutes':0,'open_minutes':0,'teams':[]}
         self.oracle=self.root/'oracle.json'
         self.oracle.write_text(canonical({'schema':1,'written_utc':'2026-10-11T00:00:00Z','method':'Independent hand-authored empty business case','fixtures':[dict(id=self.fixture['id'],reference_id=self.fixture['reference_id'],input_hash=digest(self.fixture['data']),expected=self.expected,expected_hash=digest(self.expected))]}))
     def freeze(self):
-        return self.m.FrozenTrial.freeze(self.root/'trial',host=HOST,image=IMAGE,oracle=self.oracle,fixtures=[self.fixture])
+        return self.m.FrozenTrial.freeze(self.root/'trial',host=self.host,image=IMAGE,oracle=self.oracle,fixtures=[self.fixture])
+    def test_unit_host_preserves_git_dirty_and_actual_file_checks(self):
+        import subprocess
+        trial=self.freeze();a=trial.allocations[0];trial.prepare(a['id'])
+        self.assertEqual(Path(trial.protocol['host']),self.root/'unit-host')
+        source=self.host/'gateway/platforms/api_server.py'
+        self.assertEqual(trial.protocol['versions']['host_files']['gateway/platforms/api_server.py'],self.m.file_sha(source))
+        source.write_text(source.read_text()+'# changed after freeze\n')
+        with self.assertRaises(subprocess.CalledProcessError):trial.inspect_controls(a['id'])
+
+    def test_actual_host_mode_missing_prerequisite_fails_without_fallback(self):
+        import os
+        from native_trial_fixture import configured_host
+        with patch.dict(os.environ,{'HERMES_AGENT_ROOT':str(self.root/'missing-actual-host')}):
+            with self.assertRaisesRegex(RuntimeError,'actual host prerequisite missing'):configured_host()
+
     def test_freeze_is_provider_free_exact_ledger_schedule_and_explicit_one_factor(self):
         with patch('scripts.native_work_acceptance.create_deployment',side_effect=AssertionError('deployment during freeze')),patch('work_reference.reference_output',side_effect=AssertionError('shared oracle')):
             trial=self.freeze();r=trial.summary()
@@ -50,7 +67,7 @@ class PairedTests(unittest.TestCase):
         for change in ({'id':'../escape'},{'data':{'tasks':[{'id':'x','team':'a','minutes':True,'done':False}]}},{'data':{'tasks':[]},'extra':True}):
             with self.subTest(change=change):
                 f=dict(self.fixture,**change)
-                with self.assertRaises(ValueError):self.m.FrozenTrial.freeze(self.root/'bad',host=HOST,image=IMAGE,oracle=self.oracle,fixtures=[f])
+                with self.assertRaises(ValueError):self.m.FrozenTrial.freeze(self.root/'bad',host=self.host,image=IMAGE,oracle=self.oracle,fixtures=[f])
         o=json.loads(self.oracle.read_text());o['fixtures'][0]['expected_hash']='a'*64;self.oracle.write_text(canonical(o))
         with self.assertRaises(ValueError):self.freeze()
     def test_actual_config_and_manifest_omission_reject_even_if_hash_is_recomputed(self):
@@ -205,7 +222,7 @@ class PairedTests(unittest.TestCase):
         self.assertIn('strict_trial',inspect.signature(self.m.native.execute_allocation).parameters,'strict native helper context missing')
         trial=self.freeze();a=trial.allocations[0]
         with self.assertRaises(ValueError):
-            self.m.native.execute_allocation(trial.base(a),HOST,IMAGE,self.fixture,a,explicit_policy={},strict_trial=trial)
+            self.m.native.execute_allocation(trial.base(a),self.host,IMAGE,self.fixture,a,explicit_policy={},strict_trial=trial)
 
     def test_forged_positive_endpoint_and_cleanup_are_not_authoritative(self):
         trial=self.freeze();a=trial.allocations[0]

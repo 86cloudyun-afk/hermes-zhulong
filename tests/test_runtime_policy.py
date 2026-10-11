@@ -57,9 +57,11 @@ class PolicyTests(unittest.TestCase):
         self.assertFalse(config['platforms'].get('telegram',{}).get('enabled',True))
         self.assertNotIn('private-key',json.dumps(config))
 
+    @unittest.skipUnless(os.environ.get('HERMES_AGENT_ROOT'),'explicit pinned host source contract')
     def test_protected_config_does_not_overwrite_dynamic_boot_at_pinned_gateway_bridge(self):
         import ast,types
-        host=Path('/workspace/.cloud-onboarding/dependencies/hermes-agent')
+        from native_trial_fixture import configured_host
+        host=configured_host()
         tree=ast.parse((host/'gateway/run.py').read_text())
         fn=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=='_bridge_terminal_config_to_env')
         self.assertTrue(hasattr(self.m,'protected_native_config'),'static config projection missing')
@@ -80,9 +82,11 @@ class PolicyTests(unittest.TestCase):
         scope['_bridge_terminal_config_to_env']({'docker_extra_args':[]})
         self.assertEqual(json.loads(env['TERMINAL_DOCKER_EXTRA_ARGS']),[])
 
+    @unittest.skipUnless(os.environ.get('HERMES_AGENT_ROOT'),'explicit pinned host SDK contract')
     def test_pinned_default_loader_keeps_omitted_launch_args_inherited(self):
         import subprocess,sys
-        host=Path('/workspace/.cloud-onboarding/dependencies/hermes-agent')
+        from native_trial_fixture import configured_host
+        host=configured_host()
         profile=Path(self.manifest['root'])/'profile';profile.mkdir(parents=True)
         (profile/'config.yaml').write_text(json.dumps(self.m.protected_native_config(self.manifest,self.policy)))
         env=self.m.child_environment(self.manifest,'actual-boot',api_key='test-only')
