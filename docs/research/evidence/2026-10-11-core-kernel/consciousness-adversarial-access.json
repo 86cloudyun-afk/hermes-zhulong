@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "records": [
+    {
+      "id": "cogitate-nature",
+      "url": "https://www.nature.com/articles/s41586-025-08888-1",
+      "access_started_utc": "2026-10-11T07:02:19.739860+00:00",
+      "network": "inherited proxy and configured CA trust; TLS verification enabled",
+      "full_text_read": true,
+      "http_status": 200,
+      "final_url": "https://www.nature.com/articles/s41586-025-08888-1",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 854593,
+      "sha256": "5f06b4e04e01cb3cc9f293e054e5a1f3e838f4e79c4d089290fdefbaf1d89cda",
+      "outcome": "primary_fulltext_sections_read",
+      "access_finished_utc": "2026-10-11T07:02:22.819445+00:00",
+      "sections_inspected": [
+        "abstract",
+        "main theoretical predictions",
+        "main results: content decoding, maintenance, connectivity",
+        "discussion and limitations",
+        "methods: participants, experimental design and procedure"
+      ],
+      "read_completed_utc": "2026-10-11T07:05:16.031445+00:00",
+      "extracted_text_sha256": "36348bb941720be7f331b8dd874d4ddf85a593f4a5e29bd7be2af1c45311d8a9"
+    },
+    {
+      "id": "cogitate-metadata",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=TITLE:%22Adversarial%20testing%22%20AND%20consciousness&format=json",
+      "access_started_utc": "2026-10-11T07:02:19.740905+00:00",
+      "network": "inherited proxy and configured CA trust; TLS verification enabled",
+      "full_text_read": false,
+      "http_status": 200,
+      "final_url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search",
+      "content_type": "application/json;charset=UTF-8",
+      "bytes": 4018,
+      "sha256": "a3e5669b2e7e4cddb62105c4e2ab8f8924354fe940edc6a4dc81b65f04e62913",
+      "outcome": "bibliographic_metadata_only",
+      "access_finished_utc": "2026-10-11T07:02:21.179585+00:00",
+      "sections_inspected": [
+        "metadata only"
+      ],
+      "read_completed_utc": "2026-10-11T07:05:16.031727+00:00"
+    },
+    {
+      "id": "anthropic-introspection",
+      "url": "https://www.anthropic.com/research/introspection",
+      "access_started_utc": "2026-10-11T07:02:19.741516+00:00",
+      "network": "inherited proxy and configured CA trust; TLS verification enabled",
+      "full_text_read": true,
+      "http_status": 200,
+      "final_url": "https://www.anthropic.com/research/introspection",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 180082,
+      "sha256": "da4f5aa6f024714cad0102c6c12dee2092276709b0fc84c86488effa96f5f6ce",
+      "outcome": "author_overview_read",
+      "access_finished_utc": "2026-10-11T07:02:20.034633+00:00",
+      "sections_inspected": [
+        "overview and FAQ"
+      ],
+      "read_completed_utc": "2026-10-11T07:05:16.031768+00:00",
+      "extracted_text_sha256": "9a1ca1e7788de3052ad02e105ecf2249ed157b4e28bcc77de3ebb66e62a1d23a"
+    },
+    {
+      "id": "introspection-full",
+      "url": "https://transformer-circuits.pub/2025/introspection/index.html",
+      "access_started_utc": "2026-10-11T07:03:02.510874+00:00",
+      "network": "inherited proxy and configured CA trust; TLS verification enabled",
+      "full_text_read": true,
+      "http_status": 200,
+      "final_url": "https://transformer-circuits.pub/2025/introspection/index.html",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 441740,
+      "sha256": "4ee698ebe1f4f9c6d9c76fd981e286acf8ce73d825936bf4195955e5dd7f6dcd",
+      "outcome": "primary_fulltext_sections_read",
+      "access_finished_utc": "2026-10-11T07:03:03.220109+00:00",
+      "sections_inspected": [
+        "abstract and introduction",
+        "defining introspection",
+        "methods notes",
+        "concept-injection systematic methods, results, failure modes and controls",
+        "discussion: limitations, possible mechanisms and implications"
+      ],
+      "read_completed_utc": "2026-10-11T07:05:16.031821+00:00",
+      "extracted_text_sha256": "99a77697dae1d185af8a0f59949608f3c21bcf69f18436a58ee6b84bd1ab793e"
+    },
+    {
+      "id": "gnw-response",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12510449/",
+      "access_started_utc": "2026-10-11T07:05:46.269754+00:00",
+      "network": "inherited proxy and configured CA trust; TLS verification enabled",
+      "full_text_read": false,
+      "http_status": 200,
+      "final_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12510449/",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 21308,
+      "sha256": "690914a106730c2221f0c5122d22822808b50daecc4157da9cc6a8d420f08b9d",
+      "outcome": "http_200_browser_challenge_not_fulltext",
+      "access_finished_utc": "2026-10-11T07:05:46.712285+00:00",
+      "sections_inspected": [
+        "browser challenge only"
+      ],
+      "read_completed_utc": "2026-10-11T07:06:04.439843+00:00",
+      "extracted_text_sha256": "51a6ce81003da3129192a725af4f936d35bdbcbb4ccfa06d0d236dbd8f95f534"
+    },
+    {
+      "id": "gnw-correction",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13134662/",
+      "access_started_utc": "2026-10-11T07:05:46.271140+00:00",
+      "network": "inherited proxy and configured CA trust; TLS verification enabled",
+      "full_text_read": false,
+      "http_status": 200,
+      "final_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC13134662/",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 21310,
+      "sha256": "4d7f4f1d1a4dd165793a16251852295ffb788d967bd766779074b408a2c85930",
+      "outcome": "http_200_browser_challenge_not_fulltext",
+      "access_finished_utc": "2026-10-11T07:05:46.711699+00:00",
+      "sections_inspected": [
+        "browser challenge only"
+      ],
+      "read_completed_utc": "2026-10-11T07:06:04.439887+00:00",
+      "extracted_text_sha256": "51a6ce81003da3129192a725af4f936d35bdbcbb4ccfa06d0d236dbd8f95f534"
+    }
+  ],
+  "provider_calls": 0,
+  "full_text_read_definition": "Relevant sections of an actually retrieved complete text inspected; not a claim of every reference, appendix or sentence read.",
+  "repository_mutations": 0,
+  "experiments_executed": 0
+}

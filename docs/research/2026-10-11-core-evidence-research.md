@@ -31,3 +31,5 @@ Durable cohorts separately preregister actual observation windows, state lineage
 ## Engineering decision
 
 The next batch implements prospective attention/control, a directly executed certificate kernel and native paired/cohort evidence. The [specification](../superpowers/specs/2026-10-11-core-evidence-kernel-design.md) and [plan](../superpowers/plans/2026-10-11-core-evidence-kernel.md) freeze the scope. Research continues through falsifiable finite studies, explicit trusted components and complete failed/unknown denominators. Subjective experience, arbitrary-program total correctness and general long-term causal benefit remain open research questions.
+
+A separately retrieved [adversarial consciousness supplement](2026-10-11-adversarial-consciousness-research.md) records the 2025 COGITATE human-neuroscience trial and Lindsey's primary model-introspection report, including failed preregistered endpoints, exploratory findings and transfer limits. Its proposed feature-withdrawal experiment is future work, not an alteration of this batch's frozen predictions; neither source establishes Hermes subjective experience.
