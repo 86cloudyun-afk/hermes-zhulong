@@ -62,7 +62,7 @@ try:
             result=store.finish(copy.deepcopy(job),report,1004 if flags['lease_current'] else 1203)
             states=store.summary()['states'];published=states.get('active',0)==1
             expected=all(bits)
-            if bool(result)!=expected or published!=expected:
+            if bool(result)!=expected or published!=expected or (not expected and states!={'candidate':1}):
                 violations.append({'flags':flags,'result':result,'states':states})
             counts['enumerated']+=1
             counts['published']+=int(published)
@@ -113,6 +113,8 @@ try:
                 'Pause gate is external to direct publication transaction; this probe does not establish atomic pause/publication ordering.']}
         (OUT/'publication-probe.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
         print(json.dumps(result,ensure_ascii=False,indent=2))
-        if violations or any(x['accepted'] for x in extra):raise SystemExit(1)
+        if (violations or counts!={'enumerated':4096,'published':1,'blocked_without_mutation':4095}
+                or any(x['accepted'] or x['states']!={'candidate':1} for x in extra)):
+            raise SystemExit(1)
 finally:
     fixture.doCleanups()

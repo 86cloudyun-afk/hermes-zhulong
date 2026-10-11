@@ -60,23 +60,47 @@
     "task_inputs.py": "a1ef8f2ed4e7f146aa357ae2f3fed7c60010f8d8d04035c124cccb79cc2fd736"
   },
   "research_script_sha256": {
+    "adapter_atomicity_probe.py": "636a4ab97c7414bd0386fc4795f027273c880204d10644aee64f3226ce1cbbc1",
     "causal_gain_demo.py": "1b78ab401df6c1a4e037288aa51e58fa23d3d2fb8a04f942dcfa84303d2be4ff",
-    "execution_probe.py": "e024401d92244d497312af1fc814cc7de9759d472dff6dd300bdd40e4a92d83f",
+    "execution_probe.py": "b197c9568bc9e6483bcdf5088a5248ffe14f7ef31467666d52f457a41dc17f5b",
     "metacognition_probe.py": "e8e5bf293b63b34b076d1f4358b69a0d636f150ae07ace45ffdc9a9075cb2001",
-    "publication_probe.py": "626afe07bc174723f58390babe0618e1a6edcc29cc8fb5e86d6284b04df3dc69",
+    "publication_probe.py": "a0ddfe4848b58177671c0e2673a38fb727e068679bdd0c09d208ae5c501e4435",
     "root_cause_probe.py": "4cd2ee99052b456630cee740a755608fd8f3dffea951907a8a83766416a142b4"
   },
   "output_bytes_sha256": {
-    "probe-results.json": "5c6408fda971eaa0da64d957497f820005cdf0d6b20f7e26c345a2fe28d6a10f",
+    "adapter-atomicity-after-fix.json": "ee59d21bee9aa81220ada58b3720ddfa65df5ec26c32ebbbf7c8ad71e7277cb2",
+    "adapter-atomicity-before-fix.json": "edb372398801cbaed9b7f29a261c2ff6f2286535b1bd092450ac9a6c45b8f17d",
     "experiment-results.json": "15b65f22acddfc615149ad24804f3a52898f6cef4bf0c0cb114361b7e69c32ca",
-    "offline-protocol.json": "3a0bef5edf07e1bdcf866070f18df076ddfbb96c52cef14f1bafc3825ddf19bd",
-    "offline-analysis.json": "af193c3c8db592bf8d644d51f521639074ed0815b0e50342485e5a50647f30bd",
     "metacognition_probe.json": "9dc6600ead91fe623b5742c2e589194c9dee889e53a9ee06494d1e4a9094b4a4",
-    "publication-probe.json": "856daf9639ffacf1bb2b51d5bc6ac7a1b57a7072842d4e6df2bee84bb0daa0b2"
+    "offline-analysis.json": "af193c3c8db592bf8d644d51f521639074ed0815b0e50342485e5a50647f30bd",
+    "offline-protocol.json": "3a0bef5edf07e1bdcf866070f18df076ddfbb96c52cef14f1bafc3825ddf19bd",
+    "probe-results.json": "70d3cb294174f0b01504d9307cba11c1c500902f920dc4da34af91238d8efce0",
+    "publication-probe.json": "2ce55cdd9c0430cb6d35621612c7c0af8e73bdfc832d88c99d433f7c6a75469c",
+    "publication-validator-after-fix.json": "bcf24160891113370b540e9c30f2cae9f48e3c57cf56f127af518891ae55ad65",
+    "publication-validator-before-fix.json": "c99443fc0d8e5fa7f15ed948234eed53d6bffe8acd39649966709e79043e4ba7"
   },
   "limitations": [
     "Only research assets and README changed; product version remains 0.8.",
     "Synthetic effects and paired outcomes are demonstrations, not native/model gains.",
     "Publication enumeration uses actual SQLite with a substituted case runner/cleanup, not a formal proof."
-  ]
+  ],
+  "post_review": {
+    "reviewed_head": "1650c0365e7fde1535f5f5213f0d1822ebe1b489",
+    "critical": 0,
+    "important": 1,
+    "minor": 1,
+    "closed": [
+      "I1 explicit SQLite transaction plus controlled second connection",
+      "M1 rejected candidate state validation plus fault injection"
+    ],
+    "root_rechecks": {
+      "execution_probe": 0,
+      "publication_probe": 0,
+      "adapter_atomicity_probe_red": 1,
+      "adapter_atomicity_probe_green": 0,
+      "publication_validator_before_fix_mutant_exit": 0,
+      "publication_validator_after_fix_mutant_exit": 1
+    },
+    "provenance_note": "Research fixes were validated before committing, on the reviewed HEAD with uncommitted research files; these script SHA values identify the actual executed code. All product Python remains byte-identical to the product baseline; no second independent whole-branch review claimed."
+  }
 }

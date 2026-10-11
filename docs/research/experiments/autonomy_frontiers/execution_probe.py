@@ -76,6 +76,7 @@ def idempotent_adapter_illustration():
         def apply(key,payload,token):
             fingerprint=hashlib.sha256(canonical(payload).encode()).hexdigest()
             with connection:
+                connection.execute('BEGIN IMMEDIATE')
                 if token<connection.execute("SELECT token FROM fence WHERE resource='counter'").fetchone()[0]:return 'stale'
                 prior=connection.execute('SELECT payload_hash,result FROM operations WHERE key=?',(key,)).fetchone()
                 if prior:return 'conflict' if prior[0]!=fingerprint else prior[1]

@@ -1,0 +1,5 @@
+{
+  "mutation": "Force every rejected enumeration observation to retired instead of candidate; validation harness only, not a product mutation.",
+  "mutant_exit": 0,
+  "checker_passed": false
+}
