@@ -1,6 +1,6 @@
-# 五专题工程与历史问题清单（v0.9）
+# 五专题工程与历史问题清单（v0.10）
 
-这份清单区分已实现接口、实际验收和仍需外部条件的目标。真实 Hermes 的能力证据见版本对应的验证记录；本地夹具、Docker 程序评测、有限模型检查和付费原生任务分别计数。
+这份清单区分已实现接口、实际验收和仍需外部条件的目标。v0.10 的研究依据、基线反例和冻结判据见 [认知与 refinement 研究](../research/2026-10-11-cognition-refinement-research.md)及[证据索引](../research/evidence/2026-10-11-cognition-refinement/artifact-manifest.json)。真实 Hermes 的能力证据见版本对应的验证记录；本地夹具、Docker 程序评测、有限模型检查和付费原生任务分别计数。
 
 ## 已实现的工程机制
 
@@ -19,6 +19,10 @@
 | 暂停与技能发布竞争 | SkillStore 同事务 pause 守卫 | 两种双连接次序、退役与备用恢复 | pause 返回后无新正向激活；旧有效结果和安全负向结算保留 |
 | 状态转换可伪造终态 | Ledger 终态守卫 + assurance | unknown→failed/succeeded 反例 | 新终态只由机械收据产生；已有真值的运行跟踪允许 |
 | 仅布尔守卫枚举冒充整体正确性 | `assurance.py` | 独立 BFS、八种错误变体、真实事务轨迹 | 显式有限界内不变量；不覆盖诊断预算、任意外部副作用或无限运行 |
+| valid recorded trace 被当成真实 SQL state 对应 | `refinement.py` 独立 typed replay + authoritative projection | 当前 audit、合法生命周期、未 journal 修改、双连接和 rollback 验证入口 | 当前 covered state 对应；不是所有未来路径 theorem，legacy checkpoint 前历史不证明 |
+| 检查与正向写入之间发生状态漂移 | Ledger / SkillStore 同事务 refinement gate | admission、发布及 fallback 激活拒绝／恢复入口 | 不一致或不可用阻断新正向动作；cancel/reconcile/cleanup 和负向退役保留 |
+| 全量上下文绕过输入容量 | 可选 `cognition.py` + Controller selected-only Planner | 实际 Planner 输入、来源资格、上下文旁路与轮换检查入口 | capacity 限来源数，选择是框架级功能；不证明专业模块并行或完整 GWT |
+| packet 交付被当作体验或全部信息消融 | immutable frame/goal/consumer receipts + 单消费者 mask | TTL、revision、restart、历史绑定和独立 packet 干预入口 | `delivered_context_only`；executor 固定任务输入和合法工具权限保留；不证明内部注意／体验 |
 | 大旧账本被单一快照上限阻塞 | 分页初始 checkpoint | 6500 目标、超过 1 MiB、漏页拒绝 | 不遗漏历史投影；没有以截断来制造有效轨迹 |
 | 业务 JSON 与 manifest 封套深度混淆 | skill_evaluator 业务/封套分离 | 深度 32 业务与传输包装 | 各业务值单独验证；封套不压缩业务有效深度 |
 | 已验收但未静止的 run 不响应取消 | Controller 取消先于真值跟踪 | 产物成功/执行 interrupted 的取消回归 | 发送停止，保留成功真值与未知 quiescence，不能冒充即时消除副作用 |
@@ -79,11 +83,44 @@
 /zhulong autonomy workflows
 /zhulong autonomy diagnostics
 /zhulong autonomy assurance
+/zhulong autonomy cognition
 ```
 
-最后一个命令实际运行固定界的模型检查和真实账本轨迹验证；普通 status 只报告已运行的检查，不制造通过记录。默认模型取 2 个目标、2 个租约代次、预算 2、深度 8、同时 1 个 run，当前枚举为 1236 个状态、3811 个转移，在该界内未发现反例；八种守卫错误变体均有反例。有限模型不覆盖任意文件/网络/外部效果、诊断预算或无限执行。
+`assurance` 命令运行固定界模型检查、旧 recorded trace 验证及新的当前 refinement 审计；`cognition` 查看认知帧、选择预测和交付收据。普通 status 执行当前 refinement audit，有限模型部分仍展示已有结果。v0.9 历史默认模型取 2 个目标、2 个租约代次、预算 2、深度 8、同时 1 个 run，历史枚举为 1236 个状态、3811 个转移，在该界内未发现反例；历史八种守卫错误变体均有反例。有限模型不覆盖任意文件/网络/外部效果、诊断预算或无限执行。
 
-插件保持 11 个 hooks、4 个工具和 1 个命令入口。`zhulong_autonomy` 的 8 个 actions 是 `status`、`goals`、`tick`、`experience`、`skills`、`workflows`、`diagnostics`、`assurance`，没有直接评分或改验收接口。`/zhulong autonomy` 另提供 `pause`、`resume` 和 `cancel <id>`。
+插件保持 11 个 hooks、4 个工具和 1 个命令入口。`zhulong_autonomy` 的 9 个 actions 是 `status`、`goals`、`tick`、`experience`、`skills`、`workflows`、`diagnostics`、`assurance`、`cognition`，没有直接评分或改验收接口。`/zhulong autonomy` 另提供 `pause`、`resume` 和 `cancel <id>`。
+
+### v0.10 默认值与覆盖边界
+
+工作空间通过现有 `autonomy` 配置中的可选对象启用，默认关闭；以下示例只列新增字段：
+
+```json
+{
+  "cognition": {
+    "enabled": false,
+    "capacity": 3,
+    "ttl_seconds": 120,
+    "mask_consumer": null,
+    "selection_mode": "adaptive"
+  }
+}
+```
+
+capacity 范围 1..8，TTL 1..3600 秒；mask 只能是 null/planner/executor/monitor，selection_mode 为 adaptive/constant。未知字段、bool/int 混用或非有限值拒绝。Planner 从全部当前可用、input 可用且可获得 source claim 的来源中选择，不能先按配置顺序截断；未获得 claim 的来源不能记为实际规划曝光。事实正文不能改变配置、权限、验收或预算。启用时裁剪未选事实的 self-model/experience 旁路，移除不具有 source scope 的 domain/identity 聚合。
+
+帧保存 identity/policy/mechanism hash 和来源/revision/input/facts 摘要，raw facts 保持临时内存；已有显式 `persist_input_fields` 继续按原规则。goal 创建、TTL/来源/input 再检查和历史 binding 同事务完成；dedupe 保留原绑定。TTL 限制新的 planning/current knowledge，恢复、取消和已有请求继续使用明确标记 historical 的上下文。帧及消费者收据拒绝 UPDATE/DELETE 和已有身份的 INSERT OR REPLACE；改配置或 mask 不覆写旧目标绑定。
+
+Planner、monitor capture、prepared execution request 和实际 Runs call 是不同交付阶段，timeout 不能记成远端已接收。receipt 为 `delivered_context_only`，绑定实际 payload/request；不证明模型真正使用、理解、注意或体验。单消费者 mask 只移除新增 packet：executor 的 frozen task_input、contract、source_path、工作区权限保持；monitor 的既有 prior/receipt/recheck 语义保持。正常/遮断/恢复用预先声明的不同匹配帧，比对语义内容时排除 frame/policy intervention provenance，不能要求完整 packet hashes 相同。
+
+refinement 对 paused、全部 run_budget、goal 集合/state/lease/attempt/current submission/cancel/固定 intent identity、submission/request/execution/run/status/settled/固定 evidence 和 final truth 独立重建并比对。journal 与实际表在单一 snapshot 读取；expected counters 从领域操作推导，不复制实际 post-state。legacy checkpoint 分页、序列和初始化 marker 明确绑定；缺失/损坏不重置成新的绿色起点。默认 scan 限 100,000 events 和 32 MiB；超限返回 unavailable，不静默截断。
+
+新 admission、发布及正向 fallback activation 使用同一写事务内的 fresh audit，不使用旧 status 授权；拒绝不会新增 budget/submission/provider call。发现 counterexample/unavailable 时恢复、stop、cancel、reconcile、旧 truthful settlement、负向 retirement 继续。post-check 失败回滚 reservation，不能提交部分状态。当前结果应逐项展示 coverage/exclusions/checkpoint boundary，并与旧 BFS 和 recorded trace 分开。
+
+当前排除 reason、runtime/usage、source planning、模型版本、workflow 决策/effects、诊断预算、技能内部状态、verifier 正确性、OS quiescence、checkpoint 前历史及未覆盖时间/forecast/settings/applicability/resource guards。gate 对所覆盖的状态有效，不证明全部技能发布资格或任意 Python；特权者能替换控制代码或同时删除 marker/journal 的攻击不在保证范围。`settled` 与 Runs 完成状态不能升级为独立 OS 静止证据。
+
+本文介绍 v0.10 接口与限制，不报告新的 full suite、native/Docker、付费 pilot 或独立审查已通过。当前版本验收须另由实际运行记录绑定代码；下面保留的结果是 v0.9 历史证据。
+
+### 历史 v0.9 原生有限工作验收
 
 真实有限工作验收（会产生模型消耗）：
 
@@ -98,7 +135,7 @@ zhulong-python scripts/native_work_acceptance.py \
 
 不传 `--paid` 仅登记协议、输入和未运行分母，绝不算完成能力验收。每个分配保留独立私有 profile、失败收据、产物、native 数据库和日志；分享时只导出脱敏验证摘要。不能将缺失计费用量写成零费用。
 
-有限 pilot 的新入口在部署启动前将可信 runner 写入原生只读缓存，以完整 SHA 纳入部署保护，并在独立 profile 中只预授权 `python3 /root/.hermes/cache/generated/zhulong-work-runner.py` 这一条精确命令。它读取并执行相同的候选代码与冻结输入字节，不携带参考答案；完整业务验收、原生轨迹审计及宿主 deny/hardline 守卫继续生效。实际 Docker 使用显式 `/root` tmpfs mode=711，owner 0；uid 1000 只能穿越、不可列举/写入该目录，来源与缓存仍只读。正式零 provider/gateway probe 已完成精确执行与清理；干净代码 `0f5841ebfcaa14325638cf199d8bb343bb9d1e59` 的新三任务真实验收 C 为 3/3 成功，各项业务/原生审计/静止/清理全 true。原内联 runner 和前三个探测的不完整结果分别保留，完整分母、用量范围与代码绑定见 [v0.9 验证记录](../research/2026-10-11-v0.9-validation.md)和[审查记录](../research/2026-10-11-v0.9-review.md)。
+有限 pilot 的新入口在部署启动前将可信 runner 写入原生只读缓存，以完整 SHA 纳入部署保护，并在独立 profile 中只预授权 `python3 /root/.hermes/cache/generated/zhulong-work-runner.py` 这一条精确命令。它读取并执行相同的候选代码与冻结输入字节，不携带参考答案；完整业务验收、原生轨迹审计及宿主 deny/hardline 守卫继续生效。实际 Docker 使用显式 `/root` tmpfs mode=711，owner 0；uid 1000 只能穿越、不可列举/写入该目录，来源与缓存仍只读。历史 v0.9 零 provider/gateway probe 已完成精确执行与清理；干净代码 `0f5841ebfcaa14325638cf199d8bb343bb9d1e59` 的新三任务真实验收 C 为 3/3 成功，各项业务/原生审计/静止/清理全 true。原内联 runner 和前三个探测的不完整结果分别保留，完整分母、用量范围与代码绑定见 [v0.9 验证记录](../research/2026-10-11-v0.9-validation.md)和[审查记录](../research/2026-10-11-v0.9-review.md)。
 
 验收报告的 `auxiliary_calls` 只统计插件 `llm_daily` 预算表，native guardian 等额外调用不在该字段内；它不能作为所有模型调用或完整成本的分母。
 
@@ -116,6 +153,6 @@ zhulong-python scripts/native_work_acceptance.py \
 | 自动修改并晋升控制内核 | 代码/config hash 固定、技能候选隔离验证、旧真源保留 | 独立可信构建/测试/发布/回滚服务及产物证明；模型工具目前不能编辑控制内核 |
 | 全局严格货币预算 | run/辅助/诊断次数额度、主用量和成本缺失项 | 提供商可核验的完整主/辅助/训练/迟到账单与费用停止机制；次数上限不是金额硬上限 |
 | 真实因果提升与经济收益 | paired_fixed_n 业务成功率端点协议与合格收据分析；真实配对 execution adapter 未实现 | 业务成功率端点需要真实控制/处理适配器、同有效作用域的随机分配和足量可信独立配对样本；经济收益/成本效益另需完整可核验费用。有限业务 pilot 不作上述结论 |
-| 意识和通用正确性 | 功能元认知与有限不变量 | 可区分理论的可信实验和明确证明对象；不存在可直接发布的“全自我意识”开关 |
+| 意识和通用正确性 | 功能元认知、部分工作空间、有限不变量与当前状态对应检查 | 主观体验 unknown/not_established；完整 GWT/AST、HOT quality space、RPT/PP/IIT 底层检验、受限 DSL 证书与无界归纳 theorem 仍未建立，不提供意识概率或通用正确性保证 |
 
 早期文档中提及的 dsh/其它宿主、桌面深集成、跨 profile 联邦和公共技能市场原本不在 Hermes 本项目范围，不纳入本版虚构交付。旧版本已修复的 review 问题保留原闭环，不重复列为新发现。
