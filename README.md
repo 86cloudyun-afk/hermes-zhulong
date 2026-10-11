@@ -11,7 +11,7 @@ Zhulong 是 [Hermes Agent](https://github.com/NousResearch/hermes-agent) 的插�
 1. **观测（S2）**：订阅 11 个 observer hooks，把每个生命周期事件规范化、脱敏、写入本地日记（JSONL + SQLite）。
 2. **校准（S3）**：登记 agent 的预测/声明（工具 `zhulong_predict`），由**机械核验器或人工**结算，产出 Brier / ECE / 命中率 / 弃答统计与历史快照。
 
-3. **自主核心（v0.10）**：观察配置来源、合成可验证目标、持久提交和独立核验；在受监督 Docker 边界内执行可信步骤 DAG、有界干预诊断和派发前复查，维护有样本分母的自我模型。v0.10 增加独立 SQLite 状态对应检查和可选限容量工作空间。配置启用后，日常闭环无需逐项人工评分。
+3. **自主核心（v0.11）**：观察配置来源、合成可验证目标、持久提交和独立核验；在受监督 Docker 边界内执行可信步骤 DAG、有界干预诊断和派发前复查，维护有样本分母的自我模型。可选认知工作空间进一步支持事前预测和注意力控制，限定语言证书约束准入及实际执行。配置启用后，日常闭环无需逐项人工评分。
 
 这是可测试的功能自我模型，测试不证明主观意识。关键纪律：**agent 永远不能给自己的预测打分**。
 
@@ -125,9 +125,10 @@ zhulong_autonomy(action=status|goals|tick|experience|skills|workflows|diagnostic
 - ✅ v0.8.0：授权结构化输入冻结、原目标字段回归和严格原生执行证据
 - ✅ v0.9.0：完整参考 JSON 验收、持久步骤 DAG/本地 outbox、有界干预诊断、尝试级元认知和有限状态保证
 - ✅ v0.10.0：独立生产状态对应与同事务准入/发布门槛、可选限容量认知工作空间；430 项真实宿主/Docker 测试通过，单次 DeepSeek 原生集成验收成功
+- v0.11.0：前瞻注意力、工单 DSL 证书及受保护执行、真实配对研究驱动和实际时钟记录；组件审查与部署证据分别记录
 - ⏳ 后续：周报投递、真实外部事务、控制内核自动晋升与长期测试
 
-五条研究线和历史证据见 [完整执行、根因、因果提升、意识与正确性](docs/research/2026-10-11-autonomy-frontiers.md)；当前实现、部署入口与未完成项目见 [v0.10 工程清单](docs/deployment/engineering-closure.md)。`causal_trial.py` 已提供固定 N 配对协议、收据资格检查和分析，真实配对 execution adapter 尚未实现。`native_work_acceptance.py` 是真实 Hermes 有限业务 pilot 的运行入口，验收结果须按实际运行单独记录。v0.10 路线、基线状态对应反例、理论边界和冻结预测见 [认知与 refinement 研究](docs/research/2026-10-11-cognition-refinement-research.md)及其[可移植证据包](docs/research/evidence/2026-10-11-cognition-refinement/artifact-manifest.json)。
+五条研究线和历史证据见 [完整执行、根因、因果提升、意识与正确性](docs/research/2026-10-11-autonomy-frontiers.md)；当前实现、部署入口与未完成项目见 [工程清单](docs/deployment/engineering-closure.md)。v0.11 的[核心研究](docs/research/2026-10-11-core-evidence-research.md)与[独立审查](docs/research/2026-10-11-v0.11-review.md)区分产品实现、实际执行和未知结论。真实配对驱动在 `scripts/native_paired_trial.py`，有限业务 pilot 仍在 `scripts/native_work_acceptance.py`；结果须按冻结协议及实际运行单独记录。v0.10 的[认知与 refinement 研究](docs/research/2026-10-11-cognition-refinement-research.md)及其[证据包](docs/research/evidence/2026-10-11-cognition-refinement/artifact-manifest.json)保留历史结论。
 
 ## License
 
@@ -153,7 +154,7 @@ MIT © 2026 YG
 
 自我模型展示领域 / 执行身份范围、可信样本、未知、受阻、首次 / 累计成功、Brier/ECE、AUROC2、confidence gap 和 coverage-risk。旧 `error_discrimination` 字段只表示指标可计算性；质量另由带正负样本数的指标报告。每次派发前冻结同范围历史估计和监控决策，低概率时可按可信配置执行有界前置复查。零样本为 prior_only，单一标签时 AUROC2 不可用。历史影响目标选择；反思仍是有来源和适用范围的假设。`SelfModel.restore(version)` 只恢复导出快照，保留原始结果；下一次刷新从最新证据重建。
 
-## v0.10 认知工作空间与生产状态对应
+## 认知工作空间与生产状态对应
 
 `autonomy.cognition` 可选且默认关闭；省略时保持原规划路径。以下对象放在现有 `autonomy` 对象内，不能替代来源、契约或部署权限配置：
 
