@@ -1,0 +1,207 @@
+{
+  "schema": 1,
+  "date_asia_shanghai": "2026-10-11",
+  "built_at_utc": "2026-10-11T04:27:41.048119+00:00",
+  "repository_baseline": "cda80862312977463c48aa02bda00353169d3c41",
+  "selected_new_sources": 2,
+  "paid_calls": 0,
+  "product_changed": false,
+  "papers": [
+    {
+      "citation_metadata": {
+        "title": [
+          "Identifying indicators of consciousness in AI systems"
+        ],
+        "DOI": "10.1016/j.tics.2025.10.011",
+        "URL": "https://doi.org/10.1016/j.tics.2025.10.011",
+        "volume": "30",
+        "issue": "6",
+        "page": "488-501",
+        "published": {
+          "date-parts": [
+            [
+              2026,
+              6
+            ]
+          ]
+        },
+        "published-online": null,
+        "published-print": {
+          "date-parts": [
+            [
+              2026,
+              6
+            ]
+          ]
+        },
+        "created": {
+          "date-parts": [
+            [
+              2025,
+              11,
+              10
+            ]
+          ],
+          "date-time": "2025-11-10T22:48:10Z",
+          "timestamp": 1762814890000
+        },
+        "update-to": null,
+        "relation": null
+      },
+      "access": {
+        "id": "indicators-publisher",
+        "url": "https://linkinghub.elsevier.com/retrieve/pii/S1364661325002864",
+        "retrieved_at_utc": "2026-10-11T04:26:03.870373+00:00",
+        "network": "inherited proxy and CA; TLS verified; no bypass",
+        "source_of_url": "actual Crossref item resource/link metadata",
+        "outcome": "connection_error",
+        "error_type": "URLError"
+      },
+      "actual_read_scope": "Crossref citation and relation/update metadata only; journal full text not obtained; proxy tunnel 403 refusal retained",
+      "read_date_asia_shanghai": "2026-10-11",
+      "access_classification": "metadata_verified_full_text_unavailable_proxy_403"
+    },
+    {
+      "citation_metadata": {
+        "title": [
+          "Principles for Responsible AI Consciousness Research"
+        ],
+        "DOI": "10.1613/jair.1.17310",
+        "URL": "https://doi.org/10.1613/jair.1.17310",
+        "volume": "82",
+        "issue": null,
+        "page": "1673-1690",
+        "published": {
+          "date-parts": [
+            [
+              2025,
+              3,
+              25
+            ]
+          ]
+        },
+        "published-online": {
+          "date-parts": [
+            [
+              2025,
+              3,
+              25
+            ]
+          ]
+        },
+        "published-print": null,
+        "created": {
+          "date-parts": [
+            [
+              2025,
+              3,
+              25
+            ]
+          ],
+          "date-time": "2025-03-25T22:44:43Z",
+          "timestamp": 1742942683000
+        },
+        "update-to": null,
+        "relation": null
+      },
+      "access": {
+        "id": "responsible-research-jair",
+        "url": "https://www.jair.org/index.php/jair/article/download/17310/27155",
+        "retrieved_at_utc": "2026-10-11T04:26:03.870999+00:00",
+        "network": "inherited proxy and CA; TLS verified; no bypass",
+        "source_of_url": "actual Crossref item resource/link metadata",
+        "http_status": 200,
+        "final_url": "https://www.jair.org/index.php/jair/article/download/17310/27155",
+        "content_type": "application/pdf",
+        "bytes": 500061,
+        "sha256": "b86d8cbdb9223b05c92def0d5cb92d385a2aa7fc0a05d7492eaa7fa48509371c",
+        "basename": "responsible-research-jair.download",
+        "cached_content_included": false,
+        "outcome": "downloaded_unclassified"
+      },
+      "actual_read_scope": "Full original journal PDF obtained. Actual reading: abstract/introduction, distinctions among research objectives, section 4/Table 1 five principles and communication uncertainty; not a reproduction of experiments.",
+      "read_date_asia_shanghai": "2026-10-11",
+      "verified_raw_sha256": "b86d8cbdb9223b05c92def0d5cb92d385a2aa7fc0a05d7492eaa7fa48509371c",
+      "extracted_cache_basename": "responsible-research-jair.txt",
+      "cached_content_included": false,
+      "extracted_sha256": "34054ecbc05e294a8ae0643fedc5eb0af3b321e2dffd409b6371ce2dd5bc7e63",
+      "access_classification": "full_primary_journal_pdf_selected_sections_read_normative"
+    }
+  ],
+  "metadata_query_access": [
+    {
+      "id": "crossref-identifying",
+      "url": "https://api.crossref.org/works?query.title=Identifying+indicators+of+consciousness+in+AI+systems&rows=5",
+      "retrieved_at_utc": "2026-10-11T04:25:27.951201+00:00",
+      "network": "inherited proxy and CA; TLS verified; no bypass",
+      "http_status": 200,
+      "final_url": "https://api.crossref.org/works?query.title=Identifying+indicators+of+consciousness+in+AI+systems&rows=5",
+      "content_type": "application/json",
+      "bytes": 80402,
+      "sha256": "3642edf1fc575bde38dc666495eee7f039ebf55e82a8d45bd9035ae09e5c40fb",
+      "basename": "crossref-identifying.download",
+      "cached_content_included": false,
+      "outcome": "downloaded_unclassified",
+      "verified_raw_sha256": "3642edf1fc575bde38dc666495eee7f039ebf55e82a8d45bd9035ae09e5c40fb"
+    },
+    {
+      "id": "crossref-butlin-update",
+      "url": "https://api.crossref.org/works?query.bibliographic=Butlin+Long+consciousness+artificial+intelligence&filter=from-pub-date%3A2025-01-01%2Cuntil-pub-date%3A2026-10-11&rows=5",
+      "retrieved_at_utc": "2026-10-11T04:25:27.951804+00:00",
+      "network": "inherited proxy and CA; TLS verified; no bypass",
+      "http_status": 200,
+      "final_url": "https://api.crossref.org/works?query.bibliographic=Butlin+Long+consciousness+artificial+intelligence&filter=from-pub-date%3A2025-01-01%2Cuntil-pub-date%3A2026-10-11&rows=5",
+      "content_type": "application/json",
+      "bytes": 10616,
+      "sha256": "a3b3b5949991ddb75ce277d735506d29e3b14642b35af29ca23c39c0d1584058",
+      "basename": "crossref-butlin-update.download",
+      "cached_content_included": false,
+      "outcome": "downloaded_unclassified",
+      "verified_raw_sha256": "a3b3b5949991ddb75ce277d735506d29e3b14642b35af29ca23c39c0d1584058"
+    },
+    {
+      "id": "arxiv-identifying",
+      "url": "https://export.arxiv.org/api/query?search_query=ti%3A%22Identifying+indicators%22+AND+all%3Aconsciousness&max_results=3",
+      "retrieved_at_utc": "2026-10-11T04:25:27.952198+00:00",
+      "network": "inherited proxy and CA; TLS verified; no bypass",
+      "http_status": 200,
+      "final_url": "https://export.arxiv.org/api/query?search_query=ti%3A%22Identifying+indicators%22+AND+all%3Aconsciousness&max_results=3",
+      "content_type": "application/atom+xml; charset=utf-8",
+      "bytes": 773,
+      "sha256": "65f812a1d3fef459bbed9264f44e715854773717a1b8843eee3b71d776fa68c1",
+      "basename": "arxiv-identifying.download",
+      "cached_content_included": false,
+      "outcome": "downloaded_unclassified",
+      "verified_raw_sha256": "65f812a1d3fef459bbed9264f44e715854773717a1b8843eee3b71d776fa68c1"
+    },
+    {
+      "id": "arxiv-butlin",
+      "url": "https://export.arxiv.org/api/query?search_query=au%3AButlin+AND+all%3Aconsciousness&max_results=5&sortBy=submittedDate&sortOrder=descending",
+      "retrieved_at_utc": "2026-10-11T04:26:25.843287+00:00",
+      "network": "inherited proxy/CA, TLS verified",
+      "http_status": 200,
+      "basename": "arxiv-butlin.download",
+      "cached_content_included": false,
+      "bytes": 8200,
+      "outcome": "metadata_downloaded",
+      "verified_raw_sha256": "a1a2f062ccb6cd02a7a16171f9421fdd56059cdff7938b5051d6d0052452ede4"
+    }
+  ],
+  "publisher_failure_diagnostic": {
+    "url": "https://linkinghub.elsevier.com/retrieve/pii/S1364661325002864",
+    "checked_at_utc": "2026-10-11T04:26:54.756750+00:00",
+    "network": "inherited proxy/CA, TLS verified; no alternative publisher route or bypass attempted",
+    "outcome": "proxy_tunnel_refusal",
+    "reported_http_status": 403,
+    "reason_type": "OSError"
+  },
+  "correction_search_scope": "Only queried Crossref records and selected-paper update-to/relation fields; no comprehensive correction/retraction survey; no absence claim",
+  "material_scope_impact": "A later indicator paper is verified bibliographically but full-text revision cannot be assessed; chosen partial workspace/mask/recheck design remains grounded in actually read 2023 v3 and existing primary sources; normative 2025 paper reinforces staged research and calibrated communication, not empirical consciousness detection",
+  "portable_copy": {
+    "original_metadata_sha256": "be03fa5ddad6dc4daebd362f84415246a05051b2016a52cb2544f7e348b8b8e7",
+    "sanitization": "Absolute cache paths replaced with basenames; transient publisher error/code query fields removed if present. Source bodies are not included; raw hashes identify retrieved bytes.",
+    "raw_facts_or_credentials_included": false
+  },
+  "historical_count_relation": "Separate targeted recency audit: 2 selected new sources, 1 verified bibliographically without abstract/full text, 1 full primary journal PDF obtained with selected sections read. Does not alter original count of 7 cached consciousness texts or 3 refresh accesses.",
+  "engineering_prediction_change": false
+}

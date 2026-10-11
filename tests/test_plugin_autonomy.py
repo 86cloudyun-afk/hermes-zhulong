@@ -50,7 +50,7 @@ class PluginTests(unittest.TestCase):
         self.plugin.register(self.ctx)
         self.assertIn('zhulong_autonomy',self.ctx.tools)
         tool=self.ctx.tools['zhulong_autonomy']
-        self.assertEqual(tool['schema']['parameters']['properties']['action']['enum'],['status','goals','tick','experience','skills','workflows','diagnostics','assurance'])
+        self.assertEqual(tool['schema']['parameters']['properties']['action']['enum'],['status','goals','tick','experience','skills','workflows','diagnostics','assurance','cognition'])
         self.assertFalse(json.loads(tool['handler']({'action':'succeeded'}))['ok'])
         before=(self.home/'zhulong'/'self_model.json').read_bytes()
         model_tool=self.ctx.tools['zhulong_model'];model_tool['handler']({});model_tool['handler']({})

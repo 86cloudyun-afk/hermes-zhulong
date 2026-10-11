@@ -6,10 +6,10 @@ import uuid
 
 try:
     from .autonomy_store import canonical, digest
-    from . import task_inputs, assurance
+    from . import task_inputs, assurance, refinement
 except ImportError:
     from autonomy_store import canonical, digest
-    import task_inputs, assurance
+    import task_inputs, assurance, refinement
 
 MODES = {'read_only', 'opaque_nonretryable', 'local_outbox'}
 SUCCESS = {'succeeded', 'already_satisfied'}
@@ -265,7 +265,11 @@ class WorkflowStore:
         return candidate
 
     def _sync_cancellations(self, c):
+        import time
+        now=time.time()
         for parent in c.execute('SELECT g.* FROM workflows w JOIN goals g ON g.id=w.parent_goal_id WHERE g.cancel_requested=1').fetchall():
+            children=c.execute('SELECT child_goal_id FROM workflow_steps WHERE parent_goal_id=? AND child_goal_id IS NOT NULL',(parent['id'],)).fetchall()
+            for child in children:refinement.record(c,'cancel',{'goal_id':child[0]},now)
             c.execute('UPDATE goals SET cancel_requested=1 WHERE id IN '
                       '(SELECT child_goal_id FROM workflow_steps WHERE parent_goal_id=?)',(parent['id'],))
             pending = c.execute('SELECT 1 FROM workflow_steps w JOIN goals g ON g.id=w.child_goal_id '
@@ -274,6 +278,7 @@ class WorkflowStore:
             if parent['state'] in SUCCESS | {'failed'}:continue
             reason = 'workflow_cancel_requested_children_pending' if pending else 'workflow_cancelled'
             c.execute("UPDATE goals SET state='cancelled',reason=? WHERE id=?",(reason,parent['id']))
+            refinement.record(c,'workflow_state',{'goal_id':parent['id'],'state':'cancelled'},now)
 
     def sync_cancellations(self, now=None):
         """Flag children for normal Controller stop/recovery, without settling them."""
@@ -298,6 +303,7 @@ class WorkflowStore:
                 reason = self._blocking_reason(c,parent,now)
                 if reason:
                     c.execute("UPDATE goals SET state='blocked',reason=? WHERE id=?",(reason,parent['id']))
+                    refinement.record(c,'workflow_state',{'goal_id':parent['id'],'state':'blocked'},now)
                     continue
                 if not allowed or candidate is None or parent['id'] != candidate['parent_id'] or self._uncertain_execution(c):continue
                 row = c.execute('SELECT * FROM workflow_steps WHERE parent_goal_id=? AND step_id=?',
@@ -317,6 +323,9 @@ class WorkflowStore:
                           (child_id,key,canonical(child_candidate),parent['source_revision'],canonical(step['contract']),
                            digest(step['contract']),canonical(candidate['baseline']),now,parent['deadline']))
                 task_inputs.bind_goal(c,child_id,child_candidate['source_id'],parent['source_revision'],original)
+                refinement.record(c,'create',{'id':child_id,'dedupe':key,'candidate_hash':digest(child_candidate),
+                    'source_revision':parent['source_revision'],'contract_hash':digest(step['contract']),'baseline_hash':digest(candidate['baseline']),
+                    'task_input_hash':digest(original),'deadline':parent['deadline']},now)
                 c.execute('UPDATE workflow_steps SET child_goal_id=? WHERE parent_goal_id=? AND step_id=? AND child_goal_id IS NULL',
                           (child_id,parent['id'],step['id']))
                 result['created'] = child_id

@@ -11,14 +11,14 @@ Zhulong 是 [Hermes Agent](https://github.com/NousResearch/hermes-agent) 的插�
 1. **观测（S2）**：订阅 11 个 observer hooks，把每个生命周期事件规范化、脱敏、写入本地日记（JSONL + SQLite）。
 2. **校准（S3）**：登记 agent 的预测/声明（工具 `zhulong_predict`），由**机械核验器或人工**结算，产出 Brier / ECE / 命中率 / 弃答统计与历史快照。
 
-3. **自主核心（v0.9）**：观察配置来源、合成可验证目标、持久提交和独立核验；在受监督 Docker 边界内执行可信步骤 DAG、有界干预诊断和派发前复查，维护有样本分母的自我模型。配置启用后，日常闭环无需逐项人工评分。
+3. **自主核心（v0.10）**：观察配置来源、合成可验证目标、持久提交和独立核验；在受监督 Docker 边界内执行可信步骤 DAG、有界干预诊断和派发前复查，维护有样本分母的自我模型。v0.10 增加独立 SQLite 状态对应检查和可选限容量工作空间。配置启用后，日常闭环无需逐项人工评分。
 
 这是可测试的功能自我模型，测试不证明主观意识。关键纪律：**agent 永远不能给自己的预测打分**。
 
 ## 原则（写死，不妥协）
 
 - **观测 hooks 仅记事实**：原有 11 个 hooks 不修改对话、不发起模型调用；独立自主控制层按配置发起规划和执行。
-- **失败开放**：任何回调异常都吞掉，绝不阻塞或影响主循环。
+- **观测回调失败开放**：observer 回调异常不阻塞主循环；生产状态审计失败或不可用时，拒绝新的 admission 和技能正向激活，保留取消、恢复和清理。
 - **数据范围明确**：观测只存元数据；自主账本另存最小目标意图、冻结验收和证据。v0.8 可显式授权有限业务 JSON 字段存入私有账本；默认不捕获，不采集工具正文、原始聊天或私有推理。
 - **不可自证**：预测结算只来自机械核验器或人工命令（逻辑学约束：反自证）。
 - **数据本地**：全部落在 `$HERMES_HOME/zhulong/`。
@@ -47,7 +47,8 @@ hermes plugins enable zhulong    # 加入 allow-list
 /zhulong autonomy skills              # 可执行技能版本与状态
 /zhulong autonomy workflows           # 持久步骤、依赖与效果状态
 /zhulong autonomy diagnostics         # 有界干预诊断与证据等级
-/zhulong autonomy assurance           # 运行有限模型检查及账本轨迹验证
+/zhulong autonomy cognition           # 工作空间配置、帧/绑定数量与交付计数
+/zhulong autonomy assurance           # 当前状态对应审计 + 有限模型/轨迹检查
 /zhulong autonomy tick                # 推进一次有界循环
 /zhulong autonomy pause               # 暂停新合成/派发，继续对账
 /zhulong autonomy resume              # 恢复配置允许的工作
@@ -60,10 +61,10 @@ Agent 侧工具：
 zhulong_predict(claim, confidence?, verify?)    # 登记预测
 zhulong_calibration(action=report|run|list|reflect|probes|run_probes)
 zhulong_model()                               # 只读自我模型
-zhulong_autonomy(action=status|goals|tick|experience|skills|workflows|diagnostics|assurance)
+zhulong_autonomy(action=status|goals|tick|experience|skills|workflows|diagnostics|assurance|cognition)
 ```
 
-仍为 **4 个工具、11 个观测 hooks、1 个命令入口**。`zhulong_autonomy` 有上述 8 个 actions；暂停、恢复和取消由 `/zhulong autonomy` 命令操作。工具不提供直接评分或修改验收入口；`assurance` 会运行检查，普通 `status` 只展示已有检查记录。
+仍为 **4 个工具、11 个观测 hooks、1 个命令入口**。`zhulong_autonomy` 有上述 9 个 actions；暂停、恢复和取消由 `/zhulong autonomy` 命令操作。工具不提供直接评分或修改验收入口；`assurance` 运行有限模型、旧轨迹与当前 refinement 审计；普通 `status` 读取当前真实 SQLite 状态并执行新的 refinement 审计，有限模型部分仍展示已有记录。
 
 ## 校准账（S3）
 
@@ -88,7 +89,7 @@ zhulong_autonomy(action=status|goals|tick|experience|skills|workflows|diagnostic
 ├── journal/events-YYYY-MM-DD.jsonl   # 事件真源（append-only）
 ├── zhulong.db                        # SQLite：events / predictions / calib_metrics / probe_runs / tasks / llm_daily
 ├── reflections/                      # digest-YYYY-MM-DD.md、PROPOSALS.md
-├── autonomy.db                      # goals/submissions/evidence/预算/模型版本真源
+├── autonomy.db                      # goals/submissions/evidence/预算/refinement journal/认知帧真源
 ├── self_model.json                   # 原子导出；可由账本重建
 └── config.json                       # 配置，见下
 ```
@@ -123,9 +124,10 @@ zhulong_autonomy(action=status|goals|tick|experience|skills|workflows|diagnostic
 - ✅ v0.7.0：独立 Docker 可执行程序评测、不可变版本发布、冻结请求复用和失败回退
 - ✅ v0.8.0：授权结构化输入冻结、原目标字段回归和严格原生执行证据
 - ✅ v0.9.0：完整参考 JSON 验收、持久步骤 DAG/本地 outbox、有界干预诊断、尝试级元认知和有限状态保证
+- ✅ v0.10.0：独立生产状态对应与同事务准入/发布门槛、可选限容量认知工作空间；430 项真实宿主/Docker 测试通过，单次 DeepSeek 原生集成验收成功
 - ⏳ 后续：周报投递、真实外部事务、控制内核自动晋升与长期测试
 
-五条研究线和历史证据见 [完整执行、根因、因果提升、意识与正确性](docs/research/2026-10-11-autonomy-frontiers.md)；当前实现、部署入口与未完成项目见 [v0.9 工程清单](docs/deployment/engineering-closure.md)。`causal_trial.py` 已提供固定 N 配对协议、收据资格检查和分析，真实配对 execution adapter 尚未实现。`native_work_acceptance.py` 是真实 Hermes 有限业务 pilot 的运行入口，验收结果须按实际运行单独记录。
+五条研究线和历史证据见 [完整执行、根因、因果提升、意识与正确性](docs/research/2026-10-11-autonomy-frontiers.md)；当前实现、部署入口与未完成项目见 [v0.10 工程清单](docs/deployment/engineering-closure.md)。`causal_trial.py` 已提供固定 N 配对协议、收据资格检查和分析，真实配对 execution adapter 尚未实现。`native_work_acceptance.py` 是真实 Hermes 有限业务 pilot 的运行入口，验收结果须按实际运行单独记录。v0.10 路线、基线状态对应反例、理论边界和冻结预测见 [认知与 refinement 研究](docs/research/2026-10-11-cognition-refinement-research.md)及其[可移植证据包](docs/research/evidence/2026-10-11-cognition-refinement/artifact-manifest.json)。
 
 ## License
 
@@ -139,7 +141,7 @@ MIT © 2026 YG
 
 `api_identity_version` 是部署维护的非秘密版本；认证命名空间、profile 或凭据变化时必须更新。它不自动证明凭据连续性；不能维护该版本的部署无法承诺未决提交的安全重放。`api_profile` 是冻结的执行身份标签，不是自行切换宿主 profile 的 API 参数。
 
-默认每日新 run 8 次、同时 1 个、候选最多 3 个、租约 120 秒、目标期限 600 秒、独立尝试最多 3 次。共享辅助模型调用默认 40 次/日，零表示停用。一次 tick 至多 20 个目标操作和一次新 submission；积压受阻工作轮转，模型、HTTP 和检查在数据库写锁之外。源事实和验收 / 方向的相关变化形成新版本；相同输入不反复规划。`input_fields` 可从 JSON 选取相关字段，避免无关噪声触发工作。
+默认每日新 run 8 次、同时 1 个、候选最多 3 个、租约 120 秒、目标期限 600 秒、独立尝试最多 3 次。共享辅助模型调用默认 40 次/日，零表示停用。一次 tick 至多 20 个目标操作和一次新 submission；积压受阻工作轮转，模型、HTTP、Docker 和文件验收在数据库写锁之外；refinement 的纯 SQLite 状态检查与被许可的正向写入在同一事务内。源事实和验收 / 方向的相关变化形成新版本；相同输入不反复规划。`input_fields` 可从 JSON 选取相关字段，避免无关噪声触发工作。
 
 机械验收支持 `file_contains`、`json_equals`、`json_reference`、显式可信的 `argv`。文件和输出最多 64 KiB，argv 默认 15 秒且不用 shell。`json_equals` 使用整文件严格 JSON 解析，拒绝重复键、非有限数及超过 32 层的业务 JSON，比较时区分布尔、整数与浮点类型；检查版本为 2，旧收据保留。
 
@@ -150,6 +152,32 @@ MIT © 2026 YG
 `pause` 只暂停新工作。相同 submission 的恢复不消耗新尝试或预算；响应丢失在保留窗口内重放原请求。`interrupted`、stop accepted 和缺少产物都不能证明没有迟到副作用；未知在途执行保留名额。审批终止后的旧目标保持受阻，不自动重发；新来源 / 契约版本可以形成新目标。过期重放或身份连续性不明时记录 `unknown_result`，避免盲目重复动作。正常宿主结果与独立验收都完成后才结算可信结果。
 
 自我模型展示领域 / 执行身份范围、可信样本、未知、受阻、首次 / 累计成功、Brier/ECE、AUROC2、confidence gap 和 coverage-risk。旧 `error_discrimination` 字段只表示指标可计算性；质量另由带正负样本数的指标报告。每次派发前冻结同范围历史估计和监控决策，低概率时可按可信配置执行有界前置复查。零样本为 prior_only，单一标签时 AUROC2 不可用。历史影响目标选择；反思仍是有来源和适用范围的假设。`SelfModel.restore(version)` 只恢复导出快照，保留原始结果；下一次刷新从最新证据重建。
+
+## v0.10 认知工作空间与生产状态对应
+
+`autonomy.cognition` 可选且默认关闭；省略时保持原规划路径。以下对象放在现有 `autonomy` 对象内，不能替代来源、契约或部署权限配置：
+
+```json
+{
+  "cognition": {
+    "enabled": false,
+    "capacity": 3,
+    "ttl_seconds": 120,
+    "mask_consumer": null,
+    "selection_mode": "adaptive"
+  }
+}
+```
+
+capacity 为 1–8 个来源，TTL 为 1–3600 秒；mask 为 null/planner/executor/monitor，selection_mode 为 adaptive/constant。启用后 Planner 只接收选中的 observations，并移除可能泄露未选事实的 experience、commitments、policy hypotheses 和非 source-scoped 聚合。adaptive 使用持久选择历史轮换，constant 稳定取前 K；容量和预测描述软件调度，不构成完整 GWT 或 AST。
+
+帧、goal 绑定和消费收据不可后改，保存来源/revision/input/facts 摘要与机制身份；默认不新增 raw facts、prompt 或 tool body 的长期存储。TTL 限制新规划，已有 goal 的历史绑定用于恢复，不能称为最新事实。消费者收据标记 `delivered_context_only`：它证明具体上下文交付和请求绑定，不证明模型理解或内部注意。mask 随帧冻结，只遮指定消费者的新增工作空间渠道；executor 的固定业务输入、验收契约、source_path 和合法工具权限保留，因此不是全部信息消融。干预/恢复须使用分别声明的匹配帧，不改写旧帧。
+
+新的 refinement checker 从 typed journal 独立重建 covered state，在同一 SQLite snapshot 比较 paused、run_budget、goals/lease/attempt/submission/固定身份和 evidence/final truth。普通 status 展示当前审计；`valid_within_scope`、`counterexample` 和 `unavailable` 与旧有限 BFS／recorded trace 各自独立。检查超限、缺日志或损坏不转换成通过。legacy checkpoint 只是可信观察起点，不证明此前历史。
+
+新 admission、技能发布和正向 fallback activation 在写入事务内执行 gate；counterexample/unavailable 拒绝新正向动作，不新扣预算或启动 run，但 cancel/stop/reconcile/cleanup、旧结果真实结算和负向退役继续。checker/SQLite/保护代码及合法 mutation hooks 仍是可信边界；审计不证明 verifier 正确性、OS 静止、全部 workflow/skill 决策、诊断预算、外部效果或任意 Python 总正确性。`settled` 和 Runs 完成状态也不是独立 quiescence certificate。
+
+v0.10 的[验证记录](docs/research/2026-10-11-v0.10-validation.md)绑定干净代码 `50acabe`：430 项真实宿主/Docker 测试全部通过，单个预登记 DeepSeek 原生任务完成业务、执行审计、结算和清理；[独立审查记录](docs/research/2026-10-11-v0.10-review.md)保留发现与修复。v0.9 结果继续作为历史证据。单次集成验收不建立因果收益，尚未运行长程测试；当前机制不提供主观体验 oracle、意识概率或通用正确性 theorem。
 
 ## 经验学习（v0.6）
 

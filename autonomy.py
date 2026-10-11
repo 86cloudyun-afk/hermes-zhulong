@@ -12,13 +12,13 @@ try:
     from .autonomy_store import canonical
     from .hermes_runs import RunsError
     from . import task_inputs
-    from . import workflow,metacognition
+    from . import workflow,metacognition,cognition
 except ImportError:
     from autonomy_checks import observe_sources,validate_candidates
     from autonomy_store import canonical
     from hermes_runs import RunsError
     import task_inputs
-    import workflow,metacognition
+    import workflow,metacognition,cognition
 
 
 class PlannerError(Exception):pass
@@ -40,6 +40,10 @@ class LLMPlanner:
                   'facts_truncated':len(o.get('facts',''))>2000} for o in observations],
                  'self_model':{k:self_model.get(k,[] if k in ('policy_hypotheses','active_commitments','experience') else {})
                                for k in ('domains','contexts','policy_hypotheses','active_commitments','experience','current_execution_identity')}}
+        if 'workspace' in self_model:
+            payload['workspace']=self_model['workspace']
+            for key in ('domains','contexts'):payload['self_model'][key]={}
+            for key in ('policy_hypotheses','active_commitments','experience'):payload['self_model'][key]=[]
         payload['self_model']['domain_statistics_scope']='Historical aggregates across execution identities; use matching contexts for current capability.'
         payload['self_model']['contexts']=dict(list(payload['self_model']['contexts'].items())[:20])
         for key in ('policy_hypotheses','active_commitments'):payload['self_model'][key]=payload['self_model'][key][:20]
@@ -67,6 +71,7 @@ class Controller:
         self.skills=skills
         self.execution_identity={'api_url':policy.get('api_url'),'credential_env':policy.get('api_key_env','API_SERVER_KEY'),
                                  'identity_version':policy.get('api_identity_version'),'profile':policy.get('api_profile','default')}
+        self.workspace=cognition.Workspace(ledger,policy.get('cognition'),self.execution_identity)
         self._tick_lock=threading.Lock();self._lifecycle_lock=threading.Lock();self._stop=threading.Event();self._thread=None;self._recovery_cursor=0;self._ready_cursor=0
         self.admission_gate=None
         self.workflows=workflow.WorkflowStore(ledger,policy.get('workflows',[]))
@@ -139,27 +144,47 @@ class Controller:
 
     def _synthesize(self,observations):
         if not self._admissible():return 0
-        owner=uuid.uuid4().hex;selected=[]
-        for observation in observations:
-            if not observation['available']:continue
-            if not task_inputs.available(self.ledger,observation.get('task_input')):continue
-            if len(selected)>=self.policy['max_candidates']:break
-            if self.ledger.claim_source(observation['id'],observation['revision'],owner,self.clock(),self.policy['lease_seconds'],self.policy['max_attempts']):selected.append(observation)
+        owner=uuid.uuid4().hex;selected=[];frame=None
+        if self.workspace.policy['enabled']:
+            eligible=[o for o in observations if o['available'] and task_inputs.available(self.ledger,o.get('task_input'))]
+            frame=self.workspace.select(eligible,self.clock(),source_owner=owner,
+                lease_seconds=self.policy['lease_seconds'],max_attempts=self.policy['max_attempts'])
+            if frame:
+                selected=[next(o for o in eligible if o['id']==e['source_id']) for e in frame['entries']]
+        else:
+            for observation in observations:
+                if not observation['available']:continue
+                if not task_inputs.available(self.ledger,observation.get('task_input')):continue
+                if len(selected)>=self.policy['max_candidates']:break
+                if self.ledger.claim_source(observation['id'],observation['revision'],owner,self.clock(),self.policy['lease_seconds'],self.policy['max_attempts']):selected.append(observation)
         if not selected:return 0
         success=False;accepted=0;deferred=None
         try:
             with self._source_heartbeat(selected,owner) as lost:
                 if not self._admissible():raise PlannerError('service_not_running')
                 self._phase('planning')
-                context=dict(self.model.snapshot())
-                context['current_execution_identity']=self.execution_identity
-                context['contexts']={k:v for k,v in context.get('contexts',{}).items()
-                                     if v.get('execution_context')==self.execution_identity}
-                context['experience']=[]
-                if self.experience is not None and self.policy.get('learning_enabled',True):
-                    try:context['experience']=self.experience.store.planning_context(selected,self.execution_identity,self.policy)
-                    except Exception:context['experience']=[]
-                raw=self.planner.plan(selected,context,self.policy)
+                context={}
+                if frame is None:
+                    context=dict(self.model.snapshot())
+                    context['current_execution_identity']=self.execution_identity
+                    context['contexts']={k:v for k,v in context.get('contexts',{}).items()
+                                         if v.get('execution_context')==self.execution_identity}
+                    context['experience']=[]
+                    if self.experience is not None and self.policy.get('learning_enabled',True):
+                        try:context['experience']=self.experience.store.planning_context(selected,self.execution_identity,self.policy)
+                        except Exception:context['experience']=[]
+                delivered=selected
+                if frame is not None:
+                    refreshed=observe_sources(self.policy)
+                    authorized={o['id']:o['contract_ids'] for o in selected}
+                    for observed in refreshed:
+                        observed['contract_ids']=[cid for cid in authorized.get(observed['id'],[])
+                                                  if cid in observed['contract_ids']]
+                    view=self.workspace.planner_view(frame,refreshed,self.clock())
+                    delivered=view['observations']
+                    context={'current_execution_identity':self.execution_identity,'workspace':view['workspace']}
+                    self.workspace.record(frame['frame_id'],'planner_method',{'observations':delivered,'context':context,'policy':self.policy},self.clock(),source_owner=owner)
+                raw=self.planner.plan(delivered,context,self.policy)
                 candidates=validate_candidates(raw,selected,self.policy)
                 current={o['id']:o.get('revision') for o in observe_sources(self.policy) if o['available']}
                 sources={s['id']:s for s in self.policy['sources']}
@@ -169,7 +194,7 @@ class Controller:
                     contract=sources[candidate['source_id']]['contracts'][candidate['contract_id']]
                     observed=next(o for o in selected if o['id']==candidate['source_id'])
                     baseline=self.verifier.capture(contract,observed.get('task_input'))
-                    goal=self.ledger.create_goal(candidate,candidate['source_revision'],contract,baseline,self.clock(),self.policy['run_deadline_seconds'],source_owner=owner,task_input=observed.get('task_input'))
+                    goal=self.ledger.create_goal(candidate,candidate['source_revision'],contract,baseline,self.clock(),self.policy['run_deadline_seconds'],source_owner=owner,task_input=observed.get('task_input'),cognition_frame=frame)
                     if goal is None:raise PlannerError('source_lease_lost')
                     accepted+=1
                 success=True
@@ -211,9 +236,20 @@ class Controller:
             if programs:
                 intent['skills']=programs
                 intent['skill_rule']='These immutable programs passed a limited trusted JSON test suite. When applicable, copy the exact code into the authorized workspace, check its SHA-256, and run it through the isolated terminal with JSON stdin. The frozen acceptance contract still decides goal completion. Do not change control files or trust self-reported success.'
+        packet=self.workspace.execution_packet(goal['id'])
+        if self.workspace.policy['enabled'] or 'frame_id' in packet:intent['cognitive_workspace']=packet
         text=canonical(intent)
         if len(text.encode())>16384:raise RunsError('execution_intent_too_large')
         return {'input':text,'session_id':'zhulong-'+goal['id']}
+
+    def _submit(self,submission):
+        self.workspace.runs_boundary(submission,'runs_call_started',self.clock(),'call_started_remote_receipt_unknown')
+        try:result=self.runs.submit(submission)
+        except BaseException:
+            self.workspace.runs_boundary(submission,'runs_call_failed',self.clock(),'remote_receipt_unknown')
+            raise
+        self.workspace.runs_boundary(submission,'runs_call_returned',self.clock(),'host_response_returned')
+        return result
 
     def _reconcile(self,lease,goal):
         submission=goal['submission'];now=self.clock()
@@ -225,10 +261,10 @@ class Controller:
                 except RunsError as exc:
                     if exc.code!='http_404':raise
                     if now>=submission['created']+submission['retention_seconds']:raise RunsError('replay_horizon_expired')
-                    result=self.runs.submit(submission)
+                    result=self._submit(submission)
             else:
                 if now>=submission['created']+submission['retention_seconds']:raise RunsError('replay_horizon_expired')
-                result=self.runs.submit(submission)
+                result=self._submit(submission)
             if not self.ledger.record_admission(lease,submission['id'],result['run_id'],result['status'],self.clock()):return
             submission={**submission,'run_id':result['run_id']}
             self.ledger.record_runtime(lease,submission['id'],result,self.clock())
@@ -286,6 +322,8 @@ class Controller:
                 request=self._request(goal)
                 with self.ledger._connection() as c:
                     forecast=metacognition.capture(c,goal,self.execution_identity,request,self.clock(),self.policy.get('monitoring',{}))
+                if 'workspace' in forecast and 'frame_id' in forecast['workspace']:
+                    self.workspace.record(forecast['workspace']['frame_id'],'monitor_capture',forecast,self.clock(),goal_id=goal['id'])
                 request=metacognition.apply_directive(request,forecast);recheck=None
                 if forecast['action']=='recheck':
                     start=self.clock();checked=self.verifier.capture(goal['contract'],goal.get('task_input'));end=self.clock()
@@ -300,7 +338,7 @@ class Controller:
                     monitoring_policy=self.policy.get('monitoring',{}),monitoring_capture=forecast,monitoring_recheck=recheck)
                 if not prepared['admitted']:
                     self._transition(lease,goal,'blocked',prepared['reason']);return False
-                result=self.runs.submit(prepared['submission'])
+                result=self._submit(prepared['submission'])
                 self.ledger.record_admission(lease,prepared['submission']['id'],result['run_id'],result['status'],self.clock())
                 self.ledger.record_runtime(lease,prepared['submission']['id'],result,self.clock())
                 return True
@@ -426,13 +464,18 @@ class Controller:
     def assurance_status(self,run=False):
         try:
             from .assurance import check_status,bounded_check,validate_trace
+            from .refinement import audit
         except ImportError:
             from assurance import check_status,bounded_check,validate_trace
+            from refinement import audit
+        with self.ledger._connection() as c:current=audit(c)
         if run:
             report=bounded_check(ledger=self.ledger)
             with self.ledger._connection() as c:trace=validate_trace(c)
-            return {'bounded_model':report,'implementation_trace':trace}
-        return check_status(self.ledger)
+            return {'bounded_model':report,'implementation_trace':trace,'refinement':current}
+        return {**check_status(self.ledger),'refinement':current}
+
+    def cognition_status(self):return self.workspace.summary()
 
     def diagnostics_status(self):
         return self.diagnostics.summary() if self.diagnostics is not None else {'enabled':False}

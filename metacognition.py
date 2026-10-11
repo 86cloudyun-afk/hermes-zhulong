@@ -102,6 +102,12 @@ def capture(c, goal, identity, request, now, policy):
               'estimator_hash':digest({'scope':scope,'samples':samples,'policy':policy}),
               'base_request_hash':digest(_base_request(request)),
               'input_hash':(goal.get('task_input') or {}).get('input_hash')}
+    try:
+        from . import cognition
+    except ImportError:
+        import cognition
+    workspace=cognition.packet(c,goal['id'],'monitor')
+    if 'frame_id' in workspace or cognition.request_packet(request) is not None:result['workspace']=workspace
     result['capture_hash'] = digest(result)
     return result
 
@@ -132,7 +138,7 @@ def prepare(c, goal, identity, request, now, policy, *, capture=None, recheck=No
         if (digest(original) != capture_hash or capture.get('captured_at',now+1)>now
             or any(capture.get(k)!=current.get(k) for k in
                    ('schema','goal_id','attempt','probability','provenance','action','policy',
-                    'estimator_hash','base_request_hash','input_hash'))):
+                    'estimator_hash','base_request_hash','input_hash','workspace'))):
             raise ValueError('monitoring_capture_stale')
     else:
         if current['action'] == 'recheck': raise ValueError('monitoring_capture_required')

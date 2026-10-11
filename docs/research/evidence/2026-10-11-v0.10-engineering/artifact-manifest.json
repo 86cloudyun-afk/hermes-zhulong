@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "purpose": "portable_sanitized_validation_package",
+  "files": [
+    {
+      "file": "hypothesis-outcomes.json",
+      "sha256": "699310f23fd3eae3a3c122d407f911b0f8b14a52dfba42ff9797a1d2c310b323",
+      "bytes": 3266
+    },
+    {
+      "file": "installation.json",
+      "sha256": "eaac31f93ea62aae14f1c65c46bf27677dc8d6f7b93002ba4ddc66b01fab991d",
+      "bytes": 813
+    },
+    {
+      "file": "summary.json",
+      "sha256": "ca5853ef2591865689454d5719da3245d401b0e068f3d0f9afd875dc98a51ab5",
+      "bytes": 17263
+    }
+  ],
+  "private_evidence": "Only original artifact hashes and allowlisted metadata are committed. Private transcripts, requests, configs and credentials are excluded."
+}

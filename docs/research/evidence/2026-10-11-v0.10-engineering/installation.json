@@ -1,0 +1,25 @@
+{
+  "tested_source_head": "50acabea7750a78396431bb57cddff282afc0ee1",
+  "repository_state": "precommit documentation/evidence changes preserved unchanged by installer",
+  "exit_code": 0,
+  "tests_run": 430,
+  "passed": 412,
+  "skipped": 18,
+  "duration_seconds": 40.41,
+  "installed_source_marker_hashes_match": 29,
+  "installer_log_sha256": "1f152b24221fa9bd2c91a31483e6b59488e5749bee57d92db2103760c478af3a",
+  "provider_calls": 0,
+  "scope": "reusable installer offline checks; Docker opt-ins absent; final-main source-equivalence recheck pending",
+  "host_smoke": {
+    "version": "0.10.0",
+    "hooks": 11,
+    "tools": 4,
+    "commands": 1,
+    "privacy": "passed",
+    "journal": "passed",
+    "calibration": "passed",
+    "digest": "passed",
+    "sqlite_integrity": "ok",
+    "external_llm_calls": 0
+  }
+}

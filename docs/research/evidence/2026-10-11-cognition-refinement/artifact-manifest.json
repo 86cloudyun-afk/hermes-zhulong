@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "baseline": "cda80862312977463c48aa02bda00353169d3c41",
+  "documentation_only": true,
+  "new_product_tests_executed": false,
+  "provider_calls_for_delivery": 0,
+  "docker_calls_for_delivery": 0,
+  "source_cache_portable": false,
+  "note": "Portable metadata only; raw source caches remain local and are not required to read this package. They may be re-fetched from public source URLs, but retrieved bytes can differ. No absolute local paths are presented as portable links.",
+  "inputs": [
+    {
+      "name": "consciousness-research.md",
+      "sha256": "a36a2516771d0f8d58ec40c83c131311120062f5228deb52677589aa6862ff3d",
+      "bytes": 24546,
+      "kind": "local research memo; content not copied"
+    },
+    {
+      "name": "correctness-research.md",
+      "sha256": "1f5ac4d1190e936924eb9d5b67a570336fa0e6d1d9e16c68e48e3dcfaf5d9474",
+      "bytes": 22958,
+      "kind": "local research memo; content not copied"
+    },
+    {
+      "name": "runtime-design.md",
+      "sha256": "e3300c39fe246bec71fa053c6e177aa9ebf03d81ab3621d185d1e5a5659270e2",
+      "bytes": 21356,
+      "kind": "local research memo; content not copied"
+    },
+    {
+      "name": "refinement_probe.py",
+      "sha256": "2cb6f5873bca3b8f7479864681929c8a12b2d58ffafac048fe113120dcb8a87a",
+      "bytes": 3052,
+      "kind": "local research memo; content not copied"
+    },
+    {
+      "name": "recency-audit.md",
+      "sha256": "129c6275e2a01723222532b78d78526a69756060e7696f28b29791c5d2084cc4",
+      "bytes": 6055,
+      "kind": "local targeted recency memo; content not copied"
+    }
+  ],
+  "evidence_files": [
+    {
+      "name": "consciousness-source-index.json",
+      "sha256": "e28c773d5545568783ab95a5f1f6921e0ecc88e37ec7fa23056ba8b8a2740b0e",
+      "bytes": 12009
+    },
+    {
+      "name": "correctness-access.json",
+      "sha256": "26c8ee713e504a3264fa5cd2a64b64ab6ea669ee49ca02ff2e6faf02007b30a5",
+      "bytes": 4598
+    },
+    {
+      "name": "consciousness-refresh-access.json",
+      "sha256": "3eee5ff54ca8c00687299018ed491af9d5592f1532c8c8685be5033de3522a02",
+      "bytes": 3173
+    },
+    {
+      "name": "correctness-historical-access.json",
+      "sha256": "0a76042673f36560790caa9a186baeea6cca23526cbaf78083e319a6dbef80f4",
+      "bytes": 12001
+    },
+    {
+      "name": "refinement-probe.json",
+      "sha256": "4c861cab2ee8176fa719206ea49c37e4b41fccfcd98b7d470d30b594abbf7e94",
+      "bytes": 2771
+    },
+    {
+      "name": "frozen-predictions.json",
+      "sha256": "dfdb4972ff3312edb334906e7d88b700f054c9310847d9e4ca3b47ed48822cd9",
+      "bytes": 8880
+    },
+    {
+      "name": "recency-source-access.json",
+      "sha256": "c61d66be467ce9909a92a098a6c3ff1c27a1777be6cbe37b6b8b7caaed1cae15",
+      "bytes": 9224
+    }
+  ]
+}

@@ -3,8 +3,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 import uuid
 from datetime import datetime, timezone
+
+try:
+    from . import refinement
+except ImportError:
+    import refinement
 
 try:
     from .autonomy_store import canonical, digest
@@ -123,11 +129,14 @@ class SkillStore:
         with self.ledger._connection(True) as c:
             paused = self._paused(c)
             if not paused:
-                for fallback in c.execute("SELECT * FROM skill_versions WHERE state='standby' AND reason='rollback_deferred_by_pause' ORDER BY sequence DESC").fetchall():
+                for fallback in c.execute("SELECT * FROM skill_versions WHERE state='standby' AND reason IN ('rollback_deferred_by_pause','refinement_blocked') ORDER BY sequence DESC").fetchall():
                     scope = json.loads(fallback['scope'])
                     task = next((t for t in self.tasks if t['id']==scope['task_id']), None)
                     if (task is not None and self._configured(c,task) and scope==scope_for(task,self.identity)
                         and not c.execute("SELECT 1 FROM skill_versions WHERE scope=? AND state='active'",(fallback['scope'],)).fetchone()):
+                        if not self._refinement_allowed(c):
+                            c.execute("UPDATE skill_versions SET reason='refinement_blocked' WHERE id=?",(fallback['id'],))
+                            continue
                         c.execute("UPDATE skill_versions SET state='active',reason='rollback_after_bound_failure' WHERE id=?",(fallback['id'],))
                         self._publication(c,fallback['id'],now,'rollback_after_bound_failure')
             rows = c.execute('''SELECT s.* FROM submissions s WHERE s.settled=1 AND s.evidence IS NOT NULL
@@ -155,9 +164,10 @@ class SkillStore:
                             if version['state'] == 'active':
                                 fallback = c.execute("SELECT id FROM skill_versions WHERE scope=? AND state='standby' ORDER BY sequence DESC LIMIT 1", (version['scope'],)).fetchone()
                                 if fallback:
+                                    blocked=not paused and not self._refinement_allowed(c)
                                     c.execute('UPDATE skill_versions SET state=?,reason=? WHERE id=?',
-                                              ('standby' if paused else 'active', 'rollback_deferred_by_pause' if paused else 'rollback_after_bound_failure', fallback['id']))
-                                    if not paused:self._publication(c,fallback['id'],now,'rollback_after_bound_failure')
+                                              ('standby' if paused or blocked else 'active', 'rollback_deferred_by_pause' if paused else ('refinement_blocked' if blocked else 'rollback_after_bound_failure'), fallback['id']))
+                                    if not paused and not blocked:self._publication(c,fallback['id'],now,'rollback_after_bound_failure')
                     if not checked['verdict'] and sub['execution_identity'] == self.identity:
                         for task in self.tasks:
                             if task['source_id'] != goal['source_id'] or task['domain'] != goal['domain'] or task['contract_hash'] != goal['contract_hash']: continue
@@ -248,6 +258,9 @@ class SkillStore:
                 # This read and every positive activation share BEGIN IMMEDIATE
                 # with pause(), so a returned pause fences all later publication.
                 if self._paused(c): return False
+                if not self._refinement_allowed(c):
+                    c.execute("UPDATE skill_versions SET reason='refinement_blocked' WHERE id=?",(version['id'],))
+                    return False
                 cases = task.get('_evaluation_cases',task['examples']+task['holdout']); receipts = report.get('cases')
                 if task.get('replay_origin') and report['origin_replay']['passed'] is not True: return False
                 if (report.get('passed') != len(cases) or not isinstance(receipts, list) or len(receipts) != len(cases)
@@ -264,6 +277,14 @@ class SkillStore:
                 c.execute('UPDATE skill_jobs SET state=?,owner=NULL,lease_until=NULL,next_retry=?,candidate_id=NULL WHERE id=?',
                           ('pending' if row['attempts'] < 2 else 'invalid', now+60, job['id']))
             return True
+
+    @staticmethod
+    def _refinement_allowed(c):
+        report=refinement.audit(c)
+        if report['status']=='valid_within_scope':return True
+        try:c.execute("INSERT OR REPLACE INTO settings VALUES('refinement_last_blocked',?)",(canonical(report),))
+        except sqlite3.Error:pass  # Keep negative retirement even if diagnostics fail.
+        return False
 
     @staticmethod
     def _publication(c,version_id,now,outcome):

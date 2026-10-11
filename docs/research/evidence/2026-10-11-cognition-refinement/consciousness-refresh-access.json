@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "records": [
+    {
+      "id": "friston-2010",
+      "url": "https://www.nature.com/articles/nrn2787",
+      "retrieved_at_utc": "2026-10-11T04:11:58.512863+00:00",
+      "network": "Inherited proxy and CA; TLS verification enabled; no bypass",
+      "http_status": 200,
+      "final_url": "https://www.nature.com/articles/nrn2787",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 522646,
+      "sha256": "cb80bffedda47a8b46c5eec3e4ca86304626a8f4a6b205d5bfbe4cafbfd6c31f",
+      "basename": "friston-2010.download",
+      "cached_content_included": false,
+      "outcome": "downloaded_unclassified",
+      "access_type": "publisher_key_points_and_abstract_only_subscription_preview",
+      "actual_read_scope": "Key Points, Abstract, citation metadata and subscription-preview marker; full article not obtained",
+      "classification_basis": "consciousness-source-index.json; original fetch outcome retained separately"
+    },
+    {
+      "id": "butlin-2023-v3-refresh",
+      "url": "https://arxiv.org/pdf/2308.08708v3",
+      "retrieved_at_utc": "2026-10-11T04:11:58.513428+00:00",
+      "network": "Inherited proxy and CA; TLS verification enabled; no bypass",
+      "http_status": 200,
+      "final_url": "https://arxiv.org/pdf/2308.08708v3",
+      "content_type": "application/pdf",
+      "bytes": 1763829,
+      "sha256": "88a9d5635b274b7d7c8c55dfeea45be3018054be01da83cd2f8d1fe53d668ab8",
+      "basename": "butlin-2023-v3-refresh.download",
+      "cached_content_included": false,
+      "outcome": "downloaded_unclassified",
+      "access_type": "full_original_author_pdf_re_download",
+      "actual_read_scope": "Selected sections detailed in consciousness-source-index.json",
+      "classification_basis": "consciousness-source-index.json; original fetch outcome retained separately"
+    },
+    {
+      "id": "cogitate-2025-refresh",
+      "url": "https://www.nature.com/articles/s41586-025-08888-1",
+      "retrieved_at_utc": "2026-10-11T04:11:58.513998+00:00",
+      "network": "Inherited proxy and CA; TLS verification enabled; no bypass",
+      "http_status": 200,
+      "final_url": "https://www.nature.com/articles/s41586-025-08888-1",
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 854593,
+      "sha256": "ede81ee683f4719da06ad11b4c0122b2687fd414a1f2c60d08d5d328de3efcdc",
+      "basename": "cogitate-2025-refresh.download",
+      "cached_content_included": false,
+      "outcome": "downloaded_unclassified",
+      "access_type": "full_primary_publisher_html_re_download",
+      "actual_read_scope": "Selected sections detailed in consciousness-source-index.json",
+      "classification_basis": "consciousness-source-index.json; original fetch outcome retained separately"
+    }
+  ],
+  "portable_copy": {
+    "original_metadata_sha256": "9432f961c99c1d78c2bf0e246c622f0a22e88370e19870b3468b8aef52974e6b",
+    "sanitization": "Absolute local cache paths replaced by basenames; transient publisher error/code query parameters removed. Cached source bodies are not included. Source-body hashes identify the original retrieved bytes, not this JSON.",
+    "raw_facts_or_credentials_included": false
+  }
+}

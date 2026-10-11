@@ -1,0 +1,88 @@
+{
+  "assurance_model_hash": "f544b6806dcb2a7b58cc1f8e55dac6a01df05940ad59257cb9d8d31baf68645c",
+  "assurance_source_sha256": "f58c472dd746ff6ea82590ef5e68473b01b44a670750a97df392ebcd0431402c",
+  "docker_calls": 0,
+  "interpretation": "Scope gap, not a production safety incident; valid journal is not authoritative SQLite conformance.",
+  "provider_calls": 0,
+  "repo_head": "cda80862312977463c48aa02bda00353169d3c41",
+  "results": {
+    "injected_unjournaled_budget_mutation": {
+      "actual": {
+        "budgets": {
+          "1970-01-01": 999
+        },
+        "events": 4,
+        "goals": {
+          "273c85ceb28d431cb68048b2339c0597": {
+            "generation": 1,
+            "outcome": "running"
+          }
+        }
+      },
+      "projected_budgets": {
+        "1970-01-01": 1
+      },
+      "projected_goals": {
+        "273c85ceb28d431cb68048b2339c0597": {
+          "expires_at": 1020,
+          "generation": 1,
+          "outcome": "submitting",
+          "owner": "worker",
+          "submission_id": "ac44ab4d1d2241b48cb9b52052e93df1",
+          "truth": null
+        }
+      },
+      "trace_valid": true
+    },
+    "normal_goal_creation": {
+      "actual": {
+        "budgets": {},
+        "events": 1,
+        "goals": {
+          "273c85ceb28d431cb68048b2339c0597": {
+            "generation": 0,
+            "outcome": "ready"
+          }
+        }
+      },
+      "projected_budgets": {},
+      "projected_goals": {},
+      "trace_valid": true
+    },
+    "normal_runtime_record": {
+      "actual": {
+        "budgets": {
+          "1970-01-01": 1
+        },
+        "events": 4,
+        "goals": {
+          "273c85ceb28d431cb68048b2339c0597": {
+            "generation": 1,
+            "outcome": "running"
+          }
+        }
+      },
+      "projected_budgets": {
+        "1970-01-01": 1
+      },
+      "projected_goals": {
+        "273c85ceb28d431cb68048b2339c0597": {
+          "expires_at": 1020,
+          "generation": 1,
+          "outcome": "submitting",
+          "owner": "worker",
+          "submission_id": "ac44ab4d1d2241b48cb9b52052e93df1",
+          "truth": null
+        }
+      },
+      "trace_valid": true
+    }
+  },
+  "portable_copy": {
+    "original_metadata_sha256": "37155c0224cb579577e9175418d02913b6e993c708b3708a69d9533a6517f52e",
+    "sanitization": "Absolute local cache paths replaced by basenames; transient publisher error/code query parameters removed. Cached source bodies are not included. Source-body hashes identify the original retrieved bytes, not this JSON.",
+    "raw_facts_or_credentials_included": false
+  },
+  "execution_status": "Previously executed baseline probe; not rerun for documentation delivery",
+  "probe_script_sha256": "2cb6f5873bca3b8f7479864681929c8a12b2d58ffafac048fe113120dcb8a87a"
+}
