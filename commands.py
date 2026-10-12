@@ -4,7 +4,20 @@
 """
 from __future__ import annotations
 
-_USAGE = "用法：/zhulong [status | tail N | calibrate ... | reflect [run] | probes [run] | model | autonomy ... | help]"
+_USAGE = ("用法：/zhulong [status | tail N | calibrate ... | reflect [run] | probes [run] | "
+          "failures [days] | model | autonomy ... | help]")
+
+
+def _reflect_api():
+    """延迟导入 reflect 的失败/容量视图（双路径兜底，同 Calibration 惯例）。"""
+    try:
+        from reflect import failure_report, memory_pressure
+    except ImportError:
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from reflect import failure_report, memory_pressure
+    return failure_report, memory_pressure
 
 
 class Commands:
@@ -40,6 +53,8 @@ class Commands:
                 return self._reflect(args[1:])
             if sub == "probes":
                 return self._probes(args[1:])
+            if sub == "failures":
+                return self._failures(args[1:])
             if sub == "model":
                 import json
                 return json.dumps(self.model.snapshot(),ensure_ascii=False,indent=2) if self.model else "自我模型不可用。"
@@ -57,10 +72,18 @@ class Commands:
         m = self.c.metrics()
         brier = f"{m['brier']:.3f}" if m["brier"] is not None else "—"
         lines = [
-            "🐉 烛龙 · 自主核心 v0.9",
+            "🐉 烛龙 · 自主核心 v0.11.1",
             f"今日事件：{s['today']} ｜ 累计：{s['total']}",
             f"校准账：已结 {m['n_resolved']} ｜ 未结 {m['pending']} ｜ 弃答 {m['abstain']} ｜ Brier {brier}",
         ]
+        try:
+            _fr, memory_pressure = _reflect_api()
+            mp = memory_pressure(self.j)
+            if mp:
+                lines.append(f"⚠ memory 容量 {mp['used']}/{mp['limit']}（{mp['ratio'] * 100:.0f}%）"
+                             "≥95%：建议合并/精简条目")
+        except Exception:
+            pass
         if self.r is not None:
             last = self.r.last_digest()
             lines.append(f"反思：最近 digest {last.get('day', '—')}")
@@ -168,8 +191,12 @@ class Commands:
         if args and args[0].lower() == "run":
             res = self.p.run()
             brier = f"{res['brier']:.3f}" if res["brier"] is not None else "—"
-            return (f"🐉 探针完成：知识 {res['k_correct']}/{res['n_k']} ｜ "
-                    f"Brier {brier} ｜ 未知题合理弃答 {res['u_ok']}/2 ｜ 假前提识破 {res['f_ok']}/1")
+            tiers = "，".join(f"{t} {v['correct']}/{v['n']}"
+                              for t, v in sorted(res.get("tiers", {}).items()))
+            tier_note = f"（{tiers}）" if tiers else ""
+            return (f"🐉 探针完成：知识 {res['k_correct']}/{res['n_k']}{tier_note} ｜ "
+                    f"Brier {brier} ｜ 合理弃答 {res['u_ok']}/{res.get('n_u', 2)} ｜ "
+                    f"假前提识破 {res['f_ok']}/{res.get('n_f', 1)}")
         runs = self.p.last_runs(5)
         if not runs:
             return "🐉 探针还没有运行记录。运行 /zhulong probes run 立即执行。"
@@ -177,6 +204,27 @@ class Commands:
         for r in runs:
             brier = f"{r['brier']:.3f}" if r["brier"] is not None else "—"
             lines.append(f"  {r['ts'][:16]}  知识 {r['k_correct']}/{r['n_k']} ｜ Brier {brier} ｜ 弃答 {r['u_ok']} ｜ 假前提 {r['f_ok']}")
+        return "\n".join(lines)
+
+    def _failures(self, args: list[str]) -> str:
+        try:
+            failure_report, _ = _reflect_api()
+        except Exception as exc:
+            return f"🐉 失败分类不可用（{type(exc).__name__}）。"
+        days = int(args[0]) if args and args[0].isdigit() else 7
+        rep = failure_report(self.j, days=days)
+        if not rep["items"]:
+            return f"🐉 近 {days} 天没有工具失败记录。"
+        lines = [f"🐉 失败分类 · 近 {days} 天（共 {rep['total']} 次错误）"]
+        for it in rep["items"]:
+            lines.append(f"  {it['tool']} · {it['class']} ×{it['count']}")
+            if it["sample"]:
+                lines.append(f"    例：{it['sample']}")
+        if rep["unclassified"]:
+            lines.append(f"  （未分类 {rep['unclassified']}）")
+        mem = rep.get("memory")
+        if mem:
+            lines.append(f"  memory 容量：{mem['used']}/{mem['limit']}（{mem['ratio'] * 100:.0f}%）")
         return "\n".join(lines)
 
     def _autonomy(self, args):
@@ -202,14 +250,15 @@ class Commands:
 
     def _help(self) -> str:
         return (
-            "🐉 烛龙（Zhulong）· 观测/校准/自主核心 v0.9\n"
-            "  /zhulong status               — 概况\n"
+            "🐉 烛龙（Zhulong）· 观测/校准/自主核心 v0.11.1\n"
+            "  /zhulong status               — 概况（含 memory 容量预警）\n"
             "  /zhulong tail N               — 最近 N 条事件\n"
             "  /zhulong calibrate            — 校准账报告\n"
             "  /zhulong calibrate run        — 立即对账\n"
             "  /zhulong calibrate resolve <id> true|false\n"
             "  /zhulong reflect [run]        — 反思 digest 信息/生成\n"
-            "  /zhulong probes [run]         — 探针历史/立即运行\n"
+            "  /zhulong probes [run]         — 探针历史/立即运行（easy/medium/hard 分层）\n"
+            "  /zhulong failures [days]      — 近 N 天工具失败分类（默认 7）\n"
             "  /zhulong model                — 证据型自我模型（只读）\n"
             "  /zhulong autonomy [status|goals|experience|skills|workflows|diagnostics|cognition|assurance|tick|pause|resume|cancel <id>]\n"
             "  zhulong_autonomy actions: status|goals|tick|experience|skills|workflows|diagnostics|cognition|assurance"

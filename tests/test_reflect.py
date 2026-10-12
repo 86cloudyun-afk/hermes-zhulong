@@ -29,9 +29,17 @@ class FakeLLM:
             ("光在真空", "答案: 约30万公里/秒" + NL + "信心: 98"),
             ("登月", "答案: 1969" + NL + "信心: 97"),
             ("化学式", "答案: H2O" + NL + "信心: 100"),
+            ("100 天之后", "答案: 周五" + NL + "信心: 85"),
+            ("从 1 加到 100", "答案: 5050" + NL + "信心: 90"),
+            ("listen", "答案: netsil" + NL + "信心: 88"),
+            ("数字 7", "答案: 300" + NL + "信心: 70"),
+            ("各位数字之和", "答案: 810" + NL + "信心: 75"),
+            ("十六进制", "答案: FF" + NL + "信心: 92"),
             ("袜子", "答案: 不确定，信息不足，无法知道" + NL + "信心: 5"),
             ("红楼梦", "答案: 无法确定" + NL + "信心: 3"),
+            ("室温", "答案: 不知道，信息不足" + NL + "信心: 4"),
             ("超导", "前提有误：超导体电阻为零，电压为 0，不会线性增加。"),
+            ("战争与和平", "前提有误：《战争与和平》的作者是托尔斯泰，不是陀思妥耶夫斯基。"),
         ]
         for pat, ans in table:
             if pat in q:
@@ -96,12 +104,15 @@ class TestS4(unittest.TestCase):
             fake = FakeLLM()
             probe = Probes(j, db, cfg, llm=fake, budget=Budget(db, cap=40), tasks=Tasks(db))
             res = probe.run()
-            self.assertEqual(res["k_correct"], 6)
-            self.assertEqual(res["u_ok"], 2)
-            self.assertEqual(res["f_ok"], 1)
+            self.assertEqual(res["n_k"], 12)
+            self.assertEqual(res["k_correct"], 12)
+            self.assertEqual(res["u_ok"], 3)
+            self.assertEqual(res["f_ok"], 2)
+            self.assertEqual(res["tiers"]["easy"], {"n": 6, "correct": 6})
+            self.assertEqual(res["tiers"]["hard"]["n"], 3)
             self.assertIsNotNone(res["brier"])
-            self.assertLess(res["brier"], 0.01)
-            self.assertAlmostEqual(res["mean_conf"], 96.5, places=1)
+            self.assertLess(res["brier"], 0.05)
+            self.assertAlmostEqual(res["mean_conf"], 89.9, places=1)
             runs = probe.last_runs(5)
             self.assertEqual(len(runs), 1)
 

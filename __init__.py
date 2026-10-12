@@ -23,7 +23,7 @@ try:
     from .sensor import Sensor
     from .calibrate import Calibration
     from .commands import build_commands
-    from .reflect import Db, Tasks, Budget, Reflector, load_config, scheduler_loop
+    from .reflect import Db, Tasks, Budget, Reflector, load_config, scheduler_loop, failure_report
     from .probes import Probes
     from .autonomy_store import Ledger
     from .autonomy_checks import validate_config, Verifier
@@ -43,7 +43,7 @@ except ImportError:
     from sensor import Sensor
     from calibrate import Calibration
     from commands import build_commands
-    from reflect import Db, Tasks, Budget, Reflector, load_config, scheduler_loop
+    from reflect import Db, Tasks, Budget, Reflector, load_config, scheduler_loop, failure_report
     from probes import Probes
     from autonomy_store import Ledger
     from autonomy_checks import validate_config, Verifier
@@ -84,14 +84,17 @@ CALIB_SCHEMA = {
     "name": "zhulong_calibration",
     "description": (
         "烛龙账本操作：action=report（指标）、run（对账）、list（条目）、"
-        "reflect（生成今日反思 digest）、probes（最近探针结果）、run_probes（立即跑探针电池）。"
+        "reflect（生成今日反思 digest）、probes（最近探针结果）、run_probes（立即跑探针电池）、"
+        "failures（近 N 天工具失败分类：类别+归一化样本+memory 容量）。"
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "action": {"type": "string",
-                       "enum": ["report", "run", "list", "reflect", "probes", "run_probes"]},
+                       "enum": ["report", "run", "list", "reflect", "probes", "run_probes", "failures"]},
             "limit": {"type": "integer", "minimum": 1, "maximum": 50},
+            "days": {"type": "integer", "minimum": 1, "maximum": 30,
+                     "description": "action=failures 的回看天数（默认 7）"},
         },
     },
 }
@@ -118,7 +121,7 @@ def _predict_handler(cal):
     return handler
 
 
-def _calib_handler(cal, reflector=None, probes=None):
+def _calib_handler(cal, reflector=None, probes=None, journal=None):
     def handler(params, **kwargs):
         action = str(params.get("action", "report"))
         try:
@@ -138,6 +141,9 @@ def _calib_handler(cal, reflector=None, probes=None):
                 res = probes.run()
                 res.pop("details", None)
                 return json.dumps({"ok": True, "result": res}, ensure_ascii=False)
+            if action == "failures" and journal is not None:
+                return json.dumps({"ok": True, **failure_report(journal, int(params.get("days", 7) or 7))},
+                                  ensure_ascii=False)
             return json.dumps({"ok": True, "metrics": cal.metrics()}, ensure_ascii=False)
         except Exception as exc:
             return json.dumps({"ok": False, "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False)
@@ -235,7 +241,7 @@ def register(ctx) -> None:
         except Exception:logger.warning('zhulong: command registration failed',exc_info=True)
         for name,schema,handler in (
             ('zhulong_predict',PREDICT_SCHEMA,_predict_handler(cal)),
-            ('zhulong_calibration',CALIB_SCHEMA,_calib_handler(cal,reflector,probes)),
+            ('zhulong_calibration',CALIB_SCHEMA,_calib_handler(cal,reflector,probes,journal)),
             ('zhulong_model',MODEL_SCHEMA,_model_handler(model)),
             ('zhulong_autonomy',AUTONOMY_SCHEMA,_autonomy_handler(controller,ledger,autonomy_error))):
             try:ctx.register_tool(name=name,toolset='zhulong',schema=schema,handler=handler)

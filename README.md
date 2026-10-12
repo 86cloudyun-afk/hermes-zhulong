@@ -96,9 +96,10 @@ zhulong_autonomy(action=status|goals|tick|experience|skills|workflows|diagnostic
 
 ## 反思与探针（S4）
 
-- **每日 digest（确定性）**：后台调度在每天第一次运行时为「昨天」生成 `reflections/digest-<day>.md`（事件构成、工具统计、错误明细、校准账）。也可 `/zhulong reflect run` 立即生成今日版。
+- **每日 digest（确定性）**：后台调度在每天第一次运行时为「昨天」生成 `reflections/digest-<day>.md`（事件构成、工具统计、**失败分类（类别 + 归一化样本）**、校准账、**memory 容量预警**）。也可 `/zhulong reflect run` 立即生成今日版。
 - **模型复盘（可选，默认开）**：`ctx.llm` 单次调用，产出「观察/提案/不确定」三段，写入 digest 且标注**未经核验**；提案追加到 `reflections/PROPOSALS.md` 供人工审阅（永不自动执行）。
-- **自省探针（每周一自动，可配）**：10 项电池（6 知识题 + 2 未知题 + 1 假前提 + 1 定性自述），机械判分，产出 Brier/命中/弃答，存 `probe_runs`。
+- **自省探针（每周一自动，可配）**：18 项电池（知识题分 easy/medium/hard 三层共 12 题 + 3 未知题 + 2 假前提 + 1 定性自述），机械判分；信心指令要求反映真实把握（完全确定才用 90+，去饱和），产出 Brier/命中/弃答/分层正确率，存 `probe_runs`。
+- **失败分类（v0.9）**：`tool_call` 错误落 `error_class`（capacity / refusal / anchor / params / backend / other）+ 归一化短签名（去引号内容与数字，不含原文）；`zhulong_calibration(action="failures", days=N)` 或 `/zhulong failures [days]` 取近 N 天聚合与样本。
 - **预算**：全部插件发起的 LLM 调用共享 `llm_daily_cap`（默认 40/日），超限自动跳过；跨进程任务认领（`tasks` 表）防止重复运行。
 
 ```json
@@ -126,11 +127,12 @@ zhulong_autonomy(action=status|goals|tick|experience|skills|workflows|diagnostic
 - ✅ v0.9.0：完整参考 JSON 验收、持久步骤 DAG/本地 outbox、有界干预诊断、尝试级元认知和有限状态保证
 - ✅ v0.10.0：独立生产状态对应与同事务准入/发布门槛、可选限容量认知工作空间；430 项真实宿主/Docker 测试通过，单次 DeepSeek 原生集成验收成功
 - v0.11.0：前瞻注意力、工单 DSL 证书及受保护执行、真实配对研究驱动和实际时钟记录；组件审查与部署证据分别记录
+- ✅ v0.11.1：观测侧增强——失败分类与原文摘要、memory 容量预警、探针难度分层去饱和（自主与执行能力不变）
 - ⏳ 后续：周报投递、真实外部事务、控制内核自动晋升与长期测试
 
 五条研究线和历史证据见 [完整执行、根因、因果提升、意识与正确性](docs/research/2026-10-11-autonomy-frontiers.md)；当前实现、部署入口与未完成项目见 [工程清单](docs/deployment/engineering-closure.md)。v0.11 的[核心研究](docs/research/2026-10-11-core-evidence-research.md)与[独立审查](docs/research/2026-10-11-v0.11-review.md)区分产品实现、实际执行和未知结论。真实配对驱动在 `scripts/native_paired_trial.py`，有限业务 pilot 仍在 `scripts/native_work_acceptance.py`；结果须按冻结协议及实际运行单独记录。v0.10 的[认知与 refinement 研究](docs/research/2026-10-11-cognition-refinement-research.md)及其[证据包](docs/research/evidence/2026-10-11-cognition-refinement/artifact-manifest.json)保留历史结论。
 
-v0.11 的[实际验证](docs/research/2026-10-11-v0.11-validation.md)记录最新 582 项 Hermes／Docker 实机检查全部通过、第三批原生任务六格成功，以及两个先前停止批次的完整未知分母。远程三版本 Python CI 与首次 formal CI 的实际结果分别保留。Lean 已证明形式 typed 检查器的一般行 soundness，并通过独立干净重放；[证明范围](docs/research/evidence/2026-10-11-core-kernel/formal-model-proof.json)明确保留 JSON／Python／列表输出／原生执行的对应缺口。固定证明源码和[可复现入口](formal/ticket-kernel/README.integration.md)已通过独立包装审查及实际干净重建。
+v0.11 的[实际验证](docs/research/2026-10-11-v0.11-validation.md)记录最新 582 项 Hermes／Docker 实机检查全部通过、第三批原生任务六格成功，以及两个先前停止批次的完整未知分母。远程三版本 Python CI 与首次 formal CI 的实际结果分别保留。Lean 已证明形式 typed 检查器的一般行 soundness，并通过独立干净重放；[证明范围](docs/research/evidence/2026-10-11-core-kernel/formal-model-proof.json)明确保留 JSON／Python／列表输出／原生执行的对应缺口。固定证明源码和[可复现入口](formal/ticket-kernel/README.integration.md)已通过独立包装审查及实际干净重建。v0.11.1 只改观测侧（sensor/reflect/probes/commands），不动自主与执行路径。
 
 ## License
 

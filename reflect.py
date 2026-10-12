@@ -233,9 +233,6 @@ class Reflector:
             api_err = self.j._conn.execute(
                 "SELECT COUNT(*) FROM events WHERE event='api_error' AND ts LIKE ?", (like,)
             ).fetchone()[0]
-            err_rows = [json.loads(p[0]) for p in self.j._conn.execute(
-                "SELECT payload FROM events WHERE event='tool_call' AND status='error' AND ts LIKE ? LIMIT 10", (like,)
-            ).fetchall()]
         with self.cal._lock:
             pred_new = self.cal._conn.execute(
                 "SELECT COUNT(*) FROM predictions WHERE made_at LIKE ?", (like,)).fetchone()[0]
@@ -257,11 +254,13 @@ class Reflector:
         for name, c, err, avg in tools:
             avg_s = f"{avg:.0f}ms" if avg else "—"
             lines.append(f"- {name}: {c} / {err or 0} / {avg_s}")
-        if err_rows:
+        lines.extend(failure_lines(self.j, day))
+        mem = last_memory_usage(self.j)
+        if mem and mem["ratio"] >= 0.95:
             lines.append("")
-            lines.append("## 错误明细（前 10）")
-            for e in err_rows:
-                lines.append(f"- {(e.get('ts') or '')[11:19]} {e.get('name')} · {e.get('error_type') or 'error'}")
+            lines.append("## ⚠ 容量预警")
+            lines.append(f"- memory {mem['used']}/{mem['limit']}（{mem['ratio'] * 100:.0f}%）≥95%："
+                         "建议合并/精简条目——顶格会让写入持续失败")
         return "\n".join(lines)
 
     # --------------------------------------------------------------- narrative
@@ -311,6 +310,111 @@ class Reflector:
             return {}
         f = files[-1]
         return {"day": f.stem.replace("digest-", ""), "path": str(f)}
+
+
+# ------------------------------------------------------------ failure & capacity
+def _mem_usage(payload: str) -> dict[str, Any] | None:
+    """从 tool_call 事件 payload 取 memory 容量读数（元数据）。"""
+    try:
+        row = json.loads(payload)
+    except Exception:
+        return None
+    if row.get("event") != "tool_call" or row.get("name") != "memory":
+        return None
+    ratio, usage = row.get("usage_ratio"), row.get("usage")
+    if ratio is None or not usage:
+        return None
+    digits = str(usage)
+    limit = digits.rsplit("/", 1)[-1]
+    used = digits.split("/", 1)[0] if "/" in digits else digits
+    try:
+        used_i = int(used.replace(",", ""))
+        limit_i = int(limit.replace(",", ""))
+    except ValueError:
+        return None
+    if limit_i <= 0:
+        return None
+    ratio_f = float(ratio)
+    if not (0 < ratio_f < 10):
+        return None
+    return {"ts": row.get("ts"), "used": used_i, "limit": limit_i, "ratio": ratio_f}
+
+
+def last_memory_usage(journal) -> dict[str, Any] | None:
+    """最近一次 memory 工具容量读数（used/limit/ratio/ts）。"""
+    with journal._lock:
+        row = journal._conn.execute(
+            "SELECT payload FROM events WHERE event='tool_call' AND name='memory' "
+            "AND payload LIKE '%\"usage_ratio\"%' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    return _mem_usage(row[0]) if row else None
+
+
+def memory_pressure(journal, threshold: float = 0.95) -> dict[str, Any] | None:
+    """容量 ≥ threshold 时返回读数，否则 None（用于预警）。"""
+    usage = last_memory_usage(journal)
+    return usage if usage and usage["ratio"] >= threshold else None
+
+
+def failure_report(journal, days: int = 7, limit: int = 15) -> dict[str, Any]:
+    """近 N 天工具失败分类聚合（只读；样本 = 归一化签名，无原文）。"""
+    days = max(1, min(int(days or 7), 30))
+    since = (utcnow() - timedelta(days=days)).date().isoformat()
+    with journal._lock:
+        rows = journal._conn.execute(
+            "SELECT payload FROM events WHERE event='tool_call' AND status='error' AND ts >= ?",
+            (since,),
+        ).fetchall()
+    counts: dict[tuple[str, str], int] = {}
+    samples: dict[tuple[str, str], str] = {}
+    unclassified = 0
+    for (payload,) in rows:
+        try:
+            row = json.loads(payload)
+        except Exception:
+            continue
+        klass = str(row.get("error_class") or "unclassified")
+        if klass == "unclassified":
+            unclassified += 1
+        key = (str(row.get("name") or "?"), klass)
+        counts[key] = counts.get(key, 0) + 1
+        if key not in samples and row.get("error_sig"):
+            samples[key] = str(row["error_sig"])[:120]
+    items = [
+        {"tool": tool, "class": klass, "count": n, "sample": samples.get((tool, klass), "")}
+        for (tool, klass), n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ][: max(1, min(int(limit or 15), 50))]
+    return {"days": days, "since": since, "total": len(rows), "unclassified": unclassified,
+            "items": items, "memory": last_memory_usage(journal)}
+
+
+def failure_lines(journal, day: str, top: int = 10) -> list[str]:
+    """当日失败分类（确定性文本，供 digest 使用）。"""
+    with journal._lock:
+        rows = [json.loads(p[0]) for p in journal._conn.execute(
+            "SELECT payload FROM events WHERE event='tool_call' AND status='error' AND ts LIKE ?",
+            (day + "%",),
+        ).fetchall()]
+    if not rows:
+        return []
+    counts: dict[tuple[str, str], int] = {}
+    samples: dict[tuple[str, str], str] = {}
+    for e in rows:
+        key = (str(e.get("name") or "?"), str(e.get("error_class") or "unclassified"))
+        counts[key] = counts.get(key, 0) + 1
+        if key not in samples and e.get("error_sig"):
+            samples[key] = str(e["error_sig"])[:120]
+    lines = ["", "## 失败分类（当日）"]
+    for (tool, klass), n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:top]:
+        s = samples.get((tool, klass))
+        lines.append(f"- {tool} · {klass} ×{n}" + (f" ｜ 例：{s}" if s else ""))
+    lines.append("")
+    lines.append("## 错误明细（前 10）")
+    for e in rows[:10]:
+        detail = e.get("error_sig") or e.get("error_type") or "error"
+        lines.append(f"- {(e.get('ts') or '')[11:19]} {e.get('name')} · "
+                     f"{e.get('error_class') or 'unclassified'} · {detail}")
+    return lines
 
 
 # --------------------------------------------------------------------- sched

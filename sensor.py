@@ -5,7 +5,84 @@ never raw tool arguments, tool results, message bodies, or prompts.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Callable
+
+# --------------------------------------------------------------- failure classes
+# 失败分类（只存元数据：类别 + 归一化短签名；引号内容与数字一律不落盘）。
+_ERROR_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("capacity", ("would put memory at", "would exceed the limit", "memory at ", "/2,200",
+                  "free at least", "exceeds the limit", "quota", "too long")),
+    ("refusal", ("refusing", "blocked:", "threat pattern", "off-limits", "curator-managed",
+                 "denied", "not permitted", "cannot ask the user", "prompt_unavailable",
+                 "cannot restart", "protected system/credential")),
+    ("anchor", ("no entry matched", "could not find a match", "not found", "no such",
+                "does not exist", "not exists", "stale", "already registered")),
+    ("params", ("is required", "needs a", "unknown action", "must be", "invalid",
+                "unexpected keyword", "pass either", "not both", "expects", "missing")),
+    ("backend", ("timeout", "timed out", "connection", "locked", "oserror", "ioerror",
+                 "permission denied", "no space", "traceback", "errno", "signal")),
+)
+
+_QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
+_DIGITS = re.compile(r"\d+")
+_WS = re.compile(r"\s+")
+_USAGE = re.compile(r"(\d[\d,]*)\s*/\s*(\d[\d,]*)")
+
+
+def _error_text(result: Any, error_type: Any) -> str:
+    """从工具结果里取最可能的错误文本（仅用于分类/归一化，绝不原样落盘）。"""
+    text = ""
+    if isinstance(result, dict):
+        for key in ("error", "message", "reason", "detail"):
+            v = result.get(key)
+            if isinstance(v, str) and v.strip():
+                text = v
+                break
+        if not text:
+            out = result.get("output")
+            if isinstance(out, str) and out.strip():
+                text = out.strip()[-300:]
+    elif isinstance(result, str):
+        text = result
+    if not text and error_type:
+        text = str(error_type)
+    return text.strip()
+
+
+def classify_error(text: str) -> tuple[str, str]:
+    """→ (类别, 归一化短签名 ≤120 字符)。
+
+    类别：capacity / refusal / anchor / params / backend / other。
+    """
+    low = (text or "").lower()
+    klass = "other"
+    for name, needles in _ERROR_RULES:
+        if any(n in low for n in needles):
+            klass = name
+            break
+    sig = _WS.sub(" ", _DIGITS.sub("N", _QUOTED.sub("…", text or ""))).strip()[:120]
+    return klass, sig
+
+
+def parse_usage(result: Any) -> tuple[int, int] | None:
+    """memory 工具的容量计数 (used, limit)；取自结果里的 usage 字段。"""
+    if not isinstance(result, dict):
+        return None
+    raw = result.get("usage")
+    if not isinstance(raw, str):
+        return None
+    m = _USAGE.search(raw)
+    if not m:
+        return None
+    try:
+        used = int(m.group(1).replace(",", ""))
+        limit = int(m.group(2).replace(",", ""))
+    except ValueError:
+        return None
+    if limit <= 0 or used < 0 or used > 10 * limit:
+        return None
+    return used, limit
 
 
 def _len(v: Any) -> int | None:
@@ -36,18 +113,29 @@ class Sensor:
 
     # ------------------------------------------------------------- callbacks
     def on_post_tool_call(self, **kw: Any) -> None:
+        name = kw.get("tool_name")
+        status = str(kw.get("status") or "")
+        result = kw.get("result")
+        error_class = error_sig = None
+        if status.lower() not in ("", "ok", "success"):
+            error_class, error_sig = classify_error(_error_text(result, kw.get("error_type")) or status)
+        usage = parse_usage(result) if name == "memory" else None
         self._emit(
             "tool_call",
             session_id=kw.get("session_id"),
             turn_id=kw.get("turn_id"),
             task_id=kw.get("task_id"),
-            name=kw.get("tool_name"),
+            name=name,
             status=kw.get("status"),
             duration_ms=kw.get("duration_ms"),
             args_keys=_keys(kw.get("args")),
             args_chars=_len(kw.get("args")),
-            result_chars=_len(kw.get("result")),
+            result_chars=_len(result),
             error_type=kw.get("error_type"),
+            error_class=error_class,
+            error_sig=error_sig,
+            usage=f"{usage[0]}/{usage[1]}" if usage else None,
+            usage_ratio=round(usage[0] / usage[1], 4) if usage else None,
         )
 
     def on_post_llm_call(self, **kw: Any) -> None:
